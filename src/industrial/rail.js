@@ -1,0 +1,88 @@
+import * as T from 'three';
+import {buildTurkmenLocomotive} from './turkmenLocomotive.js';
+
+export const RAIL_LAYOUT={z:-53,railTop:.41,deckHeight:1.56,cargoZ:.50,wagonCentres:[-13,1.2,15.4,29.6],cargoXs:[-2.2,2.2],locomotiveX:-69.9};
+
+// Freight consist with a photo-informed Turkmenistan CKD9A-1 style locomotive.
+// Wagon loading coordinates remain independent of the locomotive sections.
+export function buildRail(k,pallet){
+  const {m,box,cyl,ring,rod,group,mesh,material,textPlate}=k;
+  const railWheels=[],trainCargo=[];
+  const blue=material('#1b507e',.32,.42),white=material('#dce1e3',.2,.47),frame=material('#30383d',.64,.58),steel=material('#899195',.82,.37),rubber=material('#1b242a',0,.92),glass=material('#213c49',.35,.2),darkGlass=material('#14232c',.25,.26),edge=material('#c4ae61',.25,.6);
+  const ballast=material('#8b8981',0,1),railMat=material('#7b7770',.83,.4),tie=material('#79796f',0,.95);
+  box(810,.18,4.05,[-295,.005,RAIL_LAYOUT.z],ballast);
+  // Concrete sleepers, fastenings, rail webs and polished running surfaces.
+  for(let x=-700;x<113;x+=.7){
+    box(.24,.15,2.64,[x,.19,RAIL_LAYOUT.z],tie);
+    if(x>-165)for(const z of [-.76,.76]){box(.32,.035,.25,[x,.285,RAIL_LAYOUT.z+z],frame);for(const dz of [-.12,.12])box(.07,.06,.045,[x,.30,RAIL_LAYOUT.z+z+dz],railMat);}
+  }
+  for(const dz of [-.76,.76]){const z=RAIL_LAYOUT.z+dz;box(810,.035,.16,[-295,.285,z],railMat);box(810,.075,.055,[-295,.34,z],railMat);box(810,.065,.075,[-295,.3775,z],steel);}
+  // Flush crossing panels leave the flangeways open where the two roads cross.
+  for(const x of [-143,-62]){box(10,.19,1.30,[x,.30,RAIL_LAYOUT.z],frame);for(const dz of [-1.30,1.30])box(10,.19,.85,[x,.30,RAIL_LAYOUT.z+dz],frame);}
+  const ballastCount=k.tablet?1800:6500,stones=k.instances(new T.DodecahedronGeometry(1,0),ballast,ballastCount);const dummy=new T.Object3D();let seed=83;
+  const rnd=()=>{seed=(1664525*seed+1013904223)>>>0;return seed/4294967296;};
+  for(let i=0;i<ballastCount;i++){dummy.position.set(-180+rnd()*295,.14,RAIL_LAYOUT.z+(rnd()>.5?1:-1)*(1.35+rnd()*.65));dummy.rotation.set(rnd()*3,rnd()*3,rnd()*3);const s=.045+rnd()*.075;dummy.scale.set(s,s*.55,s);dummy.updateMatrix();stones.setMatrixAt(i,dummy.matrix);}stones.instanceMatrix.needsUpdate=true;stones.userData.detailDistance=100;
+
+  function wheelset(parent,x,r=.46){
+    const y=RAIL_LAYOUT.railTop+r;
+    const axle=cyl(.105,2.25,[x,y,0],frame,parent);axle.rotation.x=Math.PI/2;
+    for(const side of [-1,1]){
+      const g=group([x,y,side*.76],parent,true);g.userData.wheelKey=`rail:${r}:${side}`;
+      const profile=[[0,-.10],[r*.50,-.10],[r*.68,-.067],[r*.85,-.067],[r,-.088],[r,.067],[r+.035,.067],[r+.035,.105],[r*.76,.105],[r*.58,.065],[0,.065]].map(([rr,z])=>new T.Vector2(rr,z));
+      const wheel=mesh(new T.LatheGeometry(profile,k.tablet?24:64),steel,[0,0,0],g);wheel.rotation.x=side*Math.PI/2;
+      const hub=cyl(.16,.20,[0,0,side*.12],frame,g,undefined,32);hub.rotation.x=Math.PI/2;
+      for(let i=0;i<8;i++){const a=i/8*Math.PI*2,bolt=cyl(.022,.025,[Math.sin(a)*.23,Math.cos(a)*.23,side*.13],steel,g,undefined,6);bolt.rotation.x=Math.PI/2;}
+      railWheels.push(g);
+    }
+  }
+  function spring(parent,x,z){
+    cyl(.092,.23,[x,1.17,z],rubber,parent);
+    for(let y=1.07;y<1.29;y+=.037)ring(.105,.018,[x,y,z],steel,parent);
+  }
+  function bogie(parent,x,loco=false){
+    const g=group([x,0,0],parent),axles=loco?[-1.75,0,1.75]:[-.93,.93];
+    for(const a of axles)wheelset(g,a,loco?.49:.46);
+    for(const z of [-1.04,1.04]){
+      box(loco?4.7:2.7,.23,.19,[0,1.05,z],frame,g,.045);
+      for(const a of axles){box(.35,.28,.24,[a,.99,z],frame,g,.035);box(.22,.19,.035,[a,.99,z+Math.sign(z)*.14],steel,g,.025);for(const dx of [-.25,.25])spring(g,a+dx,z);rod([a-.40,.69,z*.8],[a+.40,.69,z*.8],.035,frame,g);}
+      box(.65,.22,.2,[0,1.24,z],steel,g,.025);
+    }
+    for(const a of axles)box(.22,.15,2.0,[a,1.08,0],frame,g);
+    box(.65,.20,1.7,[0,1.25,0],frame,g);
+  }
+  function coupling(parent,x,direction){
+    box(.75,.21,.25,[x,1.08,0],frame,parent,.035);
+    box(.31,.33,.40,[x+direction*.35,1.08,0],steel,parent,.05);
+    box(.22,.20,.17,[x+direction*.47,1.08,.13],frame,parent,.025);
+    for(const z of [-.38,.38]){const hose=mesh(new T.TubeGeometry(new T.CatmullRomCurve3([new T.Vector3(x,1.08,z),new T.Vector3(x+direction*.17,.62,z),new T.Vector3(x+direction*.37,.91,z)]),12,.025,6,false),rubber,[0,0,0],parent);}
+  }
+  const train=group([0,0,0],k.scene,true);
+  for(const [n,cx] of RAIL_LAYOUT.wagonCentres.entries()){
+    const g=group([cx,0,RAIL_LAYOUT.z],train);bogie(g,-4.65);bogie(g,4.65);
+    for(const z of [-.72,.72]){box(13.4,.28,.13,[0,1.23,z],frame,g);box(13.4,.06,.28,[0,1.35,z],frame,g);}
+    for(let x=-6.4;x<6.6;x+=.75)box(.10,.17,2.8,[x,1.31,0],frame,g);
+    box(13.4,.13,2.9,[0,1.425,0],blue,g);
+    for(let x=-6.5;x<6.6;x+=.26)box(.24,.07,2.78,[x,1.525,0],m.wood,g);
+    for(const z of [-1.47,1.47]){
+      box(13.4,.18,.085,[0,1.38,z],blue,g);
+      for(let x=-6.4;x<=6.5;x+=1.29){
+        // Retracted stakes leave a full pallet-width loading opening on the
+        // warehouse side; the opposite side retains its upright restraints.
+        const loadingOpening=z>0&&RAIL_LAYOUT.cargoXs.some(cx=>Math.abs(x-cx)<1.05);
+        box(.09,loadingOpening?.10:.85,.09,[x,loadingOpening?1.48:1.91,z],blue,g);
+        box(.16,.19,.035,[x,1.46,z+Math.sign(z)*.06],steel,g);ring(.055,.015,[x,1.48,z+Math.sign(z)*.08],steel,g,'z');
+      }
+      // Folded side boards expose the freight and the forklift loading edge.
+      for(let x=-5.35;x<6;x+=2.68){box(2.53,.35,.07,[x,1.14,z],blue,g);box(2.5,.035,.025,[x,1.17,z+Math.sign(z)*.05],steel,g);}
+      const label=textPlate(`AKB ${String(n+1).padStart(3,'0')}`,1.15,.16,[0,1.37,z+Math.sign(z)*.05],g,'#e1e4db','#1b507e');if(z<0)label.rotation.y=Math.PI;
+      for(const x of [-5.5,5.5])box(.25,.07,.015,[x,1.38,z+Math.sign(z)*.06],edge,g);
+    }
+    for(const x of [-6.65,6.65]){box(.09,.74,2.94,[x,1.91,0],blue,g);for(const z of [-1,0,1])box(.04,.68,.065,[x+Math.sign(x)*.06,1.91,z],steel,g);coupling(g,x+Math.sign(x)*.26,Math.sign(x));}
+    for(const x of [-6.1,6.1])for(const z of [-1.62,1.62]){rod([x-.22,.60,z],[x-.22,1.47,z],.025,steel,g);rod([x+.22,.60,z],[x+.22,1.47,z],.025,steel,g);for(const y of [.65,.91,1.17])rod([x-.22,y,z],[x+.22,y,z],.025,steel,g);}
+    const brake=ring(.22,.028,[-6.85,2.03,.8],edge,g,'x');for(const z of [-.18,.18])rod([-6.85,2.03,.8],[-6.85,2.03+z,.8],.017,edge,g);
+    for(const x of RAIL_LAYOUT.cargoXs)trainCargo.push(pallet(g,[x,RAIL_LAYOUT.deckHeight,RAIL_LAYOUT.cargoZ],n%2?'bags':'panel',true));
+  }
+
+  buildTurkmenLocomotive(k,train,{z:RAIL_LAYOUT.z,bogie,coupling});
+  return {train,trainCargo,railWheels};
+}

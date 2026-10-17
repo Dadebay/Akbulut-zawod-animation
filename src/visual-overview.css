@@ -37,3 +37,99 @@
 @media(min-width:1500px) { .machine-grid { grid-template-columns:repeat(20,1fr); gap:4px; } .machine-cell { min-height:18px; } }
 @media(max-width:900px) { .visual-overview { padding:0 15px 15px; } .visual-factory { min-height:520px; height:calc(100dvh - 290px); } .factory-title { left:15px; top:23px; } .factory-title h1 { font-size:22px; } .factory-controls { right:15px; top:100px; } .visual-statusbar { gap:8px; } .visual-status,.visual-total { padding:18px 12px 24px; flex-wrap:wrap; gap:7px; } .visual-status > strong,.visual-total > strong { font-size:26px; } .visual-status > span { width:100%; margin-left:14px; font-size:9px; } .visual-status-track { left:12px;right:12px;bottom:11px; } .total-icon { display:none; } .visual-total > span:last-child { margin-left:0; width:100%; } .visual-total > span:last-child svg { display:none; } .factory-flow { left:15px; gap:10px; } .factory-watermark { font-size:36px; } }
 @media(max-width:600px) { .visual-overview { padding:0 10px 12px; } .visual-factory { min-height:460px; height:58dvh; } .factory-title h1 { font-size:21px; } .factory-title > span:first-child { font-size:7px; } .factory-controls { top:98px; left:15px; right:auto; } .visual-statusbar { grid-template-columns:repeat(4,1fr); } .visual-total { grid-column:span 4; padding:12px 16px; align-items:center; } .visual-total > span:last-child { width:auto; margin-left:auto; } .visual-total > strong { font-size:24px; } .visual-status { padding:15px 9px 20px; gap:6px; } .visual-status > strong { font-size:22px; } .visual-status > span { font-size:7px; margin-left:0; white-space:nowrap; } .visual-status > i { width:5px;height:5px; } .factory-flow { bottom:17px; gap:8px; } .factory-flow > span { font-size:9px; gap:5px; } .factory-flow svg { width:13px; } .factory-watermark { display:none; } .visual-factory .scene-label { font-size:6px; padding:4px; } }
+/* Technical visualization: neutral daylight and blue industrial equipment. */
+.visual-factory { background:#e8edf1; }
+.factory-title { top:22px; }
+.factory-title h1 { font-size:23px; }
+.factory-areas { position:absolute;z-index:6;left:24px;top:116px;display:flex;gap:4px;background:#ffffffdc;border:1px solid #c7d3df;border-radius:6px;padding:4px;box-shadow:0 4px 16px #1736560b; }
+.factory-areas button { display:flex;align-items:center;gap:7px;font-size:10px;padding:8px 13px;color:#61788e;border-radius:3px; }
+.factory-areas button.active { color:#175f9e;background:#e0edf8; }
+.factory-controls { top:28px; }
+.factory-controls .icon-button.active { color:#1465ab;background:#dceaf6; }
+.visual-factory .industrial-label { font-size:9px;padding:5px 8px;background:#ffffffed;border-color:#aebfce;box-shadow:0 2px 6px #132d4a12; }
+.scene-site-label { position:absolute;left:0;top:0;font:600 10px -apple-system,sans-serif;color:#315572;letter-spacing:1.5px;white-space:nowrap;padding:5px 8px;background:#ffffffd9;border:1px solid #b7c7d6;border-radius:3px; }
+.scene-site-link { pointer-events:auto;cursor:zoom-in;min-height:30px;touch-action:manipulation;transition:background-color 150ms ease,border-color 150ms ease,color 150ms ease; }
+.scene-site-link:focus-visible { outline:2px solid #2577bd;outline-offset:3px;background:#fff; }
+.scene-site-link:active { background:#dcecf9;border-color:#4e8cbf; }
+@media (hover:hover) and (pointer:fine) { .scene-site-link:hover { background:#fff;border-color:#4e8cbf;color:#175f9e; } }
+.factory-map-source { position:absolute;bottom:19px;right:24px;display:flex;align-items:center;gap:6px;font-size:8px;color:#5b7187;z-index:5;background:#ffffffb9;padding:7px 10px;border-radius:4px; }
+.factory-flow { background:#ffffffcc;padding:8px 12px;border-radius:4px;bottom:18px; }
+@media(max-width:900px){.factory-areas{left:15px;top:105px}.factory-controls{top:152px;left:15px;right:auto}.factory-title h1{font-size:21px}.factory-map-source{display:none}.factory-areas button{font-size:9px;padding:7px 10px}}
+/* Reference-led campus, photography and optional geographic fleet map. */
+.factory-areas { left:24px; top:130px; right:auto; max-width:calc(100% - 48px); flex-wrap:wrap; }
+.factory-areas button { background:#ffffffdf; }
+.factory-model-note {position:absolute;right:24px;bottom:25px;font-size:9px;color:#59738b;background:#ffffffc9;padding:7px 10px;border-radius:5px;pointer-events:none;}
+.factory-flow {background:#ffffffd9;padding:10px 13px;border-radius:6px;bottom:20px;}
+.factory-title {padding:13px 17px 15px;background:linear-gradient(110deg,#f4f8f9ec,#f4f8f980);border-radius:10px;top:19px;left:7px;}
+.factory-title h1 {font-size:23px;margin-top:6px;}
+.visual-demo {margin-top:9px;}
+.fleet-map-view,.fleet-map,.reference-view {position:absolute;inset:0;}
+.fleet-map-view {z-index:1;background:#ebeff0;}
+.fleet-map {z-index:0;}
+.map-factory-icon {display:grid;place-items:center;background:#216ccb;color:white;border:3px solid white;border-radius:7px;box-shadow:0 3px 14px #16345940;font:700 10px Arial;letter-spacing:.5px;}
+.map-area-label {background:#fff9eb;color:#8e6b30;border-color:#dbbf90;font-size:10px;box-shadow:none;}
+.map-feed {position:absolute;bottom:32px;left:24px;background:#fffffff2;border:1px solid #d7e3f1;padding:14px 17px;border-radius:10px;color:#526a83;font-size:13px;box-shadow:0 5px 30px #24446615;}
+.map-feed i {display:inline-block;width:7px;height:7px;border-radius:50%;background:#a3aebc;margin-right:8px;}
+.map-feed.connected i {background:#297cbe;}
+.map-feed small {display:block;font-size:10px;margin-top:7px;color:#8391a3;}
+.map-satellite-link {position:absolute;right:70px;bottom:35px;font-size:11px;background:#fff;padding:12px 14px;border:1px solid #d6e2f0;border-radius:7px;color:#2467aa;text-decoration:none;}
+.map-error {position:absolute;bottom:125px;left:24px;padding:10px 14px;background:#fff6e9;color:#8a642d;font-size:11px;border-radius:7px;}
+.leaflet-control-attribution {font-size:9px;}
+.reference-view {background:#d4dde1;}
+.reference-view>img {width:100%;height:100%;object-fit:contain;}
+.reference-picker {position:absolute;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:7px;padding:8px;border:1px solid #fff9;background:#f5f9fcdf;border-radius:10px;}
+.reference-picker button {padding:0;border:2px solid transparent;border-radius:6px;overflow:hidden;background:white;color:#62768f;font-size:9px;min-width:80px;}
+.reference-picker button.active {border-color:#2776c6;color:#1e61a7;}
+.reference-picker img {width:86px;height:46px;object-fit:cover;display:block;}
+.reference-picker span {display:block;padding:6px 4px;}
+.equipment-reference {margin:16px 0 20px;border-radius:12px;overflow:hidden;border:1px solid #dbe5ec;background:#e5e7e6;}
+.equipment-reference img {display:block;width:100%;height:236px;object-fit:contain;mix-blend-mode:multiply;}
+.equipment-reference figcaption {background:#f5f8fb;color:#8795a8;font-size:9px;padding:8px 12px;}
+@media(max-width:1100px){.factory-areas{top:128px}.factory-controls{top:24px;right:14px}.factory-title h1{font-size:20px}.factory-model-note{font-size:8px}}
+@media(max-width:700px){.factory-title{top:8px}.factory-areas{left:14px;top:142px;gap:3px}.factory-areas button{padding:6px 7px;font-size:9px}.factory-controls{top:103px;left:14px;right:auto}.factory-title h1{font-size:19px}.factory-model-note{display:none}.reference-picker{max-width:95%;overflow:auto;justify-content:flex-start}.reference-picker img{width:65px;height:38px}.reference-picker button{min-width:65px}.map-satellite-link{bottom:110px;left:24px;right:auto}.factory-flow{font-size:9px;gap:8px}}
+.journey-panel {position:absolute;left:24px;right:24px;bottom:18px;z-index:7;border:1px solid #d4dfe7;border-radius:10px;background:#fffffff0;box-shadow:0 5px 25px #162c4510;overflow:hidden;}
+.journey-heading {display:flex;align-items:center;gap:14px;min-height:51px;padding:9px 12px;border-bottom:1px solid #e6ecf2;}
+.journey-follow {display:flex;align-items:center;gap:8px;flex-shrink:0;border-radius:6px;background:#2269b4;color:white;font-size:11px;padding:9px 12px;}
+.journey-follow.active {background:#e9f1fa;color:#2466aa;}
+.journey-caption {display:flex;align-items:center;gap:16px;color:#8391a2;font-size:10px;}
+.journey-caption strong {color:#294c74;font-size:12px;font-weight:600;}
+.journey-mode {margin-left:auto;flex-shrink:0;font-size:8px;letter-spacing:1.1px;color:#8395aa;}
+.journey-speed {min-width:32px;padding:7px 8px;border:1px solid #d9e4ee;border-radius:5px;color:#2164a7;font-size:11px;}
+.journey-steps {display:grid;grid-template-columns:repeat(var(--journey-count,14),minmax(78px,1fr));overflow-x:auto;}
+.journey-steps button {position:relative;display:flex;align-items:center;justify-content:center;gap:8px;min-height:43px;font-size:10px;color:#8794a5;padding:9px 7px;white-space:nowrap;border-right:1px solid #e9eef4;}
+.journey-steps button:last-child {border-right:0;}
+.journey-number {font-size:9px;font-variant-numeric:tabular-nums;opacity:.8;}
+.journey-steps button.active {background:#ecf4fc;color:#1a66b5;font-weight:650;}
+.journey-steps button.done {color:#5083ad;}
+.journey-steps i {position:absolute;bottom:0;height:2px;left:0;width:100%;background:#3588d4;transform-origin:left;}
+@media(hover:hover) and (pointer:fine){.journey-steps button:hover {background:#edf4fa;color:#2468ad;}.journey-follow:hover {background:#1c5c9d;color:white;}}
+@media(max-width:1250px){.journey-caption>span{display:none}.journey-steps button{font-size:9px;gap:5px}}
+@media(max-width:800px){.journey-panel{left:12px;right:12px;bottom:12px}.journey-heading{gap:7px;padding:8px}.journey-caption strong{font-size:10px}.journey-follow{font-size:10px;padding:8px}.journey-mode{display:none}.journey-steps{display:flex;overflow-x:auto}.journey-steps button{min-width:93px;min-height:41px}.journey-speed{margin-left:auto}}
+@media(max-width:450px){.journey-caption{display:none}.journey-heading{min-height:44px}}
+
+/* Hide the main app bar so the factory scene fills the viewport. */
+.app.overview-active {height:100dvh;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
+.overview-active > .masthead {display:none;}
+.overview-active > .visual-main {flex:1;min-height:0;width:100%;padding:0;}
+.overview-active .visual-overview {height:100%;padding:0;}
+.overview-active .visual-factory {height:100%;min-height:0;border-radius:0;}
+.overview-active .journey-panel {bottom:24px;}
+.model-credit {position:absolute;bottom:4px;right:14px;z-index:7;text-align:right;color:#60758a;font-size:9px;line-height:12px;padding:1px 4px;background:#ffffffb3;border-radius:3px;}.model-credit a {color:inherit;text-decoration:none;}.model-credit a:hover {text-decoration:underline;}
+
+.equipment-picker {position:absolute;z-index:7;bottom:137px;left:50%;transform:translateX(-50%);display:flex;gap:4px;padding:5px;background:#fffffff0;border:1px solid #d4dfe7;border-radius:8px;box-shadow:0 3px 15px #17365612;max-width:calc(100% - 32px);overflow-x:auto;}
+.equipment-picker button {display:flex;align-items:center;gap:7px;white-space:nowrap;padding:9px 13px;border-radius:4px;color:#5c7489;font-size:11px;}
+.equipment-picker button>span {font-size:9px;letter-spacing:.5px;color:#8498aa;}
+.equipment-picker button.active {background:#e1edf8;color:#185e9e;}
+.equipment-picker button.active>span {color:#377ab5;}
+@media(max-width:800px){.equipment-picker{bottom:131px}.equipment-picker button{padding:8px;font-size:10px;}}
+
+/* Compact scene toolbar; the removed title card no longer reserves canvas space. */
+.factory-toolbar {position:absolute;top:20px;left:24px;right:24px;z-index:6;display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:10px;pointer-events:none;}
+.factory-toolbar .factory-areas {position:static;max-width:100%;pointer-events:auto;}
+.factory-toolbar .factory-controls {position:static;flex-shrink:0;pointer-events:auto;}
+@media(max-width:700px){.factory-toolbar{top:12px;left:12px;right:12px}.factory-toolbar .factory-areas{flex-wrap:nowrap;overflow-x:auto}.factory-toolbar .factory-areas button{flex-shrink:0}.factory-toolbar .factory-controls{gap:6px;flex-wrap:wrap}.factory-toolbar .factory-controls .view-switch button{padding:8px 10px}}
+
+/* Match the four production paths in the user's annotated plan. */
+.process-line-picker button>i {width:9px;height:9px;border-radius:50%;background:var(--line-color);flex-shrink:0;}
+.process-line-picker button.active {box-shadow:inset 0 -2px var(--line-color);}
+.scene-line-label {border-left:3px solid var(--line-color);font-size:10px;letter-spacing:0;max-width:230px;white-space:normal;text-align:center;line-height:1.35;pointer-events:none;}

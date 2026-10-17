@@ -1,0 +1,26 @@
+{
+  "CR": {
+    "source": "/Users/dadebay/Downloads/archive/hf_20260909_054419_3403715e-bab2-4f77-b7fb-59794035182f.png",
+    "file": "/equipment/CR.png"
+  },
+  "TY": {
+    "source": "/Users/dadebay/Downloads/archive/hf_20260909_055747_83ed3886-e71b-4c9b-a92c-f919290a1a1c.png",
+    "file": "/equipment/TY.png"
+  },
+  "BS": {
+    "source": "/Users/dadebay/Downloads/archive/hf_20260909_055747_ce2ee858-51eb-43a5-834a-0a4d4034b67f.png",
+    "file": "/equipment/BS.png"
+  },
+  "GR": {
+    "source": "/Users/dadebay/Downloads/archive/hf_20260909_055747_2229d820-9749-4d12-b222-728a1837c605.png",
+    "file": "/equipment/GR.png"
+  },
+  "GK": {
+    "source": "/Users/dadebay/Downloads/archive/hf_20260909_055626_fe425126-c197-4f97-a7c4-d63016cd3a96.png",
+    "file": "/equipment/GK.png"
+  },
+  "GP": {
+    "source": "/Users/dadebay/Downloads/archive/hf_20260909_055747_5042f384-f58b-45b3-8cee-7b0b7cfd1bf4.png",
+    "file": "/equipment/GP.png"
+  }
+}

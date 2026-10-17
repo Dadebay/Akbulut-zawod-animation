@@ -1,0 +1,26 @@
+Semi-trailer truck by Artec 3D / Artec Group inc.
+https://www.artec3d.com/3d-models/semi-trailer-truck
+
+Source archive: https://cdn.artec3d.com/content-hub-3dmodels/truck.zip?VersionId=rXdmdvKc7U9APKSKOVXygNcqO8QEWe5a
+Retrieved: 2026-10-16
+
+License supplied in the original archive: Creative Commons Attribution 3.0 Unported
+https://creativecommons.org/licenses/by/3.0/
+Original license text: artec-original-license.txt
+(The current source page also offers the model under CC BY 4.0.)
+
+Changes for the Ak Bulut presentation:
+- Kept the MAN cab, glazing, mirrors and grille from the scan.
+- Cropped the original trailer and chassis; reduced the cab to 260,000 triangles, then removed the uneven scanned wheel surfaces.
+- Converted millimetres to metres and oriented the cab for the scene.
+- Retained original texture UVs; resized the texture atlas to 6144 x 6144.
+- Preserved smooth scan normals; applied three gentle Taubin smoothing passes.
+- Recoloured bodywork white and cleaned glazing in the application shader.
+- Replaced scanned front wheels with separately modelled, rotating wheel assemblies.
+- Added an original articulated chassis and open curtain-side trailer, visible loads,
+  wheels, air lines, rails, lights, underrun protection and forklift animation.
+- Reused the adapted cab on the quarry hauler, with an original six-wheel chassis,
+  hydraulic tipper body, hinged tailgate and visible limestone load.
+
+This adapted model is not manufacturer CAD and is not an endorsement by Artec,
+MAN or the operator of the scanned vehicle. Attribution is retained in the app.

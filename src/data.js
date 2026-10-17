@@ -1,9 +1,9 @@
 export const ZONES = [
   { id:'CR', name:'Çig mal', subtitle:'Kabul etmek we saklamak', short:'01', color:'#78d5ca', types:['Çig mal bunkeri','Lenta konweýeri','Daş döwüji','Dozirleýji'], model:'silo' },
-  { id:'TY', name:'Taýýarlyk', subtitle:'Döwmek we üwemek', short:'02', color:'#6bb7e9', types:['Üweýji degirmen','Separator','Elek','Tozan süzgüji'], model:'mill' },
+  { id:'TY', name:'Kalsit', subtitle:'Kalsit önümçilik liniýasy', short:'02', color:'#6bb7e9', types:['Üweýji degirmen','Separator','Elek','Tozan süzgüji'], model:'mill' },
   { id:'BS', name:'Bişirme', subtitle:'Gipsiň ýylylyk işlenişi', short:'03', color:'#e0b981', types:['Aýlanýan peç','Sowadyjy','Wentilýator','Ýylylyk çalşyjy'], model:'kiln' },
-  { id:'GR', name:'Garyşdyrma', subtitle:'Ölçemek we garyşdyrmak', short:'04', color:'#a8a2e0', types:['Garyşdyryjy','Dozirleýji','Goşundy bunkeri','Şnek konweýeri'], model:'mixer' },
-  { id:'GK', name:'Potolok', subtitle:'Şekil bermek we guratmak', short:'05', color:'#75cfc0', types:['Şekillendiriji','Guradyjy','Kesiji','Rolikli konweýer'], model:'board' },
+  { id:'GR', name:'Gury garyndy', subtitle:'Gury gurluşyk garyndylary', short:'04', color:'#a8a2e0', types:['Garyşdyryjy','Dozirleýji','Goşundy bunkeri','Şnek konweýeri'], model:'mixer' },
+  { id:'GK', name:'Gipsokarton', subtitle:'Şekil bermek we guratmak', short:'05', color:'#75cfc0', types:['Şekillendiriji','Guradyjy','Kesiji','Rolikli konweýer'], model:'board' },
   { id:'GP', name:'Gaplama', subtitle:'Gaplamak we ugratmak', short:'06', color:'#9cb6cc', types:['Gaplaýjy','Paletleýji','Agram ölçeýji','Ugradyjy konweýer'], model:'packer' },
 ];
 export const STATUSES = {

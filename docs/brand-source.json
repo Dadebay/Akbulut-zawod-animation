@@ -1,0 +1,10 @@
+{
+  "verified_date": "2026-10-16",
+  "official_site": "https://akbulut.com.tm/tk",
+  "header_asset_url": "https://akbulut.com.tm/images/akbulut_tk.webp",
+  "local_source": "/Users/dadebay/Developer/apps/akbulut_projects/akbulut_laravel_website/public/images/akbulut_tk.webp",
+  "source_usage": "resources/views/inc/navbar_new.blade.php and resources/views/inc/footer.blade.php use images/akbulut_tk.webp for Türkmençe.",
+  "retrieval_note": "Official site was searched online; direct asset download timed out. The unchanged local file from the company website source was used.",
+  "sha256": "aa98aff8cf5d2cdb0d2dcf7b0a52507ecb27c7f19b21fb673bdccff315cb2946",
+  "changes": "None. Original colours, proportions and anniversary branding retained."
+}

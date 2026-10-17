@@ -1,5 +1,7 @@
 node_modules/
 dist/
+standalone/
+standalone-tablet/
 .sites-runtime/
 .DS_Store
 preview/

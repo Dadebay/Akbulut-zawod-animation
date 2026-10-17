@@ -1,0 +1,85 @@
+import {PROCESS_BUILDINGS as L} from './siteLayout.js';
+
+// Architectural envelope only: the production equipment keeps its existing layout.
+export function buildProcessingBuildings(k,roofs,structures){
+  const {box,group,material,textPlate,m}=k;
+  const wall=material('#e1e3df',.04,.82),seam=material('#cdd2cf',.10,.78);
+  const roof=material('#abb3b5',.08,.85),coping=material('#d8dcda',.24,.61);
+  const glass=material('#304a52',.45,.28),frame=material('#c4cdcb',.32,.57);
+  const bodies={};
+
+  function volume(name,b){
+    const g=group([b.x,0,b.z],structures),r=group([b.x,0,b.z],roofs);
+    g.name=`processing-${name}`;bodies[name]=g;
+    box(b.width,b.height,b.depth,[0,b.height/2,0],wall,g);
+    box(b.width+.06,.24,b.depth+.06,[0,.12,0],coping,g);
+    // Quiet cladding joints leave the slender window strips legible from a distance.
+    for(let z=-b.depth/2+1.6;z<b.depth/2-.6;z+=2.1)
+      box(.018,b.height-.35,.013,[-b.width/2-.014,b.height/2,z],seam,g);
+    for(let x=-b.width/2+1.4;x<b.width/2-.6;x+=2.1)
+      box(.013,b.height-.35,.018,[x,b.height/2,b.depth/2+.014],seam,g);
+    box(b.width+.10,.12,b.depth+.10,[0,b.height+.06,0],wall,r);
+    box(b.width-.44,.055,b.depth-.44,[0,b.height+.15,0],roof,r);
+    for(const z of [-b.depth/2+.08,b.depth/2-.08]){
+      box(b.width,.48,.16,[0,b.height+.31,z],wall,r);
+      box(b.width+.08,.045,.22,[0,b.height+.575,z],coping,r);
+    }
+    for(const x of [-b.width/2+.08,b.width/2-.08]){
+      // The two low wings share one L-shaped roof, without a parapet through the join.
+      if(name==='outerWing'&&x>0)continue;
+      const depth=name==='rightWing'&&x<0?b.depth-L.outerWing.depth:b.depth;
+      const z=(depth-b.depth)/2;
+      box(.16,.48,depth,[x,b.height+.31,z],wall,r);
+      box(.22,.045,depth+.08,[x,b.height+.575,z],coping,r);
+    }
+  }
+  Object.entries(L).forEach(([name,b])=>volume(name,b));
+  box(.44,.055,L.outerWing.depth-.44,[L.rightWing.x-L.rightWing.width/2,L.rightWing.height+.15,L.outerWing.z],roof,roofs);
+
+  function slit(name,z,bottom,top,width=.32){
+    const b=L[name],g=bodies[name],front=-b.width/2,y=(bottom+top)/2,zz=z-b.z;
+    box(.035,top-bottom+.12,width+.13,[front-.025,y,zz],frame,g);
+    box(.032,top-bottom,width,[front-.062,y,zz],glass,g);
+    for(let yy=bottom+2.8;yy<top-.4;yy+=3.1)
+      box(.042,.065,width+.02,[front-.083,yy,zz],coping,g);
+    box(.11,.065,width+.18,[front-.06,bottom-.05,zz],coping,g);
+  }
+  // Five fine vertical strips on the main face, two on each projecting core.
+  for(const z of [-6.2,-.6,5,10.6,16.2])slit('main',z,2.9,25.3,.32);
+  for(const z of [-8.2,-3.8])slit('leftCore',z,3.65,12.35,.31);
+  for(const z of [22.6,27.3])slit('rightCore',z,2.15,19.25,.31);
+  for(const z of [29.8,32.4,35.0])slit('rightWing',z,1.05,5.9,.34);
+  for(const z of [-9,-5,-1])slit('leftBase',z,.65,2.65,.64);
+
+  // Low plinth and short link attach the smaller left tower to the main volume.
+  for(const z of [-8.9,-1.3]){
+    box(.035,2.05,.86,[L.leftBase.x-L.leftBase.width/2-.04,1.16,z],glass,structures);
+    box(.30,.08,1.02,[L.leftBase.x-L.leftBase.width/2-.10,2.23,z],coping,structures);
+  }
+  const label=textPlate('TÜRKMEN GIPS',6.4,.46,[L.main.x-L.main.width/2-.065,26.12,4.8],structures,'#5593a6','#e1e3df');
+  label.rotation.y=-Math.PI/2;
+
+  // A low set-back roof house replaces the extra full-height front slab.
+  const top=L.main.height,roofHouse=group([-27.0,top+.18,-5.1],roofs);
+  box(8,2.65,6.2,[0,1.325,0],wall,roofHouse);
+  box(8.25,.16,6.45,[0,2.73,0],coping,roofHouse);
+  box(7.7,.055,5.9,[0,2.84,0],roof,roofHouse);
+  for(const z of [-2.4,2.4])box(.45,.32,.50,[3,3.01,z],coping,roofHouse);
+
+  // The broad blank rear building carries the service deck seen in the render.
+  const roofY=L.rear.height+.19,deck=group([-6,roofY,11],roofs);
+  box(14,.10,12,[0,.05,0],coping,deck);
+  for(let x=-5.4;x<6;x+=3.6)for(let z=-4.4;z<5;z+=4.4){
+    box(.48,.12,.48,[x,.16,z],m.steel,deck);
+    k.cyl(.085,.42,[x,.43,z],coping,deck,undefined,12);
+  }
+  for(const [x,z] of [[-2.1,-1.7],[2.0,1.3]]){
+    box(1.30,.70,.82,[x,.45,z],material('#69977d',.08,.76),deck);
+    box(1.44,.10,.94,[x,.85,z],coping,deck);
+  }
+  const roofCabin=group([.8,roofY,4],roofs);
+  box(3.4,2.4,3.8,[0,1.2,0],wall,roofCabin);
+  box(3.65,.18,4.05,[0,2.49,0],coping,roofCabin);
+  box(3.1,.045,3.5,[0,2.61,0],roof,roofCabin);
+  box(.045,1.9,.82,[-1.73,1.02,0],frame,roofCabin);
+}
