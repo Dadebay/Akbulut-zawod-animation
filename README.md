@@ -2,6 +2,14 @@
 
 Türkmençe, büyük ekran için React + Three.js sunum demosu. Arayüz ve yeni ekipmanlar beyaz/mavi; mevcut tesisin yeşil çatıları referansa uygun korunur.
 
+## Açık ve koyu görünüm
+
+3D tesisin **Gündiz** (açık) ve **Gije** (koyu) aydınlatması. Sağ üstteki düğmelerle sahneler arasında geçiş yapılır. Ekran görüntüleri geliştirme sürümünden, aynı kamera konumunda alınmıştır.
+
+| Gündiz · açık | Gije · koyu |
+| --- | --- |
+| [![Ak Bulut tesisinin gündüz görünümü](docs/screenshots/gundiz.jpg)](docs/screenshots/gundiz.jpg) | [![Ak Bulut tesisinin gece görünümü](docs/screenshots/gije.jpg)](docs/screenshots/gije.jpg) |
+
 ## Çalıştırma
 
 ```sh
