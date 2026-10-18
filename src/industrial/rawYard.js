@@ -1,5 +1,5 @@
 import * as T from 'three';
-import {RAW_YARD,RAW_YARD_APRON,RAW_YARD_CONVEYOR,RAW_STOCK} from './siteLayout.js';
+import {RAW_YARD,RAW_YARD_APRON,RAW_YARD_CONVEYOR,RAW_STOCK,OLD_RAW_SILOS} from './siteLayout.js';
 
 // The existing wall and living/service buildings define the left edge.
 // Only the exterior ground on their right is replaced by the reference apron.
@@ -72,6 +72,55 @@ export function buildRawYard(k){
   conveyor([unitX-2,1.0,unitZ+1],[apron.west+3,3.6,unitZ+2]);
   // Feed the back of the heap, keeping the truck's unloading side clear.
   conveyor([unitX+2,1.0,unitZ+1],[RAW_STOCK[0],2.65,RAW_STOCK[2]-2.5]);
+  // The photographed receiving area has two slender white silos west of the
+  // transfer equipment, aligned side by side near the railway.
+  const siloWhite=material('#e5e9e7',.06,.78);
+  const siloBand=material('#c2cac9',.30,.66);
+  const siloCap=material('#f0f2ef',.08,.72);
+  const siloFrame=material('#748082',.44,.66);
+  const brandCanvas=document.createElement('canvas');
+  brandCanvas.width=2048;brandCanvas.height=256;
+  const brandContext=brandCanvas.getContext('2d');
+  brandContext.fillStyle='#1e292d';brandContext.fillRect(0,0,2048,256);
+  brandContext.fillStyle='#ffffff';brandContext.font='700 104px Arial';
+  brandContext.textAlign='center';brandContext.textBaseline='middle';
+  for(let i=0;i<4;i++)brandContext.fillText('AKBULUT',256+i*512,132,465);
+  const brandMap=k.trackTexture(new T.CanvasTexture(brandCanvas));brandMap.colorSpace=T.SRGBColorSpace;
+  const siloBrand=material('#ffffff',.08,.68,{map:brandMap});
+  function receivingSilo(x,z,bodyHeight){
+    const g=group([x,0,z]);g.name='old-yard-receiving-silo';
+    cyl(2.05,.20,[0,.18,0],concrete,g,2.05,32);
+    const bodyBottom=3.0,bodyTop=bodyBottom+bodyHeight,radius=1.32;
+    for(const sx of [-.86,.86])for(const sz of [-.86,.86]){
+      box(.16,2.70,.16,[sx,1.60,sz],siloFrame,g);
+      box(.34,.17,.34,[sx,.34,sz],steel,g);
+    }
+    for(const side of [-1,1]){
+      rod([-1.05,.55,side*.86],[1.05,2.84,side*.86],.047,siloFrame,g);
+      rod([side*.86,.55,-1.05],[side*.86,2.84,1.05],.047,siloFrame,g);
+    }
+    cyl(.30,1.48,[0,2.27,0],siloWhite,g,radius,32);
+    cyl(.29,.52,[0,1.32,0],siloFrame,g,.29,24);
+    cyl(radius,bodyHeight,[0,(bodyBottom+bodyTop)/2,0],siloWhite,g,radius,32);
+    for(const y of [bodyBottom+.18,bodyTop-.18])
+      cyl(radius+.018,.075,[0,y,0],siloBand,g,radius+.018,32);
+    // A shallow cylindrical lid leaves a clean, level top on both vessels.
+    cyl(radius+.08,.20,[0,bodyTop+.08,0],siloCap,g,radius+.08,32);
+    const brandY=bodyTop-1.25;
+    const brand=cyl(radius+.025,.72,[0,brandY,0],siloBrand,g,radius+.025,64);
+    brand.rotation.y=-Math.PI/4;
+    // A slim fixed ladder and service rail make the vessels legible up close.
+    for(const sx of [-.23,.23])rod([sx,2.98,radius+.12],[sx,bodyTop-.15,radius+.12],.027,siloFrame,g);
+    for(let y=3.25;y<bodyTop-.2;y+=.36)
+      rod([-.23,y,radius+.14],[.23,y,radius+.14],.022,siloFrame,g);
+    cyl(.27,.15,[0,1.01,0],siloFrame,g,.27,24);
+    return g;
+  }
+  // Keep both vessels on the same line; turn the right-hand vessel's ladder
+  // and service face toward the transfer conveyor.
+  receivingSilo(OLD_RAW_SILOS.x-3.8,OLD_RAW_SILOS.z,8.4);
+  const rightSilo=receivingSilo(OLD_RAW_SILOS.x+3.8,OLD_RAW_SILOS.z,8.4);
+  rightSilo.rotation.y=Math.atan2(unitX-rightSilo.position.x,unitZ-rightSilo.position.z);
   // The single pile is supplied by the existing delivery animation.
   const [pileX,,pileZ]=RAW_STOCK;
   for(const z of [pileZ-3.4,pileZ+3.4])box(7.5,1.4,.22,[pileX+2,.70,z],steel);

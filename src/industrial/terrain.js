@@ -66,7 +66,28 @@ function groundTexture(k){
 
 export function buildTerrain(k,curve){
   const route=Array.from({length:281},(_,i)=>curve.getPointAt(i/280));
-  const roadBounds=new T.Box3().setFromPoints(route).expandByScalar(12);
+  const roadBench=8.25,roadShoulder=16;
+  const roadBounds=new T.Box3().setFromPoints(route).expandByScalar(roadShoulder);
+  const roadSegments=route.slice(1).map((b,i)=>{
+    const a=route[i],dx=b.x-a.x,dz=b.z-a.z;
+    return {a,dx,dz,dy:b.y-a.y,lengthSq:dx*dx+dz*dz};
+  });
+  // Terrain blending and tyre contact only depend on segments within the
+  // shoulder. Index their expanded bounds once instead of scanning the full
+  // haul route for every terrain vertex and each wheel sample on every frame.
+  const roadCells=new Map(),roadCellSize=32;
+  for(const segment of roadSegments){
+    const {a,dx,dz}=segment;
+    const west=Math.floor((Math.min(a.x,a.x+dx)-roadShoulder)/roadCellSize);
+    const east=Math.floor((Math.max(a.x,a.x+dx)+roadShoulder)/roadCellSize);
+    const north=Math.floor((Math.min(a.z,a.z+dz)-roadShoulder)/roadCellSize);
+    const south=Math.floor((Math.max(a.z,a.z+dz)+roadShoulder)/roadCellSize);
+    for(let z=north;z<=south;z++)for(let x=west;x<=east;x++){
+      const key=`${x},${z}`;
+      if(!roadCells.has(key))roadCells.set(key,[]);
+      roadCells.get(key).push(segment);
+    }
+  }
   const rail=outerRailPath(),railRoute=Array.from({length:481},(_,i)=>rail.getPointAt(i/480));
   const freightRail=freightRailExtensionPath(),freightRoute=Array.from({length:181},(_,i)=>freightRail.getPointAt(i/180));
   const freightBounds=new T.Box3().setFromPoints(freightRoute).expandByScalar(16);
@@ -78,13 +99,19 @@ export function buildTerrain(k,curve){
   }
   function roadDistance(x,z){
     let nearest=1e9,height=0;
-    // The haul loop occupies only a small part of the terrain.
-    if(x>roadBounds.min.x&&x<roadBounds.max.x&&z>roadBounds.min.z&&z<roadBounds.max.z)for(const p of route){const d=(x-p.x)**2+(z-p.z)**2;if(d<nearest){nearest=d;height=p.y;}}
+    const nearby=roadCells.get(`${Math.floor(x/roadCellSize)},${Math.floor(z/roadCellSize)}`);
+    if(nearby)for(const s of nearby){
+      const t=T.MathUtils.clamp(((x-s.a.x)*s.dx+(z-s.a.z)*s.dz)/(s.lengthSq||1),0,1);
+      const d=(x-s.a.x-t*s.dx)**2+(z-s.a.z-t*s.dz)**2;
+      if(d<nearest){nearest=d;height=s.a.y+t*s.dy;}
+    }
     return {distance:Math.sqrt(nearest),height};
   }
   function elevation(x,z){
     let h=naturalHeight(x,z);const {distance,height}=roadDistance(x,z);
-    h=T.MathUtils.lerp(height-.06,h,smooth(4,12,distance));
+    // A graded bench includes the rear axle's swept path through bends. Its
+    // shoulders start beyond the road, not under the wheels of the tipper.
+    h=T.MathUtils.lerp(height-.12,h,smooth(roadBench,roadShoulder,distance));
     if(inRawYard(x,z,10)){const edge=Math.max(RAW_YARD.west-x,x-RAW_YARD.east,RAW_YARD.north-z,z-RAW_YARD.south,0);h=T.MathUtils.lerp(-.27,h,smooth(0,10,edge));}
     // A level track bed with soft shoulders keeps the yard-side line visible
     // even on the coarser tablet terrain grid.
@@ -95,13 +122,25 @@ export function buildTerrain(k,curve){
     h=T.MathUtils.lerp(QUARRY.y-.04,h,smooth(.8,1.25,apron));
     return h;
   }
-  const columns=k.tablet?160:320,rows=k.tablet?180:360;
+  // Keep the distant mountains coarse, but resolve the haul corridor on both
+  // render profiles. Large triangles previously bridged over the carved road.
+  const baseColumns=k.tablet?160:320,baseRows=k.tablet?180:360,roadStep=k.tablet?3:2;
+  function refineAxis(values,min,max){
+    const result=[values[0]];
+    for(let i=1;i<values.length;i++){
+      const a=values[i-1],b=values[i],count=b>=min&&a<=max?Math.ceil((b-a)/roadStep):1;
+      for(let n=1;n<=count;n++)result.push(a+(b-a)*n/count);
+    }
+    return result;
+  }
+  const xs=refineAxis(Array.from({length:baseColumns+1},(_,i)=>-230+1830*(i/baseColumns)**1.65),roadBounds.min.x,roadBounds.max.x);
+  const zs=refineAxis(Array.from({length:baseRows+1},(_,i)=>{const v=2*i/baseRows-1;return Math.sign(v)*1300*Math.abs(v)**1.6;}),roadBounds.min.z,roadBounds.max.z);
+  const columns=xs.length-1,rows=zs.length-1;
   const geometry=new T.PlaneGeometry(1,1,columns,rows);geometry.rotateX(-Math.PI/2);
   const p=geometry.attributes.position,uv=geometry.attributes.uv,colors=[];
   const sand=new T.Color('#c4bca9'),chalk=new T.Color('#ddd7c7'),clay=new T.Color('#9e9585'),bed=new T.Color('#b0a18b'),color=new T.Color();
   for(let i=0;i<p.count;i++){
-    const u=p.getX(i)+.5,v=p.getZ(i)*2;
-    const x=-230+1830*Math.pow(u,1.65),z=Math.sign(v)*1300*Math.pow(Math.abs(v),1.6),h=elevation(x,z);
+    const x=xs[i%(columns+1)],z=zs[Math.floor(i/(columns+1))],h=elevation(x,z);
     p.setXYZ(i,x,h,z);uv.setXY(i,x/24,z/24);
     const dx=naturalHeight(x+1.5,z)-naturalHeight(x-1.5,z),dz=naturalHeight(x,z+1.5)-naturalHeight(x,z-1.5),slope=Math.hypot(dx,dz)/3;
     const band=noise(x*.02,z*.02)*1.7+h*.46;
@@ -113,12 +152,16 @@ export function buildTerrain(k,curve){
     colors.push(color.r,color.g,color.b);
   }
   geometry.setAttribute('color',new T.Float32BufferAttribute(colors,3));geometry.computeVertexNormals();
-  // Sample the rendered triangles for loose stones. Sampling the analytic field
-  // alone can leave a stone suspended over a sharp, tessellated quarry bench.
+  // Query the same triangles that are rendered. The nonuniform grid needs
+  // world-space barycentric weights, not fractions of the unwarped grid index.
+  function cellAt(axis,value){
+    let lo=0,hi=axis.length-1;
+    while(hi-lo>1){const mid=(lo+hi)>>1;if(axis[mid]<=value)lo=mid;else hi=mid;}
+    return lo;
+  }
   function surfaceHeight(x,z){
-    const gx=T.MathUtils.clamp(Math.pow((x+230)/1830,1/1.65)*columns,0,columns-.001);
-    const gz=T.MathUtils.clamp((Math.sign(z)*Math.pow(Math.abs(z)/1300,1/1.6)+1)*rows/2,0,rows-.001);
-    const ix=Math.floor(gx),iz=Math.floor(gz),tx=gx-ix,tz=gz-iz,a=iz*(columns+1)+ix;
+    const ix=cellAt(xs,x),iz=cellAt(zs,z),a=iz*(columns+1)+ix;
+    const tx=T.MathUtils.clamp((x-xs[ix])/(xs[ix+1]-xs[ix]),0,1),tz=T.MathUtils.clamp((z-zs[iz])/(zs[iz+1]-zs[iz]),0,1);
     const h00=p.getY(a),h10=p.getY(a+1),h01=p.getY(a+columns+1),h11=p.getY(a+columns+2);
     return tx+tz<=1?h00+(h10-h00)*tx+(h01-h00)*tz:h11+(h01-h11)*(1-tx)+(h10-h11)*(1-tz);
   }
@@ -173,7 +216,7 @@ export function buildTerrain(k,curve){
     let x=122+hash(i,1)*640,z=(hash(i,3)-.5)*1040;
     if(i<650){const a=hash(i,4)*Math.PI*2,r=12+hash(i,7)*32;x=QUARRY.x+18+Math.cos(a)*r;z=QUARRY.z+1+Math.sin(a)*r;}
     const gap=roadDistance(x,z).distance,apron=Math.hypot((x-QUARRY.x-2)/17,(z-QUARRY.z)/13);
-    const scale=gap<4.1||freightRailDistance(x,z)<4||apron<.8||inRawYard(x,z,3)?0:(i<650?.16+hash(i,5)*.65:.10+hash(i,5)**4*1.5);
+    const scale=gap<roadBench+1||freightRailDistance(x,z)<4||apron<.8||inRawYard(x,z,3)?0:(i<650?.16+hash(i,5)*.65:.10+hash(i,5)**4*1.5);
     dummy.position.set(x,surfaceHeight(x,z)+scale*.06,z);dummy.rotation.set(hash(i,8)*.5,hash(i,9)*6,hash(i,11)*.5);dummy.scale.set(scale*1.4,scale*.55,scale);dummy.updateMatrix();rocks.setMatrixAt(i,dummy.matrix);
     rockColor.set(i%3?'#bcb3a1':'#d4cdbd').multiplyScalar(.9+hash(i,15)*.18);rocks.setColorAt(i,rockColor);
   }
@@ -184,10 +227,16 @@ export function buildTerrain(k,curve){
   const scrub=k.instances(new T.IcosahedronGeometry(1,0),k.material('#76715e',0,1),scrubCount);
   for(let i=0;i<scrubCount;i++){
     const x=115+hash(i,28)*800,z=(hash(i,31)-.5)*1500,gap=roadDistance(x,z).distance;
-    const q=Math.hypot((x-QUARRY.x-13)/45,(z-QUARRY.z-1)/43),s=gap<6||freightRailDistance(x,z)<4||q<1.6||inRawYard(x,z,3)?0:.12+hash(i,32)*.45;
+    const q=Math.hypot((x-QUARRY.x-13)/45,(z-QUARRY.z-1)/43),s=gap<roadBench+1||freightRailDistance(x,z)<4||q<1.6||inRawYard(x,z,3)?0:.12+hash(i,32)*.45;
     dummy.position.set(x,surfaceHeight(x,z)+s*.12,z);dummy.rotation.set(hash(i,36),i,hash(i,37));dummy.scale.set(s,s*.35,s*.8);dummy.updateMatrix();scrub.setMatrixAt(i,dummy.matrix);
   }
   scrub.instanceMatrix.needsUpdate=true;
-  function vehicleSurface(x,z){if(inRawYard(x,z))return 0;const road=roadDistance(x,z);return road.distance<3.7?road.height+.045:surfaceHeight(x,z);}
+  function vehicleSurface(x,z){
+    const terrain=surfaceHeight(x,z);
+    if(inRawYard(x,z))return Math.max(0,terrain);
+    const road=roadDistance(x,z);
+    // Never select an analytic road surface below an actually visible triangle.
+    return road.distance<3.7?Math.max(road.height+.045,terrain):terrain;
+  }
   return {elevation,vehicleSurface};
 }

@@ -15,7 +15,7 @@ import {buildCornerSilo} from './rawInfeed.js';
 import {buildGypsumReceivingHall} from './gypsumReceivingHall.js';
 import {buildBoulderPiles} from './rubble.js';
 import {MAIN_ROAD_X} from './trafficLayout.js';
-import {GYPSUM_STOCKYARD as STOCKYARD,GYPSUM_SILO_TOWER as SILO_TOWER,LOADER_STOCK,NEW_FACTORY_ENTRANCE as ENTRANCE,NEW_ENTRANCE_MEDIAN,OUTER_RAIL_Z} from './siteLayout.js';
+import {GYPSUM_STOCKYARD as STOCKYARD,GYPSUM_SILO_TOWER as SILO_TOWER,LOADER_STOCK,NEW_FACTORY_ENTRANCE as ENTRANCE,NEW_ENTRANCE_MEDIAN,OUTER_RAIL_Z,RAIL_ACCESS_CROSSING} from './siteLayout.js';
 
 // Proportions traced from user-supplied architectural renders 220–227.
 // These presentation dimensions are not survey measurements.
@@ -31,12 +31,20 @@ export function buildSite(k){
   for(let z=-50;z<41;z+=6)box(233,.01,.025,[-20,-.13,z],m.dark);
   function fence(a,b){const A=new T.Vector3(...a),B=new T.Vector3(...b),len=A.distanceTo(B),mid=A.clone().add(B).multiplyScalar(.5),g=group(mid.toArray());g.rotation.y=-Math.atan2(B.z-A.z,B.x-A.x);box(len,.55,.25,[0,.28,0],white,g);for(let x=-len/2;x<=len/2;x+=4){box(.3,1.85,.3,[x,.9,0],white,g);box(.43,.16,.43,[x,1.87,0],white,g);}for(const y of [.65,1.55])box(len,.08,.08,[0,y,0],white,g);for(let x=-len/2;x<len/2;x+=.4)box(.035,.85,.035,[x,1.1,0],white,g);}
   const southFenceX=ENTRANCE.southFenceX,southGateZ=ENTRANCE.z+ENTRANCE.left;
-  fence([southFenceX,0,-50],[-33,0,-50]);fence([65,0,-50],[97,0,-50]);fence([-137,0,40],[97,0,40]);fence([97,0,-50],[97,0,3]);fence([97,0,20],[97,0,40]);
-  fence([southFenceX,0,-50],[southFenceX,0,southGateZ-2]);
-  fence([southFenceX,0,southGateZ-2],[ENTRANCE.x,0,southGateZ]);
-  const rightGateZ=ENTRANCE.z+ENTRANCE.right;
-  fence([ENTRANCE.x,0,rightGateZ],[ENTRANCE.fenceX,0,rightGateZ+2]);
-  fence([ENTRANCE.fenceX,0,rightGateZ+2],[ENTRANCE.fenceX,0,40]);
+  const railGateWest=RAIL_ACCESS_CROSSING.x-RAIL_ACCESS_CROSSING.width/2;
+  const railGateEast=RAIL_ACCESS_CROSSING.x+RAIL_ACCESS_CROSSING.width/2;
+  fence([southFenceX,0,-50],[-33,0,-50]);
+  fence([65,0,-50],[railGateWest,0,-50]);fence([railGateEast,0,-50],[97,0,-50]);
+  for(const x of [railGateWest,railGateEast]){
+    box(.46,2.05,.46,[x,1.025,RAIL_ACCESS_CROSSING.northFenceZ],white);
+    box(.61,.15,.61,[x,2.125,RAIL_ACCESS_CROSSING.northFenceZ],white);
+  }
+  fence([-137,0,40],[97,0,40]);fence([97,0,-50],[97,0,3]);fence([97,0,20],[97,0,40]);
+  fence([southFenceX,0,-50],[southFenceX,0,southGateZ]);
+  // The open sliding leaf covers this stretch of the right boundary. Its
+  // outer end meets the fixed fence without the old diagonal transition.
+  const parkedLeafEndZ=ENTRANCE.z+21.05+15.6/2;
+  fence([ENTRANCE.fenceX,0,parkedLeafEndZ],[ENTRANCE.fenceX,0,40]);
   function cladding(x,z,w,d,h,parent=structures){const g=group([x,0,z],parent);box(w,h,d,[0,h/2,0],white,g);box(w+.25,.26,d+.25,[0,h+.13,0],white,g);for(let xx=-w/2;xx<=w/2;xx+=1)for(const zz of [-d/2-.02,d/2+.02])box(.024,h-.4,.022,[xx,h/2,zz],trim,g);for(let zz=-d/2;zz<=d/2;zz+=1)for(const xx of [-w/2-.02,w/2+.02])box(.022,h-.4,.024,[xx,h/2,zz],trim,g);return g;}
   function windows(g,w,d,h,vertical=false){if(vertical){for(let z=-d/2+2;z<d/2-1;z+=5){box(.04,h*.78,.55,[-w/2-.04,h*.49,z],glass,g);for(let y=2;y<h*.9;y+=2.5)box(.07,.08,.58,[-w/2-.07,y,z],white,g);}}else{for(let x=-w/2+2;x<w/2-1;x+=3.3)box(2.5,.65,.04,[x,h-1.1,d/2+.04],glass,g);}}
   // Long production hall: three shallow parallel ridges and repeated skylight strips.

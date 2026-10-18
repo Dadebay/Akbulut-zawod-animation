@@ -14,7 +14,7 @@ const definitions=[
   ['crush','Silolar','Taýýarlanan çig mal silolarda','Döwlen çig mal burçdaky silodan önümçilik silolaryna geçirilýär.',16,'CR',true,[6,20,53],[-15,5,31]],
   ['calcine','Bişirme','Bişirmek we sowatmak','Taýýarlanan gips bişirme bölüminden geçýär.',14,'BS',true,[-55,30,44],[-29,3,8]],
   ['mix','Gury garyndy','Gury gurluşyk garyndylary','Aýratyn dozirleme, garyşdyrma we haltalama liniýasy.',16,'GR',true,[-78,31,-57],[-44,3,-25]],
-  ['form','Gipsokarton','Gipsokarton önümçiligi','Şekil bermek → guratmak → kesmek → yzyna gaýdýan lenta.',24,'GK',true,[49,65,-76],[8,2,-19]],
+  ['form','Gipsokarton','Gipsokarton önümçiligi','Suw bilen garyşdyrmak → şekil bermek → gatamak → kesmek → guratmak → gaplamak.',24,'GK',true,[49,65,-76],[8,2,-19]],
   ['pack','Gaplama','Palet taýýarlamak','Robot taýýar önümleri palete ýerleşdirýär.',14,'GP',true,[17,24,-61],[-7,2,-30]],
   ['load','Ýükleme','TIR we wagon ýüklemek','Forkliftler paletleri ammardan ulaglara geçirýär.',LOADING_DURATION,'GP',true,[101,54,-112],[31,1,-46]],
   ['dispatch','Ugratmak','Ýükli ulaglar ugraýar','TIR derwezeden çykýar; otly demir ýol bilen gidýär.',40,'GP',false,[-244,133,146],[-93,0,-37]],

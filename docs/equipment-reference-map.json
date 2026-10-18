@@ -1,0 +1,550 @@
+{
+  "sourceFolder": "Downloads/archive",
+  "notes": "Illustrative 3D reconstruction from visual references; equipment names inferred from appearance. Existing six main machines are retained. Numbers match the source images in alphabetical order.",
+  "modelFiles": [
+    "src/industrial/archiveEquipment.js",
+    "src/industrial/interiorEquipment.js"
+  ],
+  "references": [
+    {
+      "id": 1,
+      "file": "hf_20260909_054419_25852169-81c5-4f6b-858a-62bbe1bf8fc7.png",
+      "description": "Motorlu sürgülü kapak",
+      "use": "equipment"
+    },
+    {
+      "id": 2,
+      "file": "hf_20260909_054419_3403715e-bab2-4f77-b7fb-59794035182f.png",
+      "description": "Depolama silosu",
+      "use": "equipment"
+    },
+    {
+      "id": 3,
+      "file": "hf_20260909_054419_877b30d4-ea72-4871-bf42-bf2cd8d90fe8.png",
+      "description": "Açık helezon",
+      "use": "equipment"
+    },
+    {
+      "id": 4,
+      "file": "hf_20260909_054419_ba42319a-e5a8-4694-91cd-45b08f7a5ba9.png",
+      "description": "Döner hava kilidi",
+      "use": "equipment"
+    },
+    {
+      "id": 5,
+      "file": "hf_20260909_054419_eececf47-3f63-4987-8f67-4c3abab5d99d.png",
+      "description": "Kovalı elevatör",
+      "use": "equipment"
+    },
+    {
+      "id": 6,
+      "file": "hf_20260909_055206_2893494a-3828-4e4f-8bf6-d8a8b500c1d1.png",
+      "description": "Kapalı helezon",
+      "use": "equipment"
+    },
+    {
+      "id": 7,
+      "file": "hf_20260909_055206_2aaf3592-eb88-4e69-977e-c251985e5983.png",
+      "description": "Silo üstü filtre",
+      "use": "equipment"
+    },
+    {
+      "id": 8,
+      "file": "hf_20260909_055206_2d0c1fc9-f0b1-4823-b4b6-c916404b5b8a.png",
+      "description": "Aktüatörlü kelebek vana",
+      "use": "equipment"
+    },
+    {
+      "id": 9,
+      "file": "hf_20260909_055206_359bcf06-8485-43a4-9841-081a59649cbc.png",
+      "description": "Santrifüj fan",
+      "use": "equipment"
+    },
+    {
+      "id": 10,
+      "file": "hf_20260909_055206_7669c8f5-5f10-4cc7-b545-8fa765ea8e85.png",
+      "description": "Sıvı dozaj pompası",
+      "use": "equipment"
+    },
+    {
+      "id": 11,
+      "file": "hf_20260909_055206_8d5f77e3-875c-4e06-92f1-cbe493f60587.png",
+      "description": "Kafes şaseli bant",
+      "use": "equipment"
+    },
+    {
+      "id": 12,
+      "file": "hf_20260909_055206_94fe6106-b3f8-472d-a19f-5c69bd177ca7.png",
+      "description": "Titreşimli boşaltıcı",
+      "use": "equipment"
+    },
+    {
+      "id": 13,
+      "file": "hf_20260909_055206_9c1bc569-4dd6-47d4-9023-83efae722152.png",
+      "description": "Küçük bunker",
+      "use": "equipment"
+    },
+    {
+      "id": 14,
+      "file": "hf_20260909_055206_a2cfca7b-64d0-4c0d-8d8f-94fc4131a8e9.png",
+      "description": "Havalandırma filtresi",
+      "use": "equipment"
+    },
+    {
+      "id": 15,
+      "file": "hf_20260909_055206_aa8bb4e7-94d8-46bd-9a8a-8aa7c8417e97.png",
+      "description": "Torbalı toz filtresi",
+      "use": "equipment"
+    },
+    {
+      "id": 16,
+      "file": "hf_20260909_055206_c7da72a6-1ac8-4b5b-a774-80741bc4e046.png",
+      "description": "Sürgülü vana",
+      "use": "equipment"
+    },
+    {
+      "id": 17,
+      "file": "hf_20260909_055206_e97bb88d-450a-4e08-95ce-68bcd15081e4.png",
+      "description": "Dozaj helezonu",
+      "use": "equipment"
+    },
+    {
+      "id": 18,
+      "file": "hf_20260909_055349_3e1b6a43-ccbc-4843-8917-7c643a42866d.png",
+      "description": "Titreşimli elek",
+      "use": "equipment"
+    },
+    {
+      "id": 19,
+      "file": "hf_20260909_055349_926d2517-bf79-4c92-9146-b0ab89f286cd.png",
+      "description": "Dikdörtgen bunker",
+      "use": "equipment"
+    },
+    {
+      "id": 20,
+      "file": "hf_20260909_055350_1759b45f-b7b6-47b3-968d-1417833b609e.png",
+      "description": "Çift klapeli kapak",
+      "use": "equipment"
+    },
+    {
+      "id": 21,
+      "file": "hf_20260909_055350_54b24ef2-2e60-4617-8ecf-0ae934f117a7.png",
+      "description": "Tartım ve dozaj grubu",
+      "use": "equipment"
+    },
+    {
+      "id": 22,
+      "file": "hf_20260909_055350_60595200-718e-44d1-881f-4edd2b8d28dd.png",
+      "description": "Hava kanalı damperi",
+      "use": "equipment"
+    },
+    {
+      "id": 23,
+      "file": "hf_20260909_055350_94090be8-5f59-439f-b8de-0a5fa5d533df.png",
+      "description": "Panjurlu damper",
+      "use": "equipment"
+    },
+    {
+      "id": 24,
+      "file": "hf_20260909_055350_af6bb545-d784-4307-9445-f6b922da8c4e.png",
+      "description": "Baca",
+      "use": "equipment"
+    },
+    {
+      "id": 25,
+      "file": "hf_20260909_055350_b68112aa-cbb3-4c1a-b756-8538fa463a99.png",
+      "description": "Öğütücü / fan tahriki",
+      "use": "equipment"
+    },
+    {
+      "id": 26,
+      "file": "hf_20260909_055350_d2c5dc3b-983d-4e45-b211-f9c84318304c.png",
+      "description": "Manyetik ayırıcı gövdesi",
+      "use": "equipment"
+    },
+    {
+      "id": 27,
+      "file": "hf_20260909_055350_f100b1cd-822b-4162-994f-b154c6bf0d8f.png",
+      "description": "Asılı metal ayırıcı",
+      "use": "equipment"
+    },
+    {
+      "id": 28,
+      "file": "hf_20260909_055350_f232ece7-2621-4085-b4b8-e346e5674b96.png",
+      "description": "Üç yollu yönlendirici",
+      "use": "equipment"
+    },
+    {
+      "id": 29,
+      "file": "hf_20260909_055351_5571a04c-fa03-45f5-b80b-6174894268e1.png",
+      "description": "Motorlu panjurlu damper",
+      "use": "equipment"
+    },
+    {
+      "id": 30,
+      "file": "hf_20260909_055510_0e938ea7-28e4-4a51-b44e-a49e4c44bcff.png",
+      "description": "Titreşimli dağıtıcı",
+      "use": "equipment"
+    },
+    {
+      "id": 31,
+      "file": "hf_20260909_055510_4089f2ed-8ffc-4eaa-9ccf-456d67c3688c.png",
+      "description": "Torba boşaltma istasyonu",
+      "use": "equipment"
+    },
+    {
+      "id": 32,
+      "file": "hf_20260909_055510_a1162fde-b414-46b2-a185-86b77fd98123.png",
+      "description": "Brülör ve gaz hattı",
+      "use": "equipment"
+    },
+    {
+      "id": 33,
+      "file": "hf_20260909_055510_a58d02a0-636d-46eb-8566-50f6a480c895.png",
+      "description": "Büyük bunker",
+      "use": "equipment"
+    },
+    {
+      "id": 34,
+      "file": "hf_20260909_055510_b6e5e651-91c1-41ff-a7f8-96f659bf371c.png",
+      "description": "Tartım bunkeri",
+      "use": "equipment"
+    },
+    {
+      "id": 35,
+      "file": "hf_20260909_055510_c0e0cddf-74b9-40fa-b9c6-2281f51e610d.png",
+      "description": "Basınçlı hava tankı",
+      "use": "equipment"
+    },
+    {
+      "id": 36,
+      "file": "hf_20260909_055510_d51257c9-a74b-451f-8fb4-c7f4df4c8ff7.png",
+      "description": "Siklon",
+      "use": "equipment"
+    },
+    {
+      "id": 37,
+      "file": "hf_20260909_055510_d8154342-4c3a-4abe-869b-2c0596c5272d.png",
+      "description": "Bant kantarı",
+      "use": "equipment"
+    },
+    {
+      "id": 38,
+      "file": "hf_20260909_055510_ddd3bfba-a904-479c-9a54-4cfaa84afe24.png",
+      "description": "Isıl işlem kabı",
+      "use": "equipment"
+    },
+    {
+      "id": 39,
+      "file": "hf_20260909_055510_f179a0bc-cfce-4899-a6d4-6127e963b715.png",
+      "description": "Titreşimli besleyici",
+      "use": "equipment"
+    },
+    {
+      "id": 40,
+      "file": "hf_20260909_055510_f543f456-bb5c-4c64-a551-c7d797039a48.png",
+      "description": "Çeneli kırıcı",
+      "use": "equipment"
+    },
+    {
+      "id": 41,
+      "file": "hf_20260909_055510_f5f5e1ec-fc98-4f79-8d38-a47fc0122bb4.png",
+      "description": "Endüstriyel robot",
+      "use": "equipment"
+    },
+    {
+      "id": 42,
+      "file": "hf_20260909_055626_1eada2d2-3add-4c88-b1d0-fc0fb79a139b.png",
+      "description": "Big-bag dolum",
+      "use": "equipment"
+    },
+    {
+      "id": 43,
+      "file": "hf_20260909_055626_263de5eb-4cf0-45b7-aafe-0d68aa916089.png",
+      "description": "Kaldırma masası",
+      "use": "equipment"
+    },
+    {
+      "id": 44,
+      "file": "hf_20260909_055626_28f04fba-ef61-4962-a47b-ac7b6079a19f.png",
+      "description": "Günlük besleme bunkeri",
+      "use": "equipment"
+    },
+    {
+      "id": 45,
+      "file": "hf_20260909_055626_3509ed91-bfef-416c-af32-b594dc708f41.png",
+      "description": "Dozaj bandı",
+      "use": "equipment"
+    },
+    {
+      "id": 46,
+      "file": "hf_20260909_055626_4c383f46-d6db-4599-b117-d76d0c739a6b.png",
+      "description": "Kesim masası",
+      "use": "equipment"
+    },
+    {
+      "id": 47,
+      "file": "hf_20260909_055626_4fcfc468-2d43-47b0-88d8-285eecc7d05e.png",
+      "description": "Yatay karıştırıcı",
+      "use": "equipment"
+    },
+    {
+      "id": 48,
+      "file": "hf_20260909_055626_7b7f9449-0427-4090-aa10-468baa238485.png",
+      "description": "Manyetik ayırıcı / kanal gövdesi",
+      "use": "equipment"
+    },
+    {
+      "id": 49,
+      "file": "hf_20260909_055626_925c1fa5-abb7-4bfc-be89-bc1358107b60.png",
+      "description": "Kapaklı torba boşaltıcı",
+      "use": "equipment"
+    },
+    {
+      "id": 50,
+      "file": "hf_20260909_055626_934c3211-b24a-4dbb-97c3-c4830e2f74f4.png",
+      "description": "Yatay tank",
+      "use": "equipment"
+    },
+    {
+      "id": 51,
+      "file": "hf_20260909_055626_f778178d-1a5a-49e6-a4ff-7d2ab4217410.png",
+      "description": "Düşey değirmen",
+      "use": "equipment"
+    },
+    {
+      "id": 52,
+      "file": "hf_20260909_055626_fe425126-c197-4f97-a7c4-d63016cd3a96.png",
+      "description": "Tünel tipi hat ekipmanı",
+      "use": "equipment"
+    },
+    {
+      "id": 53,
+      "file": "hf_20260909_055627_226c9226-85db-45e2-a510-39b1e521b995.png",
+      "description": "Döner paketleyici",
+      "use": "equipment"
+    },
+    {
+      "id": 54,
+      "file": "hf_20260909_055747_00c2efb4-53a1-4496-8608-6dcf62993c90.png",
+      "description": "Çekiçli değirmen",
+      "use": "equipment"
+    },
+    {
+      "id": 55,
+      "file": "hf_20260909_055747_082885d1-dd3a-4886-a4c2-2123216aff49.png",
+      "description": "Teleskopik dolum ağzı",
+      "use": "equipment"
+    },
+    {
+      "id": 56,
+      "file": "hf_20260909_055747_1f526220-8f6a-4e35-88aa-c21f8be36098.png",
+      "description": "Döner tambur",
+      "use": "equipment"
+    },
+    {
+      "id": 57,
+      "file": "hf_20260909_055747_1f646ad4-fd8e-42b8-9c5d-34d97b54ff7f.png",
+      "description": "Dairesel titreşimli elek",
+      "use": "equipment"
+    },
+    {
+      "id": 58,
+      "file": "hf_20260909_055747_2229d820-9749-4d12-b222-728a1837c605.png",
+      "description": "Açık kazan karıştırıcı",
+      "use": "equipment"
+    },
+    {
+      "id": 59,
+      "file": "hf_20260909_055747_5042f384-f58b-45b3-8cee-7b0b7cfd1bf4.png",
+      "description": "Robot paletleme hücresi",
+      "use": "equipment"
+    },
+    {
+      "id": 60,
+      "file": "hf_20260909_055747_7ea6e1ea-28b6-4d7b-9bcb-bfcec776157a.png",
+      "description": "Çatal yönlendirici",
+      "use": "equipment"
+    },
+    {
+      "id": 61,
+      "file": "hf_20260909_055747_83300061-d245-4aa3-99fb-647708b2bf18.png",
+      "description": "Düşey proses kolonu",
+      "use": "equipment"
+    },
+    {
+      "id": 62,
+      "file": "hf_20260909_055747_83ed3886-e71b-4c9b-a92c-f919290a1a1c.png",
+      "description": "Öğütücü",
+      "use": "equipment"
+    },
+    {
+      "id": 63,
+      "file": "hf_20260909_055747_9d9702d4-9d37-4568-8fa1-a2b7da57c6bb.png",
+      "description": "Çift merdaneli kırıcı",
+      "use": "equipment"
+    },
+    {
+      "id": 64,
+      "file": "hf_20260909_055747_bc775b48-2fa9-49df-9190-02ec0a3050a9.png",
+      "description": "Torba magazini",
+      "use": "equipment"
+    },
+    {
+      "id": 65,
+      "file": "hf_20260909_055747_ce2ee858-51eb-43a5-834a-0a4d4034b67f.png",
+      "description": "Döner soğutma tamburu",
+      "use": "equipment"
+    },
+    {
+      "id": 66,
+      "file": "hf_20260909_055849_22d65389-5af1-4cbb-9a27-9f37249efcf5.png",
+      "description": "Izgaralı bunker",
+      "use": "equipment"
+    },
+    {
+      "id": 67,
+      "file": "hf_20260909_055849_24e80716-72cf-49d7-a397-8a9d0a50d132.png",
+      "description": "Kompresör",
+      "use": "equipment"
+    },
+    {
+      "id": 68,
+      "file": "hf_20260909_055849_29819c60-5277-4588-8836-4f7c2017f577.png",
+      "description": "Loblu blower",
+      "use": "equipment"
+    },
+    {
+      "id": 69,
+      "file": "hf_20260909_055849_74fc5d90-13d9-4d7e-89b1-1f5620885c94.png",
+      "description": "Kompansatörlü boru",
+      "use": "equipment"
+    },
+    {
+      "id": 70,
+      "file": "hf_20260909_055849_bd75f96d-37ff-4134-b227-ace8c92a3a16.png",
+      "description": "Düşey paletleyici",
+      "use": "equipment"
+    },
+    {
+      "id": 71,
+      "file": "hf_20260909_055849_dcc8dd75-f10c-4f7c-aac0-0a500d1e61f6.png",
+      "description": "Kontrollü vana",
+      "use": "equipment"
+    },
+    {
+      "id": 72,
+      "file": "hf_20260909_055850_0a106f8c-2571-45fd-b9a6-7c23f15b0486.png",
+      "description": "Elektrik motoru",
+      "use": "equipment"
+    },
+    {
+      "id": 73,
+      "file": "hf_20260909_055850_ddb182ff-7abe-4cad-bc19-7b399af3ffb7.png",
+      "description": "Elektrik pano sırası",
+      "use": "equipment"
+    },
+    {
+      "id": 74,
+      "file": "hf_20260909_061122_0555614b-cd34-48bd-bc7b-58510d318326.png",
+      "description": "Paletleme salonu",
+      "use": "interior layout"
+    },
+    {
+      "id": 75,
+      "file": "hf_20260909_061122_20b2ebb1-877b-449d-aa75-2fdab0e12346.png",
+      "description": "Kontrol odası",
+      "use": "interior layout"
+    },
+    {
+      "id": 76,
+      "file": "hf_20260909_061122_6d3eadb7-0831-4790-b3cc-feded44ba4ae.png",
+      "description": "Malzeme besleme salonu",
+      "use": "interior layout"
+    },
+    {
+      "id": 77,
+      "file": "hf_20260909_061122_7f493380-831d-4b3f-aa95-6eaa3f3a2a9e.png",
+      "description": "Kurutma hattı",
+      "use": "interior layout"
+    },
+    {
+      "id": 78,
+      "file": "hf_20260909_061122_c60f93fb-826b-47b3-baf5-16facbfa7a9a.png",
+      "description": "Kâğıt açma ve şekillendirme",
+      "use": "interior layout"
+    },
+    {
+      "id": 79,
+      "file": "hf_20260909_061122_c64e8662-ccd4-4902-84d4-1d12afdaa84d.png",
+      "description": "Dozajlama kulesi",
+      "use": "interior layout"
+    },
+    {
+      "id": 80,
+      "file": "hf_20260909_061122_cdba665d-2f88-49b4-b0be-725e3bb56cef.png",
+      "description": "Tartım ve transfer katları",
+      "use": "interior layout"
+    },
+    {
+      "id": 81,
+      "file": "hf_20260909_061122_d0da821c-f3e0-49ff-b9be-04ef46144564.png",
+      "description": "Isıl işlem salonu",
+      "use": "interior layout"
+    },
+    {
+      "id": 82,
+      "file": "hf_20260909_062350_290af893-d7f2-46c0-834a-b203e1bcae50.png",
+      "description": "Kâğıt açıcı hattı",
+      "use": "interior layout"
+    },
+    {
+      "id": 83,
+      "file": "hf_20260909_062350_5fd12157-2119-4249-a355-413914fe3068.png",
+      "description": "Düşey değirmen salonu",
+      "use": "interior layout"
+    },
+    {
+      "id": 84,
+      "file": "hf_20260909_062350_9caa5f04-3772-4b3c-9040-a9c1174e5f4c.png",
+      "description": "Silo salonu",
+      "use": "interior layout"
+    },
+    {
+      "id": 85,
+      "file": "hf_20260909_062350_ba4bd392-a90f-4fc1-afa4-1e4a85a89e01.png",
+      "description": "Levha işleme hattı",
+      "use": "interior layout"
+    },
+    {
+      "id": 86,
+      "file": "hf_20260909_062350_d93a2bb6-7575-48d1-806c-22a1dc65cb19.png",
+      "description": "Toz toplama ve fan katı",
+      "use": "interior layout"
+    },
+    {
+      "id": 87,
+      "file": "hf_20260909_062350_f56b499b-5a9b-4c3b-a407-d51ab40c62c9.png",
+      "description": "Bunker ve dolum salonu",
+      "use": "interior layout"
+    },
+    {
+      "id": 88,
+      "file": "hf_20260909_062351_10e05308-ffea-48ab-a2cd-21d76ca3b073.png",
+      "description": "Merdaneli taşıma hattı",
+      "use": "interior layout"
+    },
+    {
+      "id": 89,
+      "file": "hf_20260909_062351_f624c4df-e9de-4646-a69b-0ed473d0d86f.png",
+      "description": "Besleme bunkeri",
+      "use": "interior layout"
+    },
+    {
+      "id": 90,
+      "file": "hf_20260909_062502_83e27327-503b-426d-962e-33206edfda2f.png",
+      "description": "Uzun taşıma hattı",
+      "use": "interior layout"
+    }
+  ]
+}

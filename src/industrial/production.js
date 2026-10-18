@@ -1,17 +1,21 @@
 import * as T from 'three';
 import {JOURNEY_STAGE as S} from '../journey.js';
 import {createEquipmentModels} from './equipmentModels.js';
-import {PROCESS_STATIONS,PROCESS_LINES,BOARD_ROUTE,BOARD_START,BOARD_END,BAG_ROUTE,BOARD_PALLET_OUT,BAG_PALLET_OUT,GYPSUM_CRUSHER,localPoint,routeCurve} from './processPlan.js';
+import {buildInteriorEquipment,CEILING_ROUTE} from './interiorEquipment.js';
+import {PROCESS_STATIONS,BOARD_ROUTE,BOARD_START,BOARD_END,BAG_ROUTE,BAG_PALLET_OUT,GYPSUM_CRUSHER,localPoint} from './processPlan.js';
 
+import {createEquipmentConnections,machinePort} from './equipmentConnections.js';
 import {conveyorMotion,transferTable} from './conveyorTransfer.js';
+import {buildPalletizingCell} from './palletizingCell.js';
 
 export const STATIONS=PROCESS_STATIONS.map(s=>({...s,pos:localPoint(s.world)}));
 
 export function buildProduction(k){
   const {m,box,cyl,ring,rod,pipe,group,frame,platform,ladder,bolts,motor,cabinet,textPlate,material,mesh}=k;
-  const rotors=[],products=[],lamps=[],flows=[],operators=[],transfers=[];
-  const equipment=createEquipmentModels(k,rotors);
+  const rotors=[],products=[],lamps=[],flows=[],operators=[];
+  const equipment=createEquipmentModels(k,rotors),machines={};
   const root=group([0,0,0],k.scene,true),outdoor=group([8,0,-25],k.scene,true);
+  const network=createEquipmentConnections(k,root,equipment,rotors);
   function plinth(w,d,g){box(w,.22,d,[0,.11,0],m.concrete,g);for(const z of [-d/2,d/2])box(w,.018,.07,[0,.235,z],m.yellow,g);}
   function conveyor(x,z,length,width=2.3,zone='GK',kind='panel',parent=root){
     const g=group([x,0,z],parent);for(const zz of [-width/2,width/2]){box(length,.23,.12,[0,1.05,zz],m.blue,g);for(let xx=-length/2+.35;xx<length/2;xx+=2){box(.12,1.05,.12,[xx,.52,zz],m.dark,g);box(.3,.06,.3,[xx,.03,zz],m.steel,g);}}
@@ -28,7 +32,13 @@ export function buildProduction(k){
     for(let xx=-length/2+.5;xx<length/2;xx+=3){
       box(.1,.14,.18,[xx,1.33,width/2+.05],m.dark,g,.015);cyl(.025,.018,[xx,1.4,width/2-.04],m.red,g);
     }
-    if(length>3)equipment.gearmotor([length/2-.8,.35,width/2+.4],g,.6,Math.PI/2);
+    if(length>3){
+      equipment.gearmotor([length/2-.8,.35,width/2+.4],g,.6,Math.PI/2);
+      const drive=group([length/2-.8,.68,width/2+.72],g,true);
+      equipment.cylinder(.18,.08,[0,0,0],m.dark,drive,'z');
+      for(let i=0;i<4;i++){const a=i*Math.PI/2;rod([0,0,.05],[Math.cos(a)*.16,Math.sin(a)*.16,.05],.025,m.steel,drive);}
+      rotors.push({object:drive,axis:'z',zone,speed:2});
+    }
     if(kind==='bags'||kind==='bag-track'||kind==='raw')box(length,.035,width-.15,[0,1.17,0],m.rubber,g,.015);
     for(let i=0;i<(['track','bag-track'].includes(kind)?0:Math.floor(length/3.4));i++){const p=group([0,1.2,0],g,true);
       if(kind==='raw'){for(let n=0;n<7;n++){const stone=mesh(new T.DodecahedronGeometry(.12+(n%3)*.04),m.raw,[(n%3)*.3-.3,.16,Math.floor(n/3)*.3-.3],p);stone.rotation.set(n,n*.5,n*.7);}}
@@ -40,7 +50,7 @@ export function buildProduction(k){
   }
   STATIONS.forEach((s,index)=>{
     const g=group(s.pos,root);plinth(index===2?13:index===4?22:8,index===4?5:7,g);
-    equipment[s.id](g);
+    equipment[s.id](g);g.name=`machine-${s.id}`;machines[s.id]=g;
     const control=cabinet([3.4,.25,3],g);
     for(const y of [.25,.32,.39,.46])box(.42,.014,.018,[0,y,.26],m.dark,control);
     for(const x of [-.33,.33])for(const y of [.22,1.37])box(.06,.11,.04,[x,y,.27],m.steel,control);
@@ -61,87 +71,196 @@ export function buildProduction(k){
   box(3.7,.18,3.5,[0,3.6,0],m.dark,jaw);equipment.hollowHopper(3.5,3.2,2.7,2.4,1.0,[0,3.65,0],jaw);
   for(const z of [-1.65,1.65]){const wheel=group([.5,2.4,z],jaw,true);const disk=cyl(1.15,.22,[0,0,0],m.steel,wheel);disk.rotation.x=Math.PI/2;k.ring(1.05,.1,[0,0,0],m.dark,wheel,'z');for(let n=0;n<8;n++){const a=n*Math.PI/4;rod([0,0,.14],[Math.cos(a)*.9,Math.sin(a)*.9,.14],.065,m.dark,wheel);}rotors.push({object:wheel,axis:'z',zone:'CR',speed:.5});}
   equipment.gearmotor([3,.4,0],jaw,1.55);for(const z of [-1.95,1.95])equipment.fence(3.3,2.8,[.5,.4,z],jaw);for(const x of [-1.6,1.6])for(const z of [-1.5,1.5])equipment.bolt([x,3.75,z],jaw);cabinet([-2.5,0,3],jaw);operators.push({pos:localPoint([GYPSUM_CRUSHER[0]-2,0,GYPSUM_CRUSHER[2]+4]),zone:'CR',angle:Math.PI});
-  // Articulated palletising robot with servo housings, cable loom and a vacuum gripper.
-  const robot=group(localPoint([.4,0,-29]),root);robot.rotation.y=Math.PI;plinth(6,5,robot);box(1.8,.25,1.8,[0,.4,0],equipment.cast,robot,.025);cyl(.75,.85,[0,.9,0],equipment.enamel,robot,.6,64);
-  const pivot=group([0,1.4,0],robot,true);cyl(.62,.22,[0,0,0],equipment.blue,pivot,undefined,64);
-  function robotLink(a,b,width,depth){const mid=new T.Vector3(...a).add(new T.Vector3(...b)).multiplyScalar(.5),dir=new T.Vector3(...b).sub(new T.Vector3(...a));const part=box(width,dir.length(),depth,mid.toArray(),equipment.enamel,pivot,.08);part.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),dir.normalize());return part;}
-  robotLink([0,.1,0],[.9,2.7,0],.48,.52);robotLink([.9,2.7,0],[3.1,1.9,0],.35,.4);
-  rod([-.25,.3,-.34],[.56,2.7,-.34],.065,equipment.cast,pivot);rod([.56,2.7,-.34],[3.02,2.22,-.34],.055,equipment.cast,pivot);
-  for(const p of [[0,.15,0],[.9,2.7,0],[3.1,1.9,0]]){equipment.cylinder(.34,.7,p,equipment.blue,pivot,'z');for(const z of [-.37,.37]){equipment.cylinder(.23,.05,[p[0],p[1],z],m.steel,pivot,'z');for(let n=0;n<8;n++){const a=n/8*Math.PI*2;equipment.bolt([p[0]+Math.sin(a)*.27,p[1]+Math.cos(a)*.27,z],pivot,'z');}}}
-  pipe([[0,.1,.43],[.3,1.4,.43],[1,2.88,.43],[2.1,2.48,.35],[3.12,1.9,.35]],.065,m.black,pivot);pipe([[0,.3,.52],[.7,2.5,.52],[1.1,2.82,.52],[3.12,1.9,.46]],.025,equipment.blue,pivot);
-  rod([3.1,1.9,0],[3.1,1.12,0],.13,m.steel,pivot);box(1.9,.14,1.3,[3.1,1.07,0],equipment.blue,pivot,.025);
-  for(const x of [2.4,3.1,3.8])for(const z of [-.45,.45]){cyl(.05,.2,[x,.9,z],m.polished,pivot);cyl(.16,.07,[x,.75,z],m.rubber,pivot,.10);pipe([[3.1,1.3,0],[x,1.3,z],[x,.86,z]],.018,m.black,pivot);}
-  rotors.push({object:pivot,axis:'swing',zone:'GP',speed:.4,base:0});cabinet([-2,0,2],robot);operators.push({pos:localPoint([3.4,0,-26]),zone:'GP',angle:Math.PI});
-  equipment.fence(6,2.25,[.5,.25,-2.4],robot);equipment.fence(4.8,2.25,[4,.25,0],robot,Math.PI/2);
-  // Board forming head, liner rolls and guillotine between drying and packing.
+  operators.push({pos:localPoint([3.4,0,-26]),zone:'GP',angle:Math.PI});
+  // Slurry is formed and allowed to set before cutting, then enters the dryer.
   const forming=group(localPoint([BOARD_START[0],0,BOARD_START[2]]),root);frame(3.5,3.4,2.7,forming);
   for(const x of [-1.6,1.6]){const roll=cyl(.52,2.6,[x,2.7,0],m.paper,forming);roll.rotation.x=Math.PI/2;for(const z of [-1.32,1.32]){equipment.cylinder(.18,.04,[x,2.7,z],m.wood,forming,'z');equipment.cylinder(.085,.06,[x,2.7,z],m.black,forming,'z');box(.18,1.5,.2,[x,1.8,z],equipment.cast,forming);}const axle=cyl(.10,3.4,[x,2.7,0],m.steel,forming);axle.rotation.x=Math.PI/2;}
   box(1.6,.55,3,[0,1.8,0],m.blue,forming);box(1.7,.12,2.6,[0,1.47,0],m.steel,forming);
-  const cutter=group(localPoint([50,0,BOARD_START[2]]),root);frame(2,3.2,2.5,cutter);const blade=group([0,1.9,0],cutter,true);box(.1,.4,2.7,[0,0,0],m.steel,blade);box(.3,.12,3.1,[0,.25,0],m.blue,blade);rotors.push({object:blade,axis:'lift',zone:'GK',speed:1.5,base:1.9});
+  const cutter=group(localPoint([14,0,BOARD_START[2]]),root);frame(2,3.2,2.5,cutter);const blade=group([0,1.9,0],cutter,true);box(.1,.4,2.7,[0,0,0],m.steel,blade);box(.3,.12,3.1,[0,.25,0],m.blue,blade);machines['board-cutter']=cutter;cutter.userData.processTool={object:blade,base:1.9,travel:.52};
   for(const z of [-1.4,1.4]){cyl(.10,.8,[0,2.6,z],equipment.cast,cutter);cyl(.04,.7,[0,2.1,z],m.polished,cutter);pipe([[0,2.95,z],[.5,2.95,z],[.5,.4,z]],.025,m.black,cutter);}
+  machinePort(k,forming,'slurry',[0,2.35,0],[0,1,0],.22,'slurry',{nozzle:.9});machines.forming=forming;
   // The forming mouth covers the birth of each board; it feeds a real table.
   for(const z of [-1.42,1.42])box(3.4,.55,.10,[0,1.43,z],equipment.enamel,forming);
   box(3.4,.12,2.95,[0,1.77,0],equipment.enamel,forming);box(.12,.55,2.95,[-1.7,1.43,0],equipment.enamel,forming);
-  function routedTrack(points,width,tableSize,kind){
-    const half=tableSize/2;
+  function routedTrack(points,width,tableSize,kind,zone=kind==='bag-track'?'GR':'GK'){
+    const half=tableSize/2,firstDrive=rotors.length;
+    const isTurn=i=>i>0&&i<points.length-1&&new T.Vector3(...points[i]).sub(new T.Vector3(...points[i-1])).normalize().dot(new T.Vector3(...points[i+1]).sub(new T.Vector3(...points[i])).normalize())<.999;
     for(let i=1;i<points.length;i++){
       const a=new T.Vector3(...points[i-1]),b=new T.Vector3(...points[i]),d=b.clone().sub(a).normalize();
-      if(i>1)a.addScaledVector(d,half);if(i<points.length-1)b.addScaledVector(d,-half);
+      if(isTurn(i-1))a.addScaledVector(d,half);if(isTurn(i))b.addScaledVector(d,-half);
       const length=a.distanceTo(b),mid=a.clone().lerp(b,.5);
       if(length<.24){box(width,.07,.24,localPoint([mid.x,1.14,mid.z]),m.steel,root);continue;}
-      const table=conveyor(mid.x-8,mid.z+25,length,width,'GK',kind);table.rotation.y=-Math.atan2(d.z,d.x);
+      const table=conveyor(mid.x-8,mid.z+25,length,width,zone,kind);table.rotation.y=-Math.atan2(d.z,d.x);
     }
+    return rotors.slice(firstDrive);
   }
+  const streamGroups=[];
   function stream(points,kind,zone,interval,options){
     const motion=conveyorMotion(points.map(localPoint),options),count=Math.ceil((motion.duration+.6)/interval)+1;
-    motion.turns.forEach(corner=>transfers.push({table:transferTable(k,corner,{parent:root,size:kind==='panel'?3:1.7,top:kind==='panel'?1.175:1.1875}),interval,kind}));
+    const line={motion,kind,zone,interval,time:0,started:false,products:[],tables:[]};
+    const size=kind==='bags'?1.7:3,productLength=kind==='bags'?.75:kind==='ceiling'?2:2.4;
+    motion.turns.forEach(corner=>line.tables.push(transferTable(k,corner,{parent:root,size,top:kind==='bags'?1.1875:1.175,clearTime:(size/2+productLength/2)/options.speed+options.speed/(2*(options.acceleration||2.4))})));
     for(let i=0;i<count;i++){
-      const product=group([0,0,0],root,true);
-      if(kind==='panel'){box(2.4,.03,1.2,[0,.02,0],m.paper,product,.006);box(2.4,.012,.025,[0,.04,.59],m.blueLight,product);}
-      else{box(.75,.23,.46,[0,.12,0],m.paper,product,.10);box(.45,.012,.20,[0,.24,0],m.blue,product);}
-      products.push({object:product,motion,delay:i*interval,period:count*interval,fillTime:options.startHold||0,kind,zone});
+      const product=group([0,0,0],root,true),variants={};
+      if(kind==='panel'){
+        for(const state of ['damp','dry']){
+          const g=group([0,0,0],product,true);variants[state]=g;
+          box(2.4,.03,1.2,[0,.02,0],state==='dry'?m.paper:m.raw,g,.006);
+          box(2.4,.001,.025,[0,.0345,.59],m.blueLight,g);
+        }
+      }else if(kind==='ceiling'){
+        variants.blank=group([0,0,0],product,true);box(1.32,.035,1.32,[0,.025,0],m.paper,variants.blank,.006);
+        variants.cut=group([0,0,0],product,true);variants.holes=group([0,0,0],product,true);
+        for(const x of [-.33,.33])for(const z of [-.33,.33]){
+          box(.62,.035,.62,[x,.025,z],m.paper,variants.cut,.006);
+          for(const dx of [-.18,0,.18])for(const dz of [-.18,0,.18])cyl(.015,.004,[x+dx,.045,z+dz],m.dark,variants.holes,undefined,6);
+        }
+      }else{box(.75,.23,.46,[0,.12,0],m.paper,product,.10);box(.45,.012,.20,[0,.24,0],m.blue,product);}
+      const record={object:product,variants,motion,delay:i*interval,period:count*interval,fillTime:options.startHold||0,kind,zone};
+      product.visible=false;products.push(record);line.products.push(record);
     }
+    streamGroups.push(line);return line;
   }
-  routedTrack(BOARD_ROUTE,2.6,3,'track');stream(BOARD_ROUTE,'panel','GK',2.4,{speed:8,turnTime:.7});
-  // The end of the return conveyor is a stacking receiver, not open floor.
-  const boardReceiver=group(localPoint([BOARD_END[0],0,BOARD_END[2]]),root);
-  for(const z of [-1.5,1.5])box(3.6,.72,.10,[0,1.53,z],equipment.enamel,boardReceiver);
-  box(3.6,.12,3.1,[0,1.95,0],equipment.enamel,boardReceiver);box(.12,.72,3.1,[1.8,1.53,0],equipment.enamel,boardReceiver);
-  for(const z of [-.5,0,.5])box(2.6,.1,.16,[0,.30,z],m.wood,boardReceiver);
-  for(let n=0;n<26;n++)box(2.4,.024,1.2,[0,.5+n*.026,0],m.paper,boardReceiver);
-  box(2.7,.18,3.9,localPoint([BOARD_END[0],.16,-31.2]),m.blue,root);
+  const cut=[14,1.18,BOARD_START[2]],boardProducts=[[cut[0]+1.2,cut[1],cut[2]],...BOARD_ROUTE.slice(1)];
+  // A continuous paper-faced web sets on a supported belt before the cutter.
+  // Discrete boards are born at the cut, and only become dry after the dryer.
+  const settingLength=cut[0]-BOARD_START[0],settingMid=(cut[0]+BOARD_START[0])/2;
+  box(settingLength,.035,1.2,localPoint([settingMid,1.202,BOARD_START[2]]),m.paper,root);
+  box(settingLength,.035,2.3,localPoint([settingMid,1.16,BOARD_START[2]]),m.rubber,root);
+  for(const z of [-.60,.60])box(settingLength,.028,.025,localPoint([settingMid,1.23,BOARD_START[2]+z]),m.raw,root);
+  // Support the complete sheet beyond its centre stop, including its leading edge.
+  const boardDrives=routedTrack([...BOARD_ROUTE.slice(0,-1),[BOARD_END[0]+1.35,BOARD_END[1],BOARD_END[2]]],2.6,3,'track');
+  const boardLine=stream(boardProducts,'panel','GK',6,{speed:1.8,turnTime:1,startHold:.8});
+  boardDrives.forEach(drive=>{drive.line=boardLine;});
+  boardLine.nextDelivery=0;
+  const palletizing=buildPalletizingCell(k,{root,equipment,onPickupClear:()=>{boardLine.nextDelivery++;}});
+  routedTrack(CEILING_ROUTE,2.6,3,'track');
+  // Each sheet now starts above the supply pallet, runs into the magazine,
+  // turns onto the finishing rollers, and reaches the tools in route order.
+  const ceilingLine=stream(CEILING_ROUTE,'ceiling','GK',7.5,{speed:1.1,turnTime:1,stops:{3:1.1,4:1.2,10:.8}});
+  // Leave the pallet-facing and line-facing sides open for the two feed legs.
+  const magazine=group(localPoint([5,0,-23]),root);
+  box(.12,.85,3.2,[-1.58,1.58,0],equipment.enamel,magazine);
+  box(3.2,.85,.12,[0,1.58,1.58],equipment.enamel,magazine);
+  box(3.4,.12,3.4,[0,2.06,0],equipment.enamel,magazine);
+  // A compact vacuum feeder visibly takes the top sheet from the adjacent
+  // supply pallet and follows it into the magazine's open rear mouth.
+  const feeder=group(localPoint([5,0,-24.5]),root);
+  for(const x of [-1.35,1.35]){
+    box(.10,.12,3.5,[x,2.35,-.25],m.blue,feeder);
+    box(.10,.35,.10,[x,2.22,1.05],m.steel,feeder);
+  }
+  box(2.8,.12,.12,[0,2.35,-1.94],m.blue,feeder);
+  const feederHomeZ=localPoint(CEILING_ROUTE[0])[2]-feeder.position.z;
+  const feederHead=group([0,1.67,feederHomeZ],feeder,true);
+  box(1.5,.10,1.5,[0,0,0],equipment.enamel,feederHead,.04);
+  for(const x of [-.48,.48])for(const z of [-.48,.48]){
+    rod([x,-.05,z],[x,-.34,z],.04,m.steel,feederHead);
+    cyl(.12,.04,[x,-.41,z],m.rubber,feederHead);
+  }
   // Dry construction mixtures have their own dosing, bagging and discharge.
   const baggingPosition=localPoint([-43,0,-32.5]),bg=group(baggingPosition,root);
   frame(5,4,3.5,bg);platform(5.5,4.5,3.5,bg);
   for(const x of [-1.3,1.3]){cyl(.9,2,[x,4.6,0],m.white,bg);cyl(.18,1.2,[x,3,0],m.steel,bg,.9);cyl(.12,.6,[x,2,0],m.dark,bg);}
   ladder(3.6,-3,2,bg);
+  machinePort(k,bg,'in',[-1.3,5.6,0],[0,1,0],.3,'solid');machines.bagging=bg;
   // Bags are filled directly below the spouts, then sealed and palletised.
   for(const x of [-1.3,1.3])cyl(.13,.30,[x,1.55,0],m.rubber,bg);
-  routedTrack(BAG_ROUTE,1.3,1.7,'bag-track');stream(BAG_ROUTE,'bags','GR',1.8,{speed:2.8,turnTime:.32,startHold:.45});
+  routedTrack(BAG_ROUTE,1.3,1.7,'bag-track');stream(BAG_ROUTE,'bags','GR',4.6,{speed:.65,turnTime:.6,startHold:1.1});
   const sealer=group(localPoint([-40.2,0,-32.5]),root);frame(1.6,1.6,1.8,sealer);box(1.6,.55,1.6,[0,1.8,0],equipment.enamel,sealer,.04);box(.7,.24,1.5,[0,1.47,0],m.blue,sealer);
   const bagReceiver=group(localPoint([-32,0,-36]),root);frame(3.2,2.6,3.2,bagReceiver);
   for(const z of [-1.3,1.3])box(3.2,2.2,.12,[0,2,z],equipment.enamel,bagReceiver);
   box(3.4,.16,2.8,[0,3.3,0],m.blue,bagReceiver);box(.12,2.2,2.6,[1.6,2,0],equipment.enamel,bagReceiver);
   for(let z=-.55;z<.6;z+=.25){const roller=cyl(.07,3.1,[0,1.11,z],m.steel,bagReceiver,undefined,10);roller.rotation.z=Math.PI/2;}
   box(3.6,.18,1.7,localPoint([-30.2,.16,-36]),m.blue,root);
-  // Loaded output pallets make both destinations legible from a close view.
-  for(const [pos,kind] of [[BOARD_PALLET_OUT,'panel'],[BAG_PALLET_OUT,'bags']]){
-    const pallet=group(localPoint(pos),root);
-    for(const z of [-.5,0,.5])box(1.4,.10,.16,[0,.05,z],m.wood,pallet);
-    for(const x of [-.5,0,.5])box(.16,.12,1.1,[x,.15,0],m.wood,pallet);
-    if(kind==='panel')for(let n=0;n<20;n++)box(1.35,.025,1.08,[0,.25+n*.026,0],m.paper,pallet);
-    else for(let n=0;n<4;n++)for(const x of [-.31,.31])for(const z of [-.27,.27])box(.58,.19,.48,[x,.32+n*.2,z],m.paper,pallet,.07);
-  }
+  // Bagged mixtures keep their separate output pallet.
+  const bagPallet=group(localPoint(BAG_PALLET_OUT),root);
+  for(const z of [-.5,0,.5])box(1.4,.10,.16,[0,.05,z],m.wood,bagPallet);
+  for(const x of [-.5,0,.5])box(.16,.12,1.1,[x,.15,0],m.wood,bagPallet);
+  for(let n=0;n<4;n++)for(const x of [-.31,.31])for(const z of [-.27,.27])box(.58,.19,.48,[x,.32+n*.2,z],m.paper,bagPallet,.07);
   operators.push({pos:localPoint([-39,0,-31]),zone:'GR',angle:Math.PI});textPlate('GURY GARYNDY',3,.5,[-51,5.8,-5.2],root);
-  function flow(points,zone,stages){
-    const local=points.map(localPoint),path=routeCurve(local);mesh(new T.TubeGeometry(path,Math.max(24,Math.ceil(path.getLength()/2)),.16,6,false),m.steel,[0,0,0],root);
-    const dots=[];for(let i=0;i<8;i++){const g=group([0,0,0],root,true);mesh(new T.SphereGeometry(.20,8,6),m.blueLight,[0,0,0],g);dots.push(g);}flows.push({path,dots,zone,stages});
-  }
-  flow([[-25.6,2,30.2],[-25.6,5.5,22],[-35,5.5,22],[-35,3.8,8]],'BS',[S.calcine]);
-  flow([[-23.5,4,8],[-23.5,5.5,16],[-29.6,5.5,16],[-29.6,3.4,30.3]],'BS',[S.calcine,S.mix]);
-  flow(PROCESS_LINES.find(line=>line.id==='drymix').points,'GR',[S.mix,S.form,S.pack]);
-  flow(PROCESS_LINES.find(line=>line.id==='board').points.slice(0,5),'GK',[S.mix,S.form,S.pack]);
-  flow([[-44.1,2,-22.3],[-39.5,2,-22.3],[-39.5,6.3,-32.5],[-43,6.3,-32.5]],'GR',[S.mix,S.form,S.pack]);
   for(const [x,z] of [[-41,-9],[8,-9],[48,-9],[60,-19],[-18,-23],[-7,-34]])operators.push({pos:localPoint([x,0,z]),zone:x< -30?'GR':'GK',angle:Math.PI});
-  return {root,outdoor,rotors,products,lamps,flows,operators,updateTransfers(boardTime,bagTime){transfers.forEach(({table,interval,kind})=>table.update(kind==='panel'?boardTime:bagTime,interval));}};
+  const interior=buildInteriorEquipment(k,{root,equipment,machines,network});
+  flows.push(...network.connections);network.capUnused();
+  const machineClocks=new Map();
+  const stageMap={CR:[S.infeed,S.crush,S.calcine],TY:[S.crush,S.calcine,S.mix],BS:[S.calcine,S.mix],GR:[S.mix,S.form,S.pack],GK:[S.mix,S.form,S.pack],GP:[S.form,S.pack]};
+  const outdoorRotors=rotors.filter(r=>{
+    for(let parent=r.object.parent;parent;parent=parent.parent)if(parent===outdoor)return true;
+    return false;
+  });
+  function updateMotion(dt,{preview=false,stage,active,showInterior,showLines=false}){
+    bagPallet.visible=stage!==S.pack;
+    const scheduled=zone=>preview||stageMap[zone].includes(stage);
+    const healthy=zone=>active.get(zone)?.status==='running';
+    // A blocked packing receiver stops its upstream board conveyors. Products
+    // remain on the rollers, and resume from the same pose after a restart.
+    const running=zone=>scheduled(zone)&&healthy(zone)&&(zone!=='GK'||healthy('GP'));
+    for(const zone of Object.keys(stageMap))if(running(zone)&&(showInterior||zone==='CR'))machineClocks.set(zone,(machineClocks.get(zone)||0)+dt);
+    // Hidden interior clocks already stop here. Avoid recalculating every
+    // conveyor, tool and archive model at that unchanged time as well.
+    if(!showInterior){
+      for(const r of outdoorRotors)r.object.rotation[r.axis]=(machineClocks.get(r.zone)||0)*r.speed;
+      return;
+    }
+    interior.update(dt,running);
+    for(const line of streamGroups){
+      const allowed=showInterior&&(preview||(line.kind==='bags'?[S.mix,S.form,S.pack]:[S.form,S.pack]).includes(stage));
+      if(allowed&&!line.started){line.started=true;line.time=preview?line.motion.duration:0;}
+      if(allowed&&running(line.zone)){
+        const next=line.time+dt;
+        // The terminal photoeye holds the conveyor until the current sheet is
+        // lifted clear. Never skip a delivery when a frame or cycle takes longer.
+        line.time=line===boardLine?Math.min(next,line.motion.duration+line.nextDelivery*line.interval):next;
+      }
+      for(const table of line.tables)table.update(line.time,line.interval);
+      for(const p of line.products){
+        if(p.palletizing)continue; // The robot now owns this exact product.
+        const age=line.time-p.delay,cycle=Math.floor(age/p.period),phase=age>=0?age%p.period:-1;
+        p.object.visible=allowed&&phase>=0&&phase<=p.motion.duration+1e-8&&p.handledCycle!==cycle;
+        if(!p.object.visible)continue;
+        p.object.rotation.y=p.motion.pose(phase,p.object.position);
+        p.object.scale.y=p.fillTime?Math.min(1,.2+.8*phase/p.fillTime):1;
+        if(p.kind==='panel'){
+          // The first leg runs through the dryer; subsequent return legs are dry.
+          const dry=phase>=p.motion.milestones[1].arrival||p.object.position.x+8>=35.8;
+          p.variants.damp.visible=!dry;p.variants.dry.visible=dry;
+          p.object.userData.materialState=dry?'dry-board':'set-damp-board';
+        }else if(p.kind==='ceiling'){
+          const cut=phase>=p.motion.milestones[3].departure,perforated=phase>=p.motion.milestones[4].departure;
+          p.variants.blank.visible=!cut;p.variants.cut.visible=cut;p.variants.holes.visible=perforated;
+          p.object.userData.materialState=perforated?'perforated-panel':cut?'cut-panel':'dry-board';
+        }
+      }
+    }
+    const feederSheet=ceilingLine.products.find(p=>p.object.visible&&Math.abs(p.object.position.x-feeder.position.x)<.05&&p.object.position.z<=magazine.position.z+.01);
+    if(feederSheet)feederHead.position.z=feederSheet.object.position.z-feeder.position.z;
+    else feederHead.position.z+=(feederHomeZ-feederHead.position.z)*Math.min(1,dt*2);
+    const packingAllowed=showInterior&&(preview||[S.form,S.pack].includes(stage));
+    if(packingAllowed&&running('GP')&&dt>0){
+      const delivery=boardLine.nextDelivery,arrival=boardLine.motion.duration+delivery*boardLine.interval;
+      if(boardLine.started&&boardLine.time>=arrival-1e-8){
+        const product=boardLine.products[delivery%boardLine.products.length],cycle=Math.floor(delivery/boardLine.products.length);
+        if(product.handledCycle!==cycle)palletizing.accept(product,cycle);
+      }
+      palletizing.update(dt);
+    }
+    for(const r of rotors)r.object.rotation[r.axis]=(r.line?r.line.time:machineClocks.get(r.zone)||0)*r.speed;
+    function tool(machine,line,start,duration){
+      const t=machine.userData.processTool,phase=((line.time-start)%line.interval+line.interval)%line.interval;
+      if(t)t.object.position.y=t.base-(line.started&&line.time>=start&&phase<duration?Math.sin(Math.PI*phase/duration)**2*t.travel:0);
+    }
+    tool(machines['board-cutter'],boardLine,0,.8);
+    tool(interior.units['panel-crosscut'],ceilingLine,ceilingLine.motion.milestones[3].arrival,1.1);
+    tool(interior.units['panel-perforation'],ceilingLine,ceilingLine.motion.milestones[4].arrival,1.2);
+    tool(interior.units['board-palletizer'],ceilingLine,ceilingLine.motion.milestones[10].arrival,.8);
+    for(const f of flows)f.dots.forEach((arrow,i)=>{
+      // These are explanatory direction arrows, visible only in line view;
+      // sealed pipes never display exposed rocks or liquid travelling outside.
+      arrow.visible=showLines&&scheduled(f.zone);
+      if(!arrow.visible)return;
+      const phase=((machineClocks.get(f.zone)||0)*f.speed/f.length+i/f.dots.length)%1;
+      arrow.position.copy(f.path.getPointAt(phase));arrow.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),f.path.getTangentAt(phase));
+    });
+  }
+  return {root,outdoor,rotors,products,lamps,flows,operators,interiorInventory:interior.inventory,palletizing,updateMotion};
 }

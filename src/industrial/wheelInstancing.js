@@ -22,8 +22,17 @@ export function batchWheels(k){
     instance.frustumCulled=false;
     parts.forEach(part=>{part.visible=false;});batches.push({instance,parts});
   }
+  // Only wheels and their ancestor chains need fresh matrices for instancing.
+  // Updating the whole campus here duplicated the renderer's scene traversal.
+  const transforms=new Set();
+  function includeTransform(node){
+    if(transforms.has(node))return;
+    if(node.parent)includeTransform(node.parent);
+    transforms.add(node);
+  }
+  for(const {parts} of batches)parts.forEach(includeTransform);
   return ()=>{
-    k.scene.updateMatrixWorld();
+    for(const node of transforms)node.updateWorldMatrix(false,false);
     for(const {instance,parts} of batches){
       let count=0;
       for(const part of parts){

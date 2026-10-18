@@ -1,6 +1,6 @@
 import * as T from 'three';
 import {buildTurkmenLocomotive} from './turkmenLocomotive.js';
-import {RAW_YARD,RAW_YARD_APRON} from './siteLayout.js';
+import {RAW_YARD,RAW_YARD_APRON,RAIL_ACCESS_CROSSING} from './siteLayout.js';
 import {RAIL_LAYOUT} from './railLayout.js';
 
 export {RAIL_LAYOUT} from './railLayout.js';
@@ -84,6 +84,94 @@ export function buildRail(k,pallet){
     const count=Math.floor(length/.7),sleepers=k.instances(new T.BoxGeometry(.24,.15,2.64),tie,count),o=new T.Object3D();
     for(let i=0;i<count;i++){const p=track.getPointAt(i/(count-1)),t=track.getTangentAt(i/(count-1));o.position.set(p.x,.19,p.z);o.rotation.set(0,-Math.atan2(t.z,t.x),0);o.scale.set(1,1,1);o.updateMatrix();sleepers.setMatrixAt(i,o.matrix);}
     sleepers.instanceMatrix.needsUpdate=true;
+  }
+
+  // Graded two-lane approach through both boundary openings. The prefabricated
+  // crossing panels sit just below the railheads and keep the flangeways open.
+  {
+    const {x:roadX,width}=RAIL_ACCESS_CROSSING,west=roadX-width/2,east=roadX+width/2;
+    const roadSurface=m.road,paint=material('#d9d9d2',0,.94);
+    const panelSurface=material('#7c8382',0,.96,{
+      map:roadSurface.map,bumpMap:roadSurface.bumpMap,bumpScale:.009
+    });
+    const seam=material('#515957',0,.98),header=material('#a8aaa5',0,.94);
+    function strip(left0,right0,z0,y0,left1,right1,z1,y1,mat){
+      const geo=new T.BufferGeometry();
+      geo.setAttribute('position',new T.Float32BufferAttribute([
+        left0,y0,z0,right0,y0,z0,left1,y1,z1,right1,y1,z1
+      ],3));
+      geo.setAttribute('uv',new T.Float32BufferAttribute([
+        left0/3,z0/3,right0/3,z0/3,left1/3,z1/3,right1/3,z1/3
+      ],2));
+      geo.setIndex(z1>z0?[0,2,1,1,2,3]:[0,1,2,1,3,2]);
+      geo.computeVertexNormals();
+      mesh(geo,mat).castShadow=false;
+    }
+    // The site apron and older courtyard meet the rail level over gentle
+    // grades. The wider ends blend into the adjoining paved yards.
+    for(const [z0,y0,w0,z1,y1,w1] of [
+      [-40,-.035,10.2,-50.7,.392,width],
+      [-58.9,.392,width,-69,.145,10.2]
+    ]){
+      strip(roadX-w0/2,roadX+w0/2,z0,y0,
+        roadX-w1/2,roadX+w1/2,z1,y1,roadSurface);
+      for(const side of [-1,1]){
+        const a=.10,b=.90;
+        const za=z0+(z1-z0)*a,zb=z0+(z1-z0)*b;
+        const ya=y0+(y1-y0)*a+.008,yb=y0+(y1-y0)*b+.008;
+        const wa=w0+(w1-w0)*a,wb=w0+(w1-w0)*b;
+        const xa=roadX+side*(wa/2-.32),xb=roadX+side*(wb/2-.32);
+        strip(xa-.045,xa+.045,za,ya,xb-.045,xb+.045,zb,yb,paint);
+      }
+    }
+    function turnoutZ(x){
+      let lo=0,hi=1;
+      for(let i=0;i<18;i++){
+        const t=(lo+hi)/2,u=1-t;
+        const curveX=u*u*u*68+3*u*u*t*88+3*u*t*t*88+t*t*t*108;
+        if(curveX<x)lo=t;else hi=t;
+      }
+      const t=(lo+hi)/2,u=1-t;
+      return -57.6*(u*u*u+3*u*u*t)-53*(3*u*t*t+t*t*t);
+    }
+    const panelStep=.28,grooveHalfWidth=.13,north=-50.7,south=-58.9;
+    const positions=[],uvs=[],indices=[];
+    function panel(x0,x1,z0,z1){
+      const base=positions.length/3,y=.392;
+      positions.push(x0,y,z0,x1,y,z0,x0,y,z1,x1,y,z1);
+      uvs.push(x0/3,z0/3,x1/3,z0/3,x0/3,z1/3,x1/3,z1/3);
+      indices.push(base,base+2,base+1,base+1,base+2,base+3);
+    }
+    for(let x=west;x<east-.001;x+=panelStep){
+      const segmentWidth=Math.min(panelStep,east-x),centerX=x+segmentWidth/2;
+      const branch=turnoutZ(centerX);
+      const grooves=[RAIL_LAYOUT.z-.76,RAIL_LAYOUT.z+.76,branch-.76,branch+.76]
+        .map(z=>[z-grooveHalfWidth,z+grooveHalfWidth]).sort((a,b)=>a[0]-b[0]);
+      let edge=south;
+      for(const [start,end] of [...grooves,[north,north]]){
+        if(start>edge+.02)panel(x,x+segmentWidth,edge,start);
+        edge=Math.max(edge,end);
+      }
+    }
+    const panels=new T.BufferGeometry();
+    panels.setAttribute('position',new T.Float32BufferAttribute(positions,3));
+    panels.setAttribute('uv',new T.Float32BufferAttribute(uvs,2));
+    panels.setIndex(indices);panels.computeVertexNormals();
+    mesh(panels,panelSurface).castShadow=false;
+    // A few genuine panel joints read as manufactured sections; the fine
+    // sampling above is only for following the curved switch rails.
+    for(const x of [west+2,roadX,east-2]){
+      const branch=turnoutZ(x),grooves=[RAIL_LAYOUT.z-.76,RAIL_LAYOUT.z+.76,branch-.76,branch+.76]
+        .map(z=>[z-grooveHalfWidth,z+grooveHalfWidth]).sort((a,b)=>a[0]-b[0]);
+      let edge=south;
+      for(const [start,end] of [...grooves,[north,north]]){
+        if(start>edge+.04)box(.025,.004,start-edge,[x,.396,(edge+start)/2],seam).castShadow=false;
+        edge=Math.max(edge,end);
+      }
+    }
+    for(const z of [north+.13,south-.13]){
+      box(width,.035,.17,[roadX,.375,z],header).castShadow=false;
+    }
   }
 
   function wheelset(parent,x,r=.46){

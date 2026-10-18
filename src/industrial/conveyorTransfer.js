@@ -5,13 +5,18 @@ const angleDelta=(a,b)=>Math.atan2(Math.sin(b-a),Math.cos(b-a));
 
 // Travel to the centre of a transfer table, stop, rotate, then continue.
 // The same corner positions drive both the machinery and the product pose.
-export function conveyorMotion(points,{speed=8,turnTime=.7,startHold=0}={}){
-  const actions=[],turns=[];let duration=0;
+export function conveyorMotion(points,{speed=1.8,turnTime=.9,startHold=0,stops={},acceleration=2.4}={}){
+  const actions=[],turns=[],milestones=[{arrival:0,departure:startHold}];let duration=0;
   const add=action=>{action.start=duration;duration+=action.duration;actions.push(action);return action;};
   if(startHold){const a=new T.Vector3(...points[0]),d=new T.Vector3(...points[1]).sub(a);add({a,b:a,yaw:-Math.atan2(d.z,d.x),duration:startHold});}
   for(let i=1;i<points.length;i++){
     const a=new T.Vector3(...points[i-1]),b=new T.Vector3(...points[i]),d=b.clone().sub(a);
-    const yaw=-Math.atan2(d.z,d.x);add({a,b,yaw,duration:d.length()/speed});
+    const yaw=-Math.atan2(d.z,d.x),distance=d.length();
+    const ramp=Math.min(speed/acceleration,Math.sqrt(distance/acceleration)),peak=acceleration*ramp,cruise=Math.max(0,(distance-peak*ramp)/peak);
+    add({a,b,yaw,duration:2*ramp+cruise,ramp,peak,cruise,distance});
+    const arrival=duration;
+    if(stops[i])add({a:b,b,yaw,duration:stops[i],hold:true});
+    milestones.push({arrival,departure:duration});
     if(i<points.length-1){
       const c=new T.Vector3(...points[i+1]).sub(b),to=-Math.atan2(c.z,c.x);
       if(Math.abs(angleDelta(yaw,to))>.01)turns.push(add({a:b,b,yaw,to,duration:turnTime,turn:true}));
@@ -19,13 +24,20 @@ export function conveyorMotion(points,{speed=8,turnTime=.7,startHold=0}={}){
   }
   function pose(time,position){
     const action=actions.find(a=>time<=a.start+a.duration)||actions.at(-1),t=T.MathUtils.clamp((time-action.start)/action.duration,0,1);
-    position.copy(action.a).lerp(action.b,t);
+    const elapsed=T.MathUtils.clamp(time-action.start,0,action.duration);
+    let fraction=t;
+    if(action.distance){
+      const {ramp,peak,cruise,distance}=action;
+      const travelled=elapsed<ramp?.5*acceleration*elapsed*elapsed:elapsed<ramp+cruise?.5*peak*ramp+peak*(elapsed-ramp):distance-.5*acceleration*(action.duration-elapsed)**2;
+      fraction=T.MathUtils.clamp(travelled/distance,0,1);
+    }
+    position.copy(action.a).lerp(action.b,fraction);
     return action.turn?action.yaw+angleDelta(action.yaw,action.to)*smooth(t):action.yaw;
   }
-  return {duration,turns,pose};
+  return {duration,turns,milestones,pose};
 }
 
-export function transferTable(k,corner,{parent,size=3,top=1.175}={}){
+export function transferTable(k,corner,{parent,size=3,top=1.175,clearTime=2.1}={}){
   const {box,cyl,group,m}=k,g=group(corner.a.toArray(),parent);g.position.y=0;
   const half=size/2;
   for(const x of [-half+.18,half-.18])for(const z of [-half+.18,half-.18]){
@@ -48,7 +60,7 @@ export function transferTable(k,corner,{parent,size=3,top=1.175}={}){
   for(const x of [-.6,.6])box(.3,.14,.45,[x,.35,0],m.dark,g);
   box(.65,.3,.4,[half-.3,.45,half-.35],m.white,g,.035);
   return {update(elapsed,interval){
-    const phase=((elapsed-corner.start)%interval+interval)%interval,hold=corner.duration+.48;
+    const phase=((elapsed-corner.start)%interval+interval)%interval,hold=corner.duration+clearTime;
     let angle=corner.yaw;
     if(phase<corner.duration)angle+=angleDelta(corner.yaw,corner.to)*smooth(phase/corner.duration);
     else if(phase<hold)angle=corner.to;

@@ -47,12 +47,13 @@ export function buildLogistics(k,operators){
   const {train,trainCargo,railWheels}=buildRail(k,pallet);
 
   // Loading stock. Keep vehicle aisles and pedestrian walkways clear.
-  for(let x=5;x<29;x+=2.2)if(Math.abs(x-FORKLIFT_JOBS[2].source[0])>1.6)pallet(k.scene,[x,.6,-41.5],x%4>2?'bags':'panel');
-  for(let x=-21;x<-9;x+=2.5)pallet(k.scene,[x,0,-42.3]);
+  const loadingStock=[];
+  for(let x=5;x<29;x+=2.2)if(Math.abs(x-FORKLIFT_JOBS[2].source[0])>1.6)loadingStock.push(pallet(k.scene,[x,.8,-41],x%4>2?'bags':'panel'));
+  for(let x=-21;x<-9;x+=2.5)loadingStock.push(pallet(k.scene,[x,0,-42.3]));
   const stock=FORKLIFT_JOBS.map(({source})=>{
     box(1.8,.06,1.8,[source[0],.03,source[2]],m.concrete);
     const g=group(source,k.scene,true);g.rotation.y=Math.PI;
     return {g,panel:pallet(g,[0,0,0],'panel',true),bags:pallet(g,[0,0,0],'bags',true)};
   });
-  return {humans,traffic,vehicles,pallet,hauler,dispatchTruck,train,trainCargo,railWheels,truckFork,railForkA,railForkB,stock,loadTruckModels:truckBuilder.load};
+  return {humans,traffic,vehicles,pallet,hauler,dispatchTruck,train,trainCargo,railWheels,truckFork,railForkA,railForkB,stock,loadingStock,loadTruckModels:truckBuilder.load};
 }

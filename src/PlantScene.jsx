@@ -13,6 +13,7 @@ import {buildLandscape} from './industrial/landscape.js';
 import {buildMaterialFlow} from './industrial/materialFlow.js';
 import {createJourneyMotion} from './industrial/journeyMotion.js';
 import {PROCESS_LINES,STATION_VIEWS} from './industrial/processPlan.js';
+import {INTERIOR_VIEWS} from './industrial/interiorEquipment.js';
 import {batchWheels} from './industrial/wheelInstancing.js';
 import {JOURNEY_STEPS,JOURNEY_STAGE as S,journeyAt} from './journey.js';
 import {ZONES,STATUSES} from './data.js';
@@ -33,10 +34,10 @@ const PRESETS={
   truckDetail:{position:[56.4,4.2,-49.5],target:[63.4,2,-43]},
   trainDetail:{position:[-90,6.5,-67],target:[-75,2.9,-53]},
   raw:{position:quarryPoint(-251,108,182),target:quarryPoint(24,16,-21)},
-  rawyard:{position:[226,86,14],target:[130,1,-109]},
+  rawyard:{position:[130,86,14],target:[130,1,-109]},
   pond:{position:[-224,113,-52],target:[OLD_ENTRANCE.outerX,0,OLD_ENTRANCE.z]},
 };
-const EQUIPMENT_VIEWS=STATION_VIEWS;
+const EQUIPMENT_VIEWS={...STATION_VIEWS,...Object.fromEntries(INTERIOR_VIEWS.map(v=>[v.id,v]))};
 const SITE_VIEWS=[
   {name:'ÇIG MAL KÄNI · NUSGA',anchor:quarryPoint(3,9,4),position:quarryPoint(-28,30,49),target:quarryPoint(3,2,4)},
   {name:'DEMIR ÝOL',anchor:[20,4,-53],position:[-40,54,-133],target:[-20,2,-53]},
@@ -44,9 +45,9 @@ const SITE_VIEWS=[
   {name:'ÇIG MAL',anchor:[45,5,14],position:[98,48,64],target:[48,1.5,14]},
   {name:'BALYK HOWUZY',anchor:[POND.x,2,POND.z],position:[POND.x-47,65,POND.z+49],target:[POND.x,0,POND.z]},
 ];
-export default function PlantScene({machines,selected,onSelect,view='perspective',area='site',equipmentFocus='BS',cameraRequest=0,roof=true,night=false,paused=false,follow=false,speed=1,journeyRequest,onJourney,onManualCamera}){
+export default function PlantScene({machines,selected,onSelect,view='perspective',area='site',equipmentFocus='BS',cameraRequest=0,roof=true,night=false,paused=false,follow=false,speed=1,loopStep=null,journeyRequest,onJourney,onManualCamera}){
   const host=useRef(),labels=useRef(),api=useRef(),state=useRef();
-  const [failed,setFailed]=useState(false);state.current={machines,selected,paused,roof,night,area,follow,speed,journeyRequest,onJourney,onManualCamera};
+  const [failed,setFailed]=useState(false);state.current={machines,selected,paused,roof,night,area,follow,speed,loopStep,journeyRequest,onJourney,onManualCamera};
   // Only an explicit view selection restores a preset. Leaving the tour retains the user's camera.
   useEffect(()=>{api.current?.setCamera(area,view,equipmentFocus);},[area,view,equipmentFocus,cameraRequest]);
   useEffect(()=>{
@@ -113,7 +114,7 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
     api.current.setCamera(state.current.area,view,equipmentFocus);
     let frame,clock=0,ambientClock=0,lastRequest=-1,lastStep=-1,wasFollowing=false,lastNotify=0,lastInterior;
     let width=1,height=1,lastMachines,active=new Map();
-    const renderClock=createRenderClock(TABLET?60:Infinity),resolutionBudget=createResolutionBudget();
+    const renderClock=createRenderClock(60),resolutionBudget=createResolutionBudget();
     const resetClock=()=>{renderClock.reset();resolutionBudget.reset();dirty=true;};document.addEventListener('visibilitychange',resetClock);
     const meter=import.meta.env.DEV&&new URLSearchParams(location.search).has('perf')?document.createElement('output'):null;
     let measuredAt=performance.now(),renderedFrames=0,workMs=0,drawMs=0;
@@ -123,14 +124,30 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
     const tmp=new T.Vector3(),haulCameraOffset=new T.Vector3();
     function animate(now){frame=requestAnimationFrame(animate);if(document.hidden)return;const dt=renderClock.next(now);if(dt===null)return;const workStart=performance.now();const s=state.current,animateMotion=!s.paused&&!reduced.matches;
       if(s.machines!==lastMachines){dirty=true;lastMachines=s.machines;active=new Map(ZONES.map(z=>[z.id,s.machines.find(m=>m.id===`AKB-${z.id}-001`)]));}
-      const viewKey=`${s.area}:${s.roof}:${s.selected}:${s.paused}:${s.follow}:${s.night}`;if(viewKey!==previousView){dirty=true;previousView=viewKey;}
+      const viewKey=`${s.area}:${s.roof}:${s.selected}:${s.paused}:${s.follow}:${s.night}:${s.loopStep}`;if(viewKey!==previousView){dirty=true;previousView=viewKey;}
       if(lastNight!==s.night)setTimeOfDay(s.night);
       if(animateMotion)ambientClock+=dt*s.speed;
-      let changed=false;
+      let changed=false,loopRestarted=false;
       if(s.journeyRequest&&s.journeyRequest.nonce!==lastRequest){lastRequest=s.journeyRequest.nonce;clock=JOURNEY_STEPS[s.journeyRequest.index].start+JOURNEY_STEPS[s.journeyRequest.index].duration*(s.journeyRequest.progress||0);changed=true;manualCamera=false;}
       const before=journeyAt(clock),blocked=active.get(before.step.zone)?.status!=='running';
-      if(animateMotion&&!blocked)clock+=dt*s.speed;
+      if(animateMotion&&!blocked){
+        const repeat=Number.isInteger(s.loopStep)?JOURNEY_STEPS[s.loopStep]:null;
+        if(repeat){
+          const elapsed=Math.max(0,clock-repeat.start)+dt*s.speed;
+          loopRestarted=elapsed>=repeat.duration;
+          clock=repeat.start+elapsed%repeat.duration;
+          if(loopRestarted)changed=true;
+        }else clock+=dt*s.speed;
+      }
       const journey=journeyAt(clock),following=s.follow&&!manualCamera,showInterior=s.follow?(manualCamera?production.root.visible:journey.step.cutaway):!s.roof;
+      const equipmentPreview=showInterior&&!s.follow&&s.loopStep===null&&['process','lines'].includes(s.area);
+      // Update the vehicles before following them, including the first frame
+      // after a repeated step wraps back to its start.
+      if(journey.time!==lastSimulationTime||dirty||changed||(equipmentPreview&&animateMotion)){
+        lastSimulationTime=journey.time;
+        production.lamps.forEach(l=>{const c=STATUSES[active.get(l.zone)?.status||'offline'].color;l.mat.color.set(c);l.mat.emissive.set(c);});
+        moveLogistics(journey);materialFlow.update(journey,landscape,{showLines:s.area==='lines'&&showInterior,showInterior,active});
+      }
       if(following&&(journey.index!==lastStep||!wasFollowing||changed)){
         targetPosition.set(...journey.step.position);targetLook.set(...journey.step.target);transition=true;
         if(reduced.matches){camera.position.copy(targetPosition);controls.target.copy(targetLook);transition=false;}
@@ -139,7 +156,9 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
       if(following&&journey.index===1){
         targetLook.set(-1.8,1.4,0).applyQuaternion(logistics.hauler.g.quaternion).add(logistics.hauler.g.position);
         haulCameraOffset.set(13,7.5,11).applyQuaternion(logistics.hauler.g.quaternion);
-        targetPosition.copy(targetLook).add(haulCameraOffset);transition=true;
+        targetPosition.copy(targetLook).add(haulCameraOffset);
+        targetPosition.y=Math.max(targetPosition.y,landscape.vehicleSurface(targetPosition.x,targetPosition.z)+3);
+        transition=true;
       }
       if(following&&journey.step.id==='carry'&&!changed&&journey.index===lastStep){
         const loader=materialFlow.loader.g;
@@ -148,47 +167,39 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
         targetPosition.copy(targetLook).add(haulCameraOffset);transition=true;
       }
       wasFollowing=following;lastStep=journey.index;
+      if(loopRestarted&&following){camera.position.copy(targetPosition);controls.target.copy(targetLook);transition=false;}
       if(transition){
         const blend=reduced.matches?1:1-Math.exp(-dt*6);
         camera.position.lerp(targetPosition,blend);controls.target.lerp(targetLook,blend);
         if(camera.position.distanceTo(targetPosition)<.03&&controls.target.distanceTo(targetLook)<.03){camera.position.copy(targetPosition);controls.target.copy(targetLook);transition=false;}
       }
       controls.dampingFactor=1-Math.pow(.92,dt*60);const cameraMoved=controls.update();
+      // The follow camera can cut across the bank while smoothing a bend even
+      // when both endpoints are above ground. Keep its actual pose clear too.
+      if(following&&journey.index===1){
+        const floor=landscape.vehicleSurface(camera.position.x,camera.position.z)+2.5;
+        if(camera.position.y<floor){camera.position.y=floor;camera.lookAt(controls.target);}
+      }
       site.roofs.visible=!showInterior;site.structures.visible=!showInterior;production.root.visible=showInterior;
       if(TABLET&&lastInterior!==showInterior){renderer.shadowMap.needsUpdate=true;lastInterior=showInterior;}
       if(!animateMotion&&!transition&&!cameraMoved&&!dirty&&!changed){resolutionBudget.reset();return;}
       if(cameraMoved||dirty||changed)k.updateDetailVisibility(camera);
-      if(journey.time!==lastSimulationTime||dirty||changed){
-      lastSimulationTime=journey.time;
-      const stageFor={CR:[S.infeed,S.crush,S.calcine],TY:[S.crush,S.calcine,S.mix],BS:[S.calcine,S.mix],GR:[S.mix,S.form,S.pack],GK:[S.mix,S.form,S.pack],GP:[S.form,S.pack]};
-      production.rotors.forEach(r=>{if((!showInterior&&r.zone!=='CR')||(!stageFor[r.zone].includes(journey.index)&&s.area!=='lines')||active.get(r.zone)?.status!=='running')return;const t=clock*r.speed;
-        if(r.axis==='swing')r.object.rotation.y=r.base+Math.sin(t)*.8;else if(r.axis==='lift')r.object.position.y=r.base+Math.sin(t)*.4;else r.object.rotation[r.axis]=t;
-      });
-      const boardTime=s.area==='lines'?clock:Math.max(0,clock-JOURNEY_STEPS[S.form].start),bagTime=s.area==='lines'?clock:Math.max(0,clock-JOURNEY_STEPS[S.mix].start);
-      if(showInterior){production.updateTransfers(boardTime,bagTime);production.products.forEach(p=>{
-        const allowed=(s.area==='lines'||(p.kind==='bags'?[S.mix,S.form,S.pack]:[S.form,S.pack]).includes(journey.index))&&active.get(p.zone)?.status==='running';
-        const elapsed=p.kind==='bags'?bagTime:boardTime,age=elapsed-p.delay,phase=age>=0?age%p.period:-1;
-        p.object.visible=allowed&&phase>=0&&phase<=p.motion.duration+.4;
-        if(p.object.visible){p.object.rotation.y=p.motion.pose(Math.min(phase,p.motion.duration),p.object.position);p.object.scale.y=p.fillTime?Math.min(1,.2+.8*phase/p.fillTime):1;}
-      });}
-      if(showInterior)production.flows.forEach(f=>{const visible=(s.area==='lines'||f.stages.includes(journey.index))&&active.get(f.zone)?.status==='running';f.dots.forEach((p,i)=>{p.visible=visible;p.position.copy(f.path.getPointAt((clock*.07+i/8)%1));});});
-      production.lamps.forEach(l=>{const c=STATUSES[active.get(l.zone)?.status||'offline'].color;l.mat.color.set(c);l.mat.emissive.set(c);});
-      moveLogistics(journey);materialFlow.update(journey,landscape,{showLines:s.area==='lines'&&showInterior,active});
-      }
+      production.updateMotion(animateMotion?dt*s.speed:0,{preview:equipmentPreview,stage:journey.index,active,showInterior,showLines:s.area==='lines'&&showInterior});
       // Ambient life has its own continuous clock: seeking or wrapping the
       // production tour must not teleport pedestrians, fish or the service car.
       logistics.humans.forEach(h=>{if(h.walking||active.get(h.zone)?.status==='running')h.update(ambientClock);});
-      logistics.traffic.update(ambientClock);birds.update(ambientClock);site.update(ambientClock);services.update(ambientClock);
+      logistics.traffic.update(ambientClock);birds.update(ambientClock);site.update(ambientClock);
+      if(showInterior)services.update(ambientClock);
       lighting.update();
       if(now-lastNotify>180||changed){s.onJourney?.({index:journey.index,progress:journey.progress,blocked});lastNotify=now;}
       container.dataset.journeyStep=journey.step.id;container.dataset.truckLoads=journey.truckLoads;container.dataset.trainLoads=journey.trainLoads;
       if(cameraMoved||dirty||changed||now-lastLabelTime>100){lastLabelTime=now;camera.updateMatrixWorld();anchors.forEach(({label,point,zone,site:siteLabel,line:lineLabel})=>{tmp.copy(point).project(camera);label.style.transform=`translate(-50%,-100%) translate(${(tmp.x*.5+.5)*width}px,${(-tmp.y*.5+.5)*height}px)`;label.style.visibility=tmp.z>1||tmp.x< -1||tmp.x>1||tmp.y< -1||tmp.y>1||(siteLabel&&(['process','lines'].includes(s.area)||s.follow))||(lineLabel&&(s.area!=='lines'||!showInterior))||(!siteLabel&&!lineLabel&&(!showInterior||s.area==='lines'))?'hidden':'visible';if(zone){label.style.setProperty('--status',STATUSES[active.get(zone)?.status||'offline'].color);label.classList.toggle('is-selected',s.selected===`AKB-${zone}-001`);}});}
       updateWheels();const drawStart=performance.now();renderer.render(scene,camera);const drawEnd=performance.now();dirty=false;
-      if(TABLET&&animateMotion&&!transition){const scale=resolutionBudget.sample(dt);if(scale!==null){renderer.setPixelRatio(Math.min(devicePixelRatio,scale));dirty=true;}}
+      if(TABLET&&(animateMotion||transition||cameraMoved)){const scale=resolutionBudget.sample(dt);if(scale!==null){renderer.setPixelRatio(Math.min(devicePixelRatio,scale));dirty=true;}}
       if(meter){workMs+=drawStart-workStart;drawMs+=drawEnd-drawStart;renderedFrames++;if(now-measuredAt>=1000){meter.textContent=`${TABLET?'TABLET':'DESKTOP'} · ${Math.round(renderedFrames*1000/(now-measuredAt))} FPS · ${(renderer.info.render.triangles/1e6).toFixed(2)}M triangles · ${renderer.info.render.calls} draws · CPU ${(workMs/renderedFrames).toFixed(1)}+${(drawMs/renderedFrames).toFixed(1)} ms · ${renderer.getPixelRatio().toFixed(2)}×`;renderedFrames=0;workMs=0;drawMs=0;measuredAt=now;}}
     }
     frame=requestAnimationFrame(animate);
-    return()=>{stopTruckLoad();cancelAnimationFrame(frame);document.removeEventListener('visibilitychange',resetClock);meter?.remove();observer.disconnect();controls.removeEventListener('start',stopTransition);controls.dispose();k.dispose();environment.dispose();sun.shadow.dispose();renderer.dispose();renderer.domElement.remove();anchors.forEach(a=>a.label.remove());api.current=null;};
+    return()=>{stopTruckLoad();cancelAnimationFrame(frame);document.removeEventListener('visibilitychange',resetClock);meter?.remove();observer.disconnect();controls.removeEventListener('start',stopTransition);controls.dispose();k.dispose();environment.dispose();sun.shadow.dispose();renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();anchors.forEach(a=>a.label.remove());api.current=null;};
   },[]);
   return <div className="plant-scene" ref={host}><div className="scene-labels" ref={labels}/>{failed&&<div className="scene-fallback"><span>3D görnüş bu brauzerde elýeterli däl.</span><div>{ZONES.map(z=><button key={z.id} onClick={()=>onSelect(`AKB-${z.id}-001`)}>{z.name}<strong>120 enjam</strong></button>)}</div></div>}</div>;
 }

@@ -59,6 +59,8 @@ export const OLD_PAVILION={
   wallZ:-60,wallWest:-37,wallEast:43.5,
   serviceX:36
 };
+// Vehicle link beside the pavilion, across the railway and both boundary walls.
+export const RAIL_ACCESS_CROSSING={x:91,width:8,northFenceZ:-50,southWallZ:-60};
 export function pondAccessClearance(x,z){
   const road=POND_APPROACH,park=VISITOR_PARK;
   const distance=(west,east,north,south)=>Math.hypot(Math.max(west-x,x-east,0),Math.max(north-z,z-south,0));
@@ -74,9 +76,9 @@ export const OLD_REAR_BOUNDARY={
   height:2.2,gateZ:-108,gateWidth:12,
   building:{x:91.5,z:-146,width:8,depth:6,height:3.25}
 };
-// Both old-plant silos belong outside the partition, in the raw-material yard.
-// The northern service pad leaves the gate and the storage stacks clear.
-export const OLD_RAW_SILOS={x:RAW_YARD.west+11,z:-147,width:16,depth:26};
+// The paired receiving silos stand west of the transfer conveyor, near the
+// railway-side edge of the raw-material yard.
+export const OLD_RAW_SILOS={x:RAW_YARD.west+15.5,z:-73,width:18,depth:10};
 export const RAW_STOCK=[RAW_YARD_APRON.east-8,0,RAW_YARD_CONVEYOR.z+4];
 export const RAW_STOP=[RAW_STOCK[0]-5.5,0,RAW_STOCK[2]];
 // Tall white auxiliary tower directly beside the exposed corner silo.

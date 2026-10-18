@@ -5,7 +5,7 @@ import {NEW_FACTORY_ENTRANCE as ENTRANCE} from './siteLayout.js';
 // Opposing diagonal rows leave the office-side passenger bays and their aisle clear.
 export const PARKED_TRUCKS=[
   ...[-35.5,-29,-22.5,-16].map(z=>({position:[-126.1,0,z],angle:-.6,scale:.68})),
-  ...[-41.2,-34.7,-28.2,-21.7].map(z=>({position:[-108.5,0,z],angle:Math.PI-.6,scale:.68}))
+  ...[-41.2,-34.7,-28.2,-21.7].map(z=>({position:[-113.5,0,z],angle:Math.PI-.6,scale:.68}))
 ];
 export const MAIN_ROAD_X=-143;
 export const MAIN_ROAD_WIDTH=7.2;

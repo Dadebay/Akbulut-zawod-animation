@@ -59,6 +59,13 @@ export function buildMaterialFlow(k,logistics){
     for(let i=1;i<points.length;i++){
       const a=new T.Vector3(...points[i-1]),b=new T.Vector3(...points[i]),direction=b.clone().sub(a).normalize();
       rod(a.toArray(),b.toArray(),.28,m.white);
+      if(b.y>a.y+.5&&Math.hypot(b.x-a.x,b.z-a.z)<.1){
+        box(.8,b.y-a.y,.8,[(a.x+b.x)/2,(a.y+b.y)/2,(a.z+b.z)/2],m.white);
+        k.motor([b.x+.55,b.y-.4,b.z],k.scene,.55);
+      }else if(a.distanceTo(b)>2){
+        const drive=group(a.clone().lerp(b,.85).toArray());drive.rotation.y=-Math.atan2(b.z-a.z,b.x-a.x);
+        k.motor([0,-.15,.5],drive,.45);
+      }
       for(const point of [a,b]){const flange=cyl(.36,.09,point.toArray(),m.blue);flange.quaternion.setFromUnitVectors(up,direction);}
       if(i<points.length-1)k.sphere(.285,b.toArray(),m.white);
       if(Math.abs(a.y-b.y)<.1&&a.distanceTo(b)>3){const p=a.clone().lerp(b,.5);rod([p.x,0,p.z],[p.x,p.y-.25,p.z],.07,m.steel);}
@@ -74,7 +81,7 @@ export function buildMaterialFlow(k,logistics){
     const coarse=line.id==='gypsum'&&points===line.points;
     if(coarse){belt(points.slice(1,3),1.35);belt(points.slice(3,6),1.35);belt(points.slice(5,7),1.35,false);duct(points.slice(6));}
     else if(line.id==='gypsum')duct(points);
-    else belt(points,1.35);
+    else {belt(points.slice(0,4),1.35);duct(points.slice(3));}
     const path=makeCurve(points),length=path.getLength(),objects=[];
     const coarseUntil=coarse?path.curves[0].getLength()+path.curves[1].getLength():0;
     for(let i=0;i<18;i++){
@@ -85,7 +92,13 @@ export function buildMaterialFlow(k,logistics){
       }
       objects.push(g);
     }
-    return {line,path,length,objects,coarseUntil};
+    const exposed=[];let offset=0;
+    path.curves.forEach((segment,index)=>{
+      const end=offset+segment.getLength();
+      if(coarse?[0,1,3,4,5].includes(index):line.id==='calcite'&&index<3)exposed.push([offset,end]);
+      offset=end;
+    });
+    return {line,path,length,objects,coarseUntil,exposed};
   }));
   // The calcite belt terminates inside an enclosed receiving/elevator unit.
   // Its hopper, lift and buffer silo give the material a visible destination.
@@ -101,16 +114,60 @@ export function buildMaterialFlow(k,logistics){
   k.textPlate('KALSIT',1.6,.35,[1.25,4.2,4.26],receiver);
   const boardDelivery=[BOARD_PALLET_OUT,[BOARD_PALLET_OUT[0],.8,-36],[25,.8,-36],[25,.8,-41]];
   const bagDelivery=[BAG_PALLET_OUT,[-26,.8,-36],[10,.8,-36],[10,.8,-41]];
-  belt(boardDelivery,1.7);belt(bagDelivery,1.4);belt([[51,.8,-41],[-8,.8,-41]],1.7);
-  const goods=[51,-8,25].map((x,i)=>{
-    const bags=i===1,delivery=bags?bagDelivery:boardDelivery,lastZ=x===51?-45:-43;
-    belt([[x,.8,-41],[x,.27,lastZ]],1.7);
-    return {path:makeCurve([...delivery,[x,.8,-41],[x,.27,lastZ]]),objects:Array.from({length:3},()=>logistics.pallet(k.scene,[0,0,0],bags?'bags':'panel',true))};
+  // The pallet feeds share two straight runs. Trim each belt at a junction
+  // plate so its blue guide rails cannot cross the neighbouring carrying face.
+  const deckHalf=1.1,deckOverlap=.08,feedZ=-36,transferZ=-41,boardX=BOARD_PALLET_OUT[0];
+  function transferDeck(x,z,open){
+    const g=group([x,0,z]);
+    box(2*deckHalf+.04,.055,2*deckHalf+.04,[0,.752,0],m.steel,g);
+    box(2*deckHalf,.06,2*deckHalf,[0,.79,0],m.rubber,g);
+    for(const [side,px,pz,w,d] of [
+      ['west',-deckHalf,0,.09,2*deckHalf],['east',deckHalf,0,.09,2*deckHalf],
+      ['north',0,deckHalf,2*deckHalf,.09],['south',0,-deckHalf,2*deckHalf,.09]
+    ])if(!open.includes(side))box(w,.16,d,[px,.88,pz],m.blue,g);
+    for(const sx of [-.87,.87])for(const sz of [-.87,.87])box(.10,.67,.10,[sx,.39,sz],m.steel,g);
+  }
+  const upperJunctions=[
+    [boardX,feedZ,['west','east','north']],
+    [10,feedZ,['west','east','south']],
+    [25,feedZ,['west','south']]
+  ];
+  const lowerJunctions=[
+    [-8,transferZ,['east','south']],
+    [10,transferZ,['west','east','north']],
+    [25,transferZ,['west','east','north','south']],
+    [51,transferZ,['west','south']]
+  ];
+  for(const [x,z,open] of [...upperJunctions,...lowerJunctions])transferDeck(x,z,open);
+  const edge=deckHalf-deckOverlap;
+  belt([BAG_PALLET_OUT,[-26,.8,feedZ],[boardX-edge,.8,feedZ]],1.4);
+  belt([BOARD_PALLET_OUT,[boardX,.8,feedZ+edge]],1.7);
+  for(const [from,to] of [[boardX,10],[10,25]])
+    belt([[from+edge,.8,feedZ],[to-edge,.8,feedZ]],1.7);
+  for(const [x,width] of [[10,1.4],[25,1.7]])
+    belt([[x,.8,feedZ-edge],[x,.8,transferZ+edge]],width);
+  for(const [from,to] of [[-8,10],[10,25],[25,51]])
+    belt([[from+edge,.8,transferZ],[to-edge,.8,transferZ]],1.7);
+  for(const x of [51,-8,25]){
+    const lastZ=x===51?-45:-43;
+    belt([[x,.8,transferZ-edge],[x,.27,lastZ]],1.7);
+  }
+  // Pallets use the level transfer decks. The sloped exit belts are kept for
+  // the loading area, but a moving pallet must not overrun their open ends.
+  // One board stream continues east; a later board takes the central branch.
+  const palletTravelPerStep=90;
+  const goods=[
+    {bags:false,points:[...boardDelivery,[51,.8,transferZ]],starts:[0,.14]},
+    {bags:true,points:[...bagDelivery,[-8,.8,transferZ]],starts:[0,.14,.28]},
+    {bags:false,points:boardDelivery,starts:[.5]},
+  ].map(({bags,points,starts})=>{
+    const path=makeCurve(points);
+    return {bags,path,length:path.getLength(),starts,objects:starts.map(()=>logistics.pallet(k.scene,[0,0,0],bags?'bags':'panel',true))};
   });
   // A dedicated plan view carries the image's four colours; equipment stays
   // white and blue. Instanced arrows show direction without extra UI text.
   const traces=group([0,0,0],k.scene,true),arrowGeo=new T.ConeGeometry(.23,.8,6),arrowPose=new T.Object3D(),up=new T.Vector3(0,1,0);
-  const traceLines=PROCESS_LINES.flatMap(line=>[line.points,...(line.branches||[])].map(points=>{
+  const traceLines=PROCESS_LINES.slice(0,2).flatMap(line=>[line.points,...(line.branches||[])].map(points=>{
     const path=makeCurve(points.map(([x,y,z])=>[x,y+.65,z])),mat=k.material(line.color,.1,.5,{emissive:line.color,emissiveIntensity:.3,depthTest:false,depthWrite:false});
     const trace=mesh(new T.TubeGeometry(path,Math.max(36,Math.ceil(path.getLength())),.085,5,false),mat,[0,0,0],traces);trace.castShadow=false;trace.renderOrder=30;
     const arrows=k.instances(arrowGeo,mat,14,traces);arrows.castShadow=false;arrows.renderOrder=31;
@@ -118,28 +175,36 @@ export function buildMaterialFlow(k,logistics){
   }));
   const falling=[];for(let i=0;i<26;i++){const rock=group([0,0,0],k.scene,true),chunk=mesh(rubble.geometries[i%4],rubble.material,[0,0,0],rock);chunk.scale.setScalar(.24+(i%3)*.045);falling.push(rock);}
   const drop=new T.Vector3(),loadSurface=new T.Vector3();
-  return {loader:infeed.loader,update(j,landscape,{showLines=false,active}={}){
+  return {loader:infeed.loader,update(j,landscape,{showLines=false,showInterior=false,active}={}){
     const isRunning=zone=>!active||active.get(zone)?.status==='running';
     traces.visible=showLines;
     traceLines.forEach(({line,path,arrows})=>{arrows.visible=isRunning(line.zone);if(!showLines)return;for(let i=0;i<arrows.count;i++){const t=(j.time*.035+i/arrows.count)%1;arrowPose.position.copy(path.getPointAt(t));arrowPose.quaternion.setFromUnitVectors(up,path.getTangentAt(t).normalize());arrowPose.updateMatrix();arrows.setMatrixAt(i,arrowPose.matrix);}arrows.instanceMatrix.needsUpdate=true;});
-    rawLines.forEach(({line,path,length,objects,coarseUntil})=>objects.forEach((o,i)=>{
-      o.visible=isRunning(line.zone)&&(line.stages.includes(j.index)||showLines);
+    rawLines.forEach(({line,path,length,objects,coarseUntil,exposed})=>objects.forEach((o,i)=>{
+      const t=(j.time*(line.id==='gypsum'?.7:.45)/length+i/objects.length)%1,distance=t*length;
+      o.visible=isRunning(line.zone)&&(line.stages.includes(j.index)||showLines)&&exposed.some(([a,b])=>distance>=a&&distance<=b);
       if(o.visible){
-        const t=(j.time*.04+i/objects.length)%1,d=path.getTangentAt(t);o.position.copy(path.getPointAt(t));o.rotation.y=-Math.atan2(d.z,d.x);
+        const d=path.getTangentAt(t);o.position.copy(path.getPointAt(t));o.rotation.y=-Math.atan2(d.z,d.x);
         o.scale.setScalar(t*length<coarseUntil?1:.43);
         if(line.id==='calcite')o.position.y-=clamp01(1-(1-t)*length/.8)*.6;
       }
     }));
     infeed.update(j,{showLines});
-    goods.forEach(({path,objects})=>objects.forEach((o,i)=>{const t=(j.progress-i*.12)/.76;o.visible=j.index===S.pack&&t>=0&&t<=1;if(o.visible){o.position.copy(path.getPointAt(clamp01(t)));const d=path.getTangentAt(clamp01(t));o.rotation.y=-Math.atan2(d.z,d.x);}}));
+    // The interior cell owns its real board stack. Journey illustrations must
+    // not spawn a second loaded pallet through the robot's receiving area.
+    goods.forEach(({bags,path,length,starts,objects})=>objects.forEach((o,i)=>{
+      const distance=(j.progress-starts[i])*palletTravelPerStep,t=distance/length;
+      o.visible=(bags||!showInterior)&&j.index===S.pack&&t>=0&&t<=1;
+      if(o.visible){o.position.copy(path.getPointAt(t));const d=path.getTangentAt(t);o.rotation.y=-Math.atan2(d.z,d.x);}
+    }));
     const quarryPose=landscape.update(j);
     if(j.index===2)logistics.hauler.dischargePoint.getWorldPosition(drop);else landscape.bucketTip.getWorldPosition(drop);
     logistics.hauler.bed.updateWorldMatrix(true,false);loadSurface.set(2.5,.3+j.rawLoad*.65,0).applyMatrix4(logistics.hauler.bed.matrixWorld);
     falling.forEach((o,i)=>{
       const quarry=j.index===0&&quarryPose.pouring,tip=j.index===2&&j.progress>.2&&j.progress<.7;o.visible=quarry||tip;if(!o.visible)return;
-      const t=(j.elapsed*1.8+i/26)%1,spread=(i%5-2)*.17;
-      if(quarry)o.position.set(drop.x+spread,drop.y-t*Math.max(.25,drop.y-loadSurface.y),drop.z+Math.sin(i)*.3);
-      else o.position.set(drop.x+spread,drop.y-t*.8,drop.z+Math.sin(i)*.5);
+      const height=quarry?Math.max(.05,drop.y-loadSurface.y):Math.min(.8,Math.max(.05,drop.y-.2));
+      const flight=Math.sqrt(2*height/9.81),t=(j.elapsed+i/26*flight)%flight,spread=(i%5-2)*.17;
+      const y=drop.y-.5*9.81*t*t;
+      o.position.set(drop.x+spread+t*(i%3-1)*.12,y,drop.z+Math.sin(i)*(quarry?.3:.5));
       o.rotation.set(j.elapsed+i,i*.3,j.elapsed*.8);
     });
   }};

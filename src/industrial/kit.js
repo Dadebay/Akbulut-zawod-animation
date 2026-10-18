@@ -124,6 +124,12 @@ export function createKit(scene,{tablet=false}={}) {
     geoCache.clear();
   }
   function updateDetailVisibility(camera){for(const {chunk,sphere,distance} of detailChunks)chunk.visible=camera.position.distanceTo(sphere.center)<distance+sphere.radius;}
-  function dispose(){geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());}
+  function dispose(){
+    // Instance transforms/colors own GPU buffers separately from geometry.
+    scene.traverse(o=>{if(o.isInstancedMesh)o.dispose();});
+    geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());
+    geometries.clear();materials.clear();textures.clear();geoCache.clear();
+    detailChunks.length=0;materialEffects.clear();vehicleLights.length=0;
+  }
   return {m,scene,tablet,vehicleLights,addMaterialEffect,mesh,instances,trackTexture,trackObject,box,cyl,sphere,ring,rod,pipe,group,beam,frame,railing,platform,ladder,bolts,motor,cabinet,textPlate,material,optimize,updateDetailVisibility,dispose};
 }

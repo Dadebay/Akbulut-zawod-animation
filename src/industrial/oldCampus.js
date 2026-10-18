@@ -5,7 +5,7 @@ import {buildOldWarehouseCourt} from './oldWarehouseCourt.js';
 import {buildOldFrontCourt} from './oldFrontCourt.js';
 import {buildOldSideLoading} from './oldSideLoading.js';
 import {buildOldRearBoundary} from './oldRearBoundary.js';
-import {OLD_LEFT_CAMPUS as LEFT,OLD_SIDE_LOADING as LOADING,OLD_PAVILION,OLD_REAR_BOUNDARY} from './siteLayout.js';
+import {OLD_LEFT_CAMPUS as LEFT,OLD_SIDE_LOADING as LOADING,OLD_PAVILION,OLD_REAR_BOUNDARY,RAIL_ACCESS_CROSSING} from './siteLayout.js';
 
 // Proportions and facade details follow the user's close aerial photograph.
 // These are visual estimates; the site has not been surveyed.
@@ -205,11 +205,14 @@ export function buildOldCampus(k,plants){
     const paleEast=OLD_REAR_BOUNDARY.x;
     const pale=k.box(paleEast-69,.01,-77.5+88.2,
       [(paleEast+69)/2,.13,(-77.5-88.2)/2],palePaving);pale.castShadow=false;
-    for(let i=0;i<pts.length-1;i++){
-      const [ax,az]=pts[i],[bx,bz]=pts[i+1],len=Math.hypot(bx-ax,bz-az),g=group([(ax+bx)/2,0,(az+bz)/2]);
-      g.rotation.y=-Math.atan2(bz-az,bx-ax);
-      box(len+.05,1.15,.24,[0,.575,0],whiteWall,g);box(len+.1,.12,.36,[0,1.21,0],whiteWall,g);
-      box(.42,1.35,.42,[-len/2,.675,0],whiteWall,g);
+    const crossingWest=RAIL_ACCESS_CROSSING.x-RAIL_ACCESS_CROSSING.width/2;
+    const crossingEast=RAIL_ACCESS_CROSSING.x+RAIL_ACCESS_CROSSING.width/2;
+    for(const [start,end] of [[x0,crossingWest],[crossingEast,x1]]){
+      const len=end-start,cx=(start+end)/2;
+      box(len,1.15,.24,[cx,.575,OLD_PAVILION.wallZ],whiteWall);
+      box(len+.1,.12,.36,[cx,1.21,OLD_PAVILION.wallZ],whiteWall);
+      for(let x=start;x<end-.01;x+=step)box(.42,1.35,.42,[x,.675,OLD_PAVILION.wallZ],whiteWall);
+      box(.42,1.35,.42,[end,.675,OLD_PAVILION.wallZ],whiteWall);
     }
   }
   // Dense conifer planting around the hall and its solar annex.

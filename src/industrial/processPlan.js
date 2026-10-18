@@ -19,13 +19,14 @@ export const DRYMIX_END=planPoint(365,271,3.8);
 export const BOARD_ROUTE=points([[376,346],[1004,346],[1004,327],[528,327],[528,246],[607,246]],1.18);
 export const BAG_ROUTE=[[-44.3,1.19,-32.5],[-37.5,1.19,-32.5],[-37.5,1.19,-36],[-32,1.19,-36]];
 export const BOARD_PALLET_OUT=[BOARD_END[0],.27,-33.2];
+export const PALLET_ROBOT_BASE=[-.4,0,-31.1];
 export const BAG_PALLET_OUT=[-29.4,.27,-36];
 export const PROCESS_LINES=[
   {id:'gypsum',zone:'CR',name:'Gips daşyny döwüji enjamlar toplumy',short:'Gips daşy',color:'#3158f5',stages:[S.infeed,S.crush,S.calcine],step:S.crush,
     points:[GYPSUM_INTAKE,[GYPSUM_INTAKE[0]-4.9,.85,GYPSUM_INTAKE[2]],[GYPSUM_CRUSHER[0],4.15,GYPSUM_CRUSHER[2]],[GYPSUM_CRUSHER[0],1.3,GYPSUM_CRUSHER[2]],[GYPSUM_CRUSHER[0]-3,1.3,GYPSUM_CRUSHER[2]],...GYPSUM_LIFT,[-10,10.9,31]],
     branches:[
-      [[-10,1.3,31],[-14,1.3,31],[-14,1.3,27.5],[-29.6,1.3,27.5],[-29.6,9.8,27.5],[-27.6,9.8,30.2],[-27.6,8.2,30.2]],
-      [[-29.6,9.8,27.5],[-23.6,9.8,27.5],[-23.6,9.8,30.2],[-23.6,8.2,30.2]],
+      [[-10,1.3,31],[-14,1.3,31],[-14,1.3,27.5],[-29.6,1.3,27.5],[-29.6,11.5,27.5],[-27.15,11.5,30.2],[-27.15,10.13,30.2]],
+      [[-29.6,11.5,27.5],[-23.15,11.5,27.5],[-23.15,11.5,30.2],[-23.15,10.13,30.2]],
     ],
     label:[44,9,32],position:[79,37,82],target:[35,3,34]},
   {id:'calcite',zone:'TY',name:'Kalsit önümçilik liniýasy',short:'Kalsit',color:'#e8c532',stages:[S.crush,S.calcine,S.mix],step:S.crush,
@@ -49,5 +50,6 @@ export const PROCESS_STATIONS=[
 export const localPoint=p=>[p[0]-8,p[1],p[2]+25];
 export function routeCurve(points){const curve=new T.CurvePath();for(let i=1;i<points.length;i++)if(points[i].some((value,axis)=>value!==points[i-1][axis]))curve.add(new T.LineCurve3(new T.Vector3(...points[i-1]),new T.Vector3(...points[i])));return curve;}
 export const STATION_VIEWS=Object.fromEntries(PROCESS_STATIONS.map(s=>[s.id,{position:[s.world[0]-14,12,s.world[2]+17],target:[s.world[0],3,s.world[2]]}]));
+STATION_VIEWS.BS={position:[-61,31,46],target:[-29,12,5]};
 STATION_VIEWS.GK={position:[43,15,2],target:[28,3,-12.33]};
-STATION_VIEWS.robot={position:[13,10,-20],target:[1.5,2,-29]};
+STATION_VIEWS.robot={position:[10,9,-39],target:[-3,1.7,-31]};
