@@ -27,6 +27,26 @@ export function buildNewFrontCourt(k,plants){
     const geo=new T.ExtrudeGeometry(outline(w,d,r),{depth:height,bevelEnabled:false,curveSegments:7});geo.rotateX(-Math.PI/2);
     return mesh(geo,mat,[x,bottom,z]);
   }
+  function hatchedApron(points){
+    const angle=Math.PI/4,dx=Math.cos(angle),dz=Math.sin(angle),nx=-dz,nz=dx;
+    const offsets=points.map(([x,z])=>x*nx+z*nz);
+    for(let offset=Math.min(...offsets)+.25;offset<Math.max(...offsets)-.15;offset+=.36){
+      const hits=[];
+      for(let i=0;i<points.length;i++){
+        const a=points[i],b=points[(i+1)%points.length];
+        const start=a[0]*nx+a[1]*nz-offset,end=b[0]*nx+b[1]*nz-offset;
+        if(start*end>0||Math.abs(start-end)<1e-8)continue;
+        const t=start/(start-end),hit=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
+        if(!hits.some(p=>Math.hypot(p[0]-hit[0],p[1]-hit[1])<.04))hits.push(hit);
+      }
+      if(hits.length<2)continue;
+      hits.sort((a,b)=>(a[0]-b[0])*dx+(a[1]-b[1])*dz);
+      const a=hits[0],b=hits[hits.length-1],length=Math.hypot(b[0]-a[0],b[1]-a[1])-.24;
+      if(length<.2)continue;
+      const stripe=flatBox(length,.075,(a[0]+b[0])/2,(a[1]+b[1])/2,paint,.080);
+      stripe.rotation.y=-angle;
+    }
+  }
   function bed(west,east,north,south,r=.75){
     const w=east-west,d=south-north,x=(west+east)/2,z=(north+south)/2;
     const edge=outline(w,d,Math.min(r,w/2,d/2));
@@ -82,33 +102,46 @@ export function buildNewFrontCourt(k,plants){
   // Cover the whole parking apron, including the former bare rectangular gap
   // beside the planted strips. Keep one surface at a consistent height.
   const paving=new T.Shape();
-  [[ENTRANCE.southFenceX,-44.5],[-81.8,-44.5],[-81.8,-12.5],[ENTRANCE.southFenceX,-12.5]].forEach(([x,z],i)=>i?paving.lineTo(x,-z):paving.moveTo(x,-z));
+  [[ENTRANCE.southFenceX,-44.5],[-73.5,-44.5],[-73.5,3.5],[ENTRANCE.southFenceX,3.5]].forEach(([x,z],i)=>i?paving.lineTo(x,-z):paving.moveTo(x,-z));
   paving.closePath();const pavingGeo=new T.ShapeGeometry(paving);pavingGeo.rotateX(-Math.PI/2);
   mesh(pavingGeo,asphalt,[0,groundY,0]).castShadow=false;
+  // One continuous finish joins the court and its junction road; restore the
+  // edge and centre markings above that shared surface.
+  flatBox(54,.10,-109.5,-7.2,paint,.063);
+  for(let x=-134;x<-82;x+=6.5)flatBox(2.5,.10,x,-2,paint,.063);
 
-  // Two planted strips frame a 5.6 m bay depth and a separate 5.4 m parking aisle.
+  // Planted strips frame two facing passenger rows and their central drive aisle.
   // Their centre break lines up with the main office entrance at z = -25.
-  const strips=[[-85.8,-82.2],[-99.1,-97.0]];
-  for(const [west,east] of strips)for(const [north,south] of [[-43.2,-27.15],[-22.85,-17.0]]){
+  const strips=[[-85.8,-82.2],[-102.5,-100.5]];
+  for(const [west,east] of strips)for(const [north,south] of [[-43.2,-27.15],[-22.85,-12.8]]){
     bed(west,east,north,south,Math.min(.9,(east-west)/2));
     let index=0;
-    for(let z=north+1.5;z<south-1;z+=2.7){
-      plants.plant((west+east)/2,z,.24+(index%3)*.025);
-      shrub(east-.55,z+.6,.29,index++);
+    for(let z=north+1.35;z<south-1;z+=2.35){
+      plants.plant((west+east)/2,z,.34+(index%3)*.025);
+      shrub(east-.55,z+.6,.30,index++);
+    }
+    for(let z=north+.5,i=0;z<south-.4;z+=.56,i++)
+      shrub((west+east)/2+(i%2)*.16,z,.25,i);
+  }
+  // Two rows of passenger bays face a clear 5.7 m aisle, as in the plan.
+  const passengerRows=[
+    {west:-100.5,east:-96.0,stop:-100.0},
+    {west:-90.3,east:-85.8,stop:-86.3},
+  ];
+  for(const [start,count] of [[-42.4,6],[-22.15,4]]){
+    const pitch=2.25;
+    for(const {west,east,stop} of passengerRows){
+      for(let i=0;i<=count;i++)flatBox(east-west,.085,(west+east)/2,start+i*pitch);
+      flatBox(.085,count*pitch,stop< -95?east:west,start+count*pitch/2);
+      for(let i=0;i<count;i++)box(.16,.10,1.55,[stop,.10,start+(i+.5)*pitch],curb);
     }
   }
-  // Passenger bays stay empty as in the reference; white lines show their full depth.
-  for(const [start,count] of [[-42.5,5],[-22.6,2]]){
-    for(let i=0;i<=count;i++)flatBox(5.6,.085,-88.7,start+i*2.75);
-    flatBox(.085,count*2.75,-85.9,start+count*2.75/2);
-    for(let i=0;i<count;i++)box(.16,.10,1.55,[-86.35,.10,start+(i+.5)*2.75],curb);
-  }
   // A flush pedestrian spine connects both landscaped strips to the office doors.
-  flatBox(17.4,3.6,-90.4,-25,pavers,.074);
-  flatBox(8.85,3.6,-69.075,-25,pavers,.065);
-  for(let x=-98.8;x<-82;x+=.75)flatBox(.025,3.6,x,-25,curb,.084);
-  for(let x=-73.2;x<-64.7;x+=.75)flatBox(.025,3.6,x,-25,curb,.075);
-  for(let x=-81.1;x<-73.6;x+=.68)flatBox(.36,3.1,x,-25,paint,-.035);
+  flatBox(20.4,3.6,-92.3,-25,pavers,.074);
+  flatBox(11.55,3.6,-70.425,-25,pavers,.065);
+  for(let x=-102.3;x<-82.2;x+=.75)flatBox(.025,3.6,x,-25,curb,.084);
+  for(let x=-76.1;x<-64.7;x+=.75)flatBox(.025,3.6,x,-25,curb,.075);
+  for(let x=-81.5;x<-76.5;x+=.68)flatBox(.36,3.1,x,-25,paint,.080);
 
   // Truck bays face a clear central manoeuvring lane, away from the passenger aisle.
   for(const {position,angle,scale} of PARKED_TRUCKS){
@@ -120,12 +153,15 @@ export function buildNewFrontCourt(k,plants){
   roundedSurface(2.1,26,1.05,-118.6,-28,.05,.012,paint).castShadow=false;
   roundedSurface(1.85,25.75,.92,-118.6,-28,.069,.008,asphalt).castShadow=false;
   for(let z=-39.3;z<-16.5;z+=.48){const stripe=flatBox(1.82,.065,-118.6,z,paint,.092);stripe.rotation.y=-.48;}
+  // Triangular exclusion zones finish the two ends of the angled truck rows.
+  hatchedApron([[-135.8,-43.6],[-123.2,-43.6],[-135.8,-40.0]]);
+  hatchedApron([[-111.2,-12.9],[-102.7,-12.9],[-102.7,-16.7]]);
 
   // Planting beds frame both office entrances without covering their doors.
   for(const [north,south] of [[-36.9,-27.3],[-22.7,-11.1],[3.7,10.1],[15.5,21.9]]){
     const diningGarden=north>0;
     if(diningGarden)raisedBed(-78,-66.1,north,south);
-    else bed(-78.4,-66.1,north,south,1.2);
+    else bed(-76.2,-66.1,north,south,1.2);
     let index=0;
     for(let z=north+1.2;z<south-1;z+=2.15){
       for(const [x,size] of (north<0?[[-74.5,.48],[-70.9,.38]]:[[-70.9,.34],[-68.1,.27]]))
@@ -133,9 +169,9 @@ export function buildNewFrontCourt(k,plants){
       const base=diningGarden?.42:0;
       shrub(-69.5,z+.6,.62,index,base);shrub(-72.15,z,.36,index+1,base);shrub(-66.8,z,.40,index+2,base);index++;
       if(!diningGarden){
-        shrub(-76.6,z+.55,.45,index);shrub(-77.5,z,.32,index+1);
+        shrub(-74.4,z+.55,.45,index);shrub(-75.3,z,.32,index+1);
         for(const dx of [-.28,0,.28])
-          mesh(blossomGeometry,officeFlowers,[-75.6+dx,.55,z+.25+dx]);
+          mesh(blossomGeometry,officeFlowers,[-73.4+dx,.55,z+.25+dx]);
       }
       if(north<0&&index%2===0)for(const x of [-71.9,-67.1])
         for(const dx of [-.2,.2])mesh(blossomGeometry,blossom,[x+dx,.56,z+.3+dx]);
@@ -153,9 +189,9 @@ export function buildNewFrontCourt(k,plants){
         mesh(blossomGeometry,blossom,[x,.76,z+.13]);
     }
     if(!diningGarden)for(let z=north+.45,i=0;z<south-.3;z+=.48,i++){
-      shrub(-77.95,z,.28,i);
+      shrub(-75.75,z,.28,i);
       shrub(-73.1+(i%2)*.2,z,.32,i+1);
-      if(i%3===0)for(const x of [-77.1,-71.8,-68.2])
+      if(i%3===0)for(const x of [-74.9,-71.8,-68.2])
         mesh(blossomGeometry,i%2?officeFlowers:blossom,[x,.58,z+.15]);
     }
     if(diningGarden){
@@ -165,7 +201,7 @@ export function buildNewFrontCourt(k,plants){
     }
   }
   // The office palms mark the outer corners and leave its tall windows visible.
-  for(const [x,z,h,s] of [[-77.3,-38.1,4.1,1.7],[-77.3,-10.7,4.0,1.7]])
+  for(const [x,z,h,s] of [[-75.1,-38.1,4.1,1.7],[-75.1,-10.7,4.0,1.7]])
     palm(x,z,h,s);
   for(const [x,z,h,s] of [[-74,4.3,3.6,1.35],[-73.6,21.3,3.6,1.35]])
     palm(x,z,h,s);
@@ -181,7 +217,7 @@ export function buildNewFrontCourt(k,plants){
       box(.38,.055,.22,[x+side*.6,4.05,z],m.light);
     }
   }
-  for(const [x,z] of [[-83.9,-40.9],[-83.9,-18.8],[-98.1,-40.9],[-98.1,-18.8]]){
+  for(const [x,z] of [[-83.9,-40.9],[-83.9,-18.8],[-101.5,-40.9],[-101.5,-18.8]]){
     cyl(.045,4.2,[x,2.1,z],m.steel);rod([x,4.1,z],[x-.65,4.35,z],.035,m.steel);
     box(.65,.08,.23,[x-.65,4.35,z],m.light);
   }

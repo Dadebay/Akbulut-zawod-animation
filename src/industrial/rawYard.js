@@ -1,5 +1,5 @@
 import * as T from 'three';
-import {RAW_YARD,RAW_YARD_APRON,RAW_STOCK} from './siteLayout.js';
+import {RAW_YARD,RAW_YARD_APRON,RAW_YARD_CONVEYOR,RAW_STOCK} from './siteLayout.js';
 
 // The existing wall and living/service buildings define the left edge.
 // Only the exterior ground on their right is replaced by the reference apron.
@@ -18,7 +18,8 @@ export function buildRawYard(k){
     box(width,.006,.035,[(apron.west+apron.east)/2,.084,z],joint).castShadow=false;
 
   // A low transfer pit and angular covered hopper sit at the far end.
-  const unit=group([138,0,-148]);unit.name='exterior-yard-conveyors';
+  const {x:unitX,z:unitZ}=RAW_YARD_CONVEYOR;
+  const unit=group([unitX,0,unitZ]);unit.name='exterior-yard-conveyors';
   box(10,.17,8,[0,.115,0],concrete,unit);
   box(7.6,.12,5.8,[0,.255,0],dark,unit);
   for(const x of [-3.85,3.85])box(.16,.20,6,[x,.33,0],steel,unit);
@@ -67,9 +68,10 @@ export function buildRawYard(k){
       }
     }
   }
-  conveyor([138,.65,-151.5],[138,1.05,-148.5]);
-  conveyor([136,1.0,-147],[103,3.6,-146]);
-  conveyor([140,1.0,-147],[RAW_STOCK[0],2.65,RAW_STOCK[2]]);
+  conveyor([unitX,.65,unitZ-3.5],[unitX,1.05,unitZ-.5]);
+  conveyor([unitX-2,1.0,unitZ+1],[apron.west+3,3.6,unitZ+2]);
+  // Feed the back of the heap, keeping the truck's unloading side clear.
+  conveyor([unitX+2,1.0,unitZ+1],[RAW_STOCK[0],2.65,RAW_STOCK[2]-2.5]);
   // The single pile is supplied by the existing delivery animation.
   const [pileX,,pileZ]=RAW_STOCK;
   for(const z of [pileZ-3.4,pileZ+3.4])box(7.5,1.4,.22,[pileX+2,.70,z],steel);

@@ -312,18 +312,22 @@ export function buildSite(k){
     plants.plant(x+1.15,-63.7,.38+(i%4)*.025);
     plants.plant(x+.25,-66.4,.42+(i%3)*.025);
   }
-  // Small forecourt fountain shown beside the detached office in the reference.
-  // The fountain now sits in the middle of the road junction as a small roundabout island.
-  const fountain=group([-78,0,-2]);fountain.scale.setScalar(1.7);
-  cyl(1.85,.18,[0,.09,0],m.concrete,fountain,undefined,48);
-  cyl(1.58,.30,[0,.28,0],white,fountain,undefined,48);
-  cyl(1.37,.035,[0,.445,0],material('#73949b',.25,.3),fountain,undefined,48);
-  k.ring(1.49,.105,[0,.45,0],white,fountain);
-  cyl(.20,.47,[0,.67,0],white,fountain,undefined,20);
-  const water=material('#b7d9df',.12,.3);
+  // The pale, stepped fountain forms a round island at the office junction.
+  const fountain=group([-78,0,-2]);fountain.scale.setScalar(1.9);
+  cyl(2.10,.14,[0,.07,0],m.concrete,fountain,undefined,48);
+  cyl(1.85,.19,[0,.205,0],white,fountain,undefined,48);
+  k.ring(1.85,.06,[0,.31,0],white,fountain);
+  cyl(1.55,.23,[0,.34,0],white,fountain,undefined,48);
+  const water=material('#afcbd0',.12,.3);
+  cyl(1.25,.025,[0,.47,0],water,fountain,undefined,48);
+  k.ring(1.43,.10,[0,.475,0],white,fountain);
+  cyl(.43,.28,[0,.62,0],white,fountain,undefined,24);
+  cyl(.22,.48,[0,.96,0],white,fountain,undefined,24);
+  cyl(.54,.12,[0,1.26,0],white,fountain,undefined,24);
+  cyl(.18,.20,[0,1.42,0],white,fountain,undefined,20);
   for(let i=0;i<5;i++){
     const a=i*Math.PI*2/5,dx=Math.cos(a),dz=Math.sin(a);
-    k.pipe([[0,.9,0],[dx*.26,1.24,dz*.26],[dx*.62,1.12,dz*.62],[dx*.94,.46,dz*.94]],.026,water,fountain);
+    k.pipe([[0,1.41,0],[dx*.35,1.52,dz*.35],[dx*.78,1.11,dz*.78],[dx*1.14,.48,dz*1.14]],.022,water,fountain);
   }
   plants.row(-133,38,92,38,5);plants.row(-135,-49,-36,-49,4.5);plants.row(88,-49,95,-49,4.5);plants.row(-151,-150,-151,36,5);
   buildOldCampus(k,plants);

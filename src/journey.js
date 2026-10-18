@@ -6,7 +6,7 @@ import {quarryPoint} from './industrial/quarryLayout.js';
 const definitions=[
   ['quarry','Kän','Kände ýüklemek','Ekskawator çig maly kamyona ýükleýär.',12,'CR',false,quarryPoint(-15,11,16),quarryPoint(-1,2,0)],
   ['haul','Daşama','Çig mal ýolda','Ýükli kamyon köne zawodyň yzky kabul ediş meýdançasyna gelýär.',22,'CR',false,quarryPoint(13,9,15),quarryPoint(-2,2,0)],
-  ['receive','Üýşmek','Çig maly meýdança boşatmak','Kamyon çig maly daşky konweýeriň ýanynda boşadýar.',12,'CR',false,[209,18,-120],[188.5,2,-144]],
+  ['receive','Üýşmek','Çig maly meýdança boşatmak','Kamyon çig maly daşky konweýeriň ýanynda boşadýar.',12,'CR',false,[172.5,18,-105],[152,2,-129]],
   ['scoop','Susguç','Çig maly susup almak','Ýükleýji sagdaky çig mal üýşmeginden iri daşlary alýar.',18,'CR',false,[88,12,31.5],[70,2,14.5]],
   ['carry','Bunkere','Ýükleýji bunkere barýar','Ýükleýji sagdaky üýşmekden alan daşlaryny döwüji binanyň sag derwezesine getirýär.',28,'CR',false,[104,24,48],[80,2,25]],
   ['tip','Bunker','Susgujy bunkere boşatmak','Ýükleýji susgujyny galdyryp iri daşlary bunkere dökýär.',13,'CR',true,[88,11,47],[71,2,34.8]],
