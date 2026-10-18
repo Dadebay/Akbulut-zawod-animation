@@ -4,33 +4,53 @@ import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 
 // Dimensions are in metres. These are original illustrative models, not vendor CAD.
 export function createKit(scene,{tablet=false}={}) {
-  const geometries=new Set(), textures=new Set(), materials=new Set(),detailChunks=[];
+  const geometries=new Set(), textures=new Set(), materials=new Set(),detailChunks=[],materialEffects=new Set(),vehicleLights=[];
+  function registerMaterial(mat){if(!materials.has(mat)){materials.add(mat);materialEffects.forEach(effect=>effect(mat));}}
+  function addMaterialEffect(effect){materialEffects.add(effect);materials.forEach(effect);}
   function texture(kind){
     const canvas=document.createElement('canvas');canvas.width=canvas.height=256;
     const c=canvas.getContext('2d'), img=c.createImageData(256,256);let seed=42;
-    for(let i=0;i<img.data.length;i+=4){seed=(1664525*seed+1013904223)>>>0;const n=seed/4294967296;const v=kind==='steel'?190+n*35:180+n*35;img.data[i]=img.data[i+1]=img.data[i+2]=v;img.data[i+3]=255;}
+    for(let i=0;i<img.data.length;i+=4){seed=(1664525*seed+1013904223)>>>0;const n=seed/4294967296;const v=kind==='grass'?242+n*13:kind==='steel'||kind==='asphalt'?190+n*35:180+n*35;img.data[i]=img.data[i+1]=img.data[i+2]=v;img.data[i+3]=255;}
     c.putImageData(img,0,0);
     if(kind==='steel'){c.strokeStyle='#ffffff1a';for(let y=0;y<256;y+=2){c.beginPath();c.moveTo(0,y);c.lineTo(256,y);c.stroke();}}
-    const t=new T.CanvasTexture(canvas);t.wrapS=t.wrapT=T.RepeatWrapping;t.repeat.set(kind==='steel'?2:12,kind==='steel'?4:12);textures.add(t);return t;
+    const t=new T.CanvasTexture(canvas);t.wrapS=t.wrapT=T.RepeatWrapping;
+    const repeat=kind==='asphalt'?[1,1]:kind==='grass'?[4,4]:kind==='steel'?[2,4]:[12,12];t.repeat.set(...repeat);
+    if(kind==='grass'||kind==='asphalt')t.colorSpace=T.SRGBColorSpace;
+    textures.add(t);return t;
   }
-  const grain=texture('steel'),concrete=texture('concrete');
-  function material(color,metalness=0,roughness=.7,more={}){const m=new T.MeshStandardMaterial({color,metalness,roughness,...more});materials.add(m);return m;}
+  const grain=texture('steel'),concrete=texture('concrete'),grassGrain=texture('grass'),asphaltGrain=texture('asphalt');
+  function material(color,metalness=0,roughness=.7,more={}){const m=new T.MeshStandardMaterial({color,metalness,roughness,...more});registerMaterial(m);return m;}
   const m={
     blue:material('#18569c',.5,.34),blueLight:material('#427fb5',.45,.36),white:material('#dce2e5',.25,.42),
     steel:material('#a9b4bb',.86,.3,{roughnessMap:grain}),polished:material('#c0c9cf',.92,.21),dark:material('#33424c',.7,.42),
     black:material('#17212a',.3,.58),rubber:material('#1c2226',0,.95),floor:material('#bbc2c7',.06,.88,{map:concrete}),
-    concrete:material('#a8aca9',0,.95,{bumpMap:concrete,bumpScale:.035}),road:material('#66717a',0,.95),
-    sand:material('#c8bd9f',0,1),grass:material('#6a7860',0,1),yellow:material('#e6bc39',.15,.6),orange:material('#d88824',.1,.6),
+    concrete:material('#a8aca9',0,.95,{bumpMap:concrete,bumpScale:.035}),road:material('#656c70',0,.98,{map:asphaltGrain,bumpMap:asphaltGrain,bumpScale:.013}),
+    sand:material('#c8bd9f',0,1),grass:material('#667c49',0,1,{map:grassGrain}),yellow:material('#e6bc39',.15,.6),orange:material('#d88824',.1,.6),
     wood:material('#91795a',0,.95),paper:material('#ebe8de',0,.9),skin:material('#c2a18b',0,.8),
     glass:material('#3b5667',.65,.18,{transparent:true,opacity:.72}),light:material('#f1ebc9',0,.3,{emissive:'#fff0bf',emissiveIntensity:.4}),
     red:material('#ab3b39',.2,.5),raw:material('#c4bfac',0,1)
   };
+  // Road ribbons, junction patches and courtyard slabs use the same grain
+  // at the same world scale, including after their geometry is batched.
+  m.road.onBeforeCompile=shader=>{
+    shader.vertexShader=shader.vertexShader.replace('#include <uv_vertex>',`#include <uv_vertex>
+      vec2 asphaltUv = (modelMatrix * vec4(position, 1.0)).xz / 3.0;
+      #ifdef USE_MAP
+        vMapUv = asphaltUv;
+      #endif
+      #ifdef USE_BUMPMAP
+        vBumpMapUv = asphaltUv;
+      #endif`);
+  };
+  m.road.customProgramCacheKey=()=> 'site-asphalt-world-uv-v1';
   const geoCache=new Map();
   function cached(key,fn){if(!geoCache.has(key)){const g=fn();geometries.add(g);geoCache.set(key,g);}return geoCache.get(key);}
-  function mesh(geo,mat,pos=[0,0,0],parent=scene){geometries.add(geo);const o=new T.Mesh(geo,mat);o.position.set(...pos);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o;}
+  // Asphalt receives building/tree shadows; overlapping ground slabs must
+  // not cast stripes or seam shadows onto one another.
+  function mesh(geo,mat,pos=[0,0,0],parent=scene){geometries.add(geo);const o=new T.Mesh(geo,mat);o.position.set(...pos);o.castShadow=mat!==m.road;o.receiveShadow=true;parent.add(o);return o;}
   function instances(geo,mat,count,parent=scene){geometries.add(geo);const o=new T.InstancedMesh(geo,mat,count);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o;}
   function trackTexture(t){textures.add(t);return t;}
-  function trackObject(root){root.traverse(o=>{if(!o.isMesh)return;geometries.add(o.geometry);for(const mat of Array.isArray(o.material)?o.material:[o.material]){materials.add(mat);for(const value of Object.values(mat))if(value?.isTexture)textures.add(value);}});return root;}
+  function trackObject(root){root.traverse(o=>{if(!o.isMesh)return;geometries.add(o.geometry);for(const mat of Array.isArray(o.material)?o.material:[o.material]){registerMaterial(mat);for(const value of Object.values(mat))if(value?.isTexture)textures.add(value);}});return root;}
   function box(w,h,d,pos,mat=m.white,parent=scene,bevel=0){const geo=cached(`b${w},${h},${d},${bevel}`,()=>bevel?new RoundedBoxGeometry(w,h,d,tablet?1:2,Math.min(bevel,w/4,h/4,d/4)):new T.BoxGeometry(w,h,d));return mesh(geo,mat,pos,parent);}
   function cyl(r,h,pos,mat=m.steel,parent=scene,rt=r,segments=32){segments=tablet?Math.min(segments,r<.15?8:16):segments;return mesh(cached(`c${r},${h},${rt},${segments}`,()=>new T.CylinderGeometry(rt,r,h,segments)),mat,pos,parent);}
   function sphere(r,pos,mat=m.steel,parent=scene){return mesh(cached(`s${r}`,()=>new T.SphereGeometry(r,tablet?10:16,tablet?6:10)),mat,pos,parent);}
@@ -81,7 +101,7 @@ export function createKit(scene,{tablet=false}={}) {
     if(tablet){
       // Independent bounds let the GPU skip groves and stone fields outside the
       // camera. One instance batch for the entire site defeats that culling.
-      const fields=[];scene.traverse(o=>{if(o.isInstancedMesh&&o.count>500)fields.push(o);});
+      const fields=[];scene.traverse(o=>{if(o.isInstancedMesh&&o.count>500&&!o.userData.preserveInstances)fields.push(o);});
       const transform=new T.Matrix4();
       for(const field of fields){
         const cells=new Map();
@@ -105,5 +125,5 @@ export function createKit(scene,{tablet=false}={}) {
   }
   function updateDetailVisibility(camera){for(const {chunk,sphere,distance} of detailChunks)chunk.visible=camera.position.distanceTo(sphere.center)<distance+sphere.radius;}
   function dispose(){geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());}
-  return {m,scene,tablet,mesh,instances,trackTexture,trackObject,box,cyl,sphere,ring,rod,pipe,group,beam,frame,railing,platform,ladder,bolts,motor,cabinet,textPlate,material,optimize,updateDetailVisibility,dispose};
+  return {m,scene,tablet,vehicleLights,addMaterialEffect,mesh,instances,trackTexture,trackObject,box,cyl,sphere,ring,rod,pipe,group,beam,frame,railing,platform,ladder,bolts,motor,cabinet,textPlate,material,optimize,updateDetailVisibility,dispose};
 }

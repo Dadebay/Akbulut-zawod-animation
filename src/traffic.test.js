@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as T from 'three';
-import {PARKED_TRUCKS,DISPATCH_PAVEMENT,DISPATCH_EXIT_LANE_X,dispatchPose,truckFootprint,trafficClearance} from './industrial/trafficLayout.js';
+import {PARKED_TRUCKS,DISPATCH_PAVEMENT,DISPATCH_EXIT_ROAD_X,DISPATCH_EXIT_ROAD_Z,dispatchPose,truckFootprint,trafficClearance} from './industrial/trafficLayout.js';
+import {NEW_ENTRANCE_MEDIAN} from './industrial/siteLayout.js';
 import {createVegetation} from './industrial/vegetation.js';
 
 const rectangle=(x,z,w,d)=>[[x-w/2,z-d/2],[x+w/2,z-d/2],[x+w/2,z+d/2],[x-w/2,z+d/2]];
@@ -16,6 +17,8 @@ function overlaps(a,b){
 
 test('the articulated truck keeps a 35 cm margin from pavement edges, planters, docks, gate and kerbs',()=>{
   const obstacles=[[-69,-31,6.5,10.5],[-69,-16,7.5,9.5],[-84,-29.5,2.5,25.5],[-137,-11.5,1.4,1.5],[-137,7.5,1.4,1.5]].map(r=>rectangle(...r));
+  const median=NEW_ENTRANCE_MEDIAN;
+  obstacles.push(rectangle((median.west+median.east)/2,median.z,median.east-median.west,median.width));
   // The boundary fence and the main-road kerbs resume outside the gate opening.
   obstacles.push(rectangle(-137,-30.75,.43,38.5),rectangle(-137,23.75,.43,32.5));
   for(const x of [-147.82,-138.18])obstacles.push(rectangle(x,110.5,.25,181));
@@ -33,7 +36,7 @@ test('the articulated truck keeps a 35 cm margin from pavement edges, planters, 
     previous=pose;
   }
   assert.equal(dispatchPose(0).x,64);assert.equal(dispatchPose(0).z,-43);
-  assert.ok(Math.abs(dispatchPose(1).x-DISPATCH_EXIT_LANE_X)<1e-6);
+  assert.ok(Math.abs(dispatchPose(1).x-DISPATCH_EXIT_ROAD_X)<1e-6);assert.ok(Math.abs(dispatchPose(1).z-DISPATCH_EXIT_ROAD_Z)<1e-6);
 });
 
 test('freight roads have straight axis-aligned edges instead of a curved swept outline',()=>{
@@ -46,9 +49,9 @@ test('freight roads have straight axis-aligned edges instead of a curved swept o
 test('smaller waiting trucks fit wholly inside their parking area and do not overlap',()=>{
   const footprints=[];
   for(const {position:[x,,z],angle,scale} of PARKED_TRUCKS){
-    assert.ok(scale<1&&scale>=.8);
+    assert.ok(scale<1&&scale>=.6);
     const corners=rectangle(-6.2,0,17.6,2.7).map(([along,side])=>[x+scale*(along*Math.cos(angle)+side*Math.sin(angle)),z+scale*(-along*Math.sin(angle)+side*Math.cos(angle))]);
-    for(const [px,pz] of corners){assert.ok(px>-133&&px<-85);assert.ok(pz>-44&&pz<-8);}
+    for(const [px,pz] of corners){assert.ok(px>-135.5&&px<-85);assert.ok(pz>-44&&pz<-8);}
     for(const other of footprints)assert.equal(overlaps(corners,other),false);
     footprints.push(corners);
   }

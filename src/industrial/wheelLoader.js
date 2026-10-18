@@ -1,5 +1,6 @@
 import * as T from 'three';
 import {rubbleAssets} from './rubble.js';
+import {createWorkerBuilder} from './workers.js';
 
 // Wheeled, articulated loader: bucket and cylinders share the same hinge geometry.
 export function buildWheelLoader(k){
@@ -151,6 +152,7 @@ export function buildWheelLoader(k){
     for(const r of liftRams){a.set(.15,1.05,r.z);b.set(2.35,0,r.z).applyAxisAngle(axis,lift).add(boom.position);r.move(a,b);}
     a.set(2.6,.24,0);b.set(.04,.56,0).applyAxisAngle(axis,bucket.rotation.z).add(bucket.position);tiltRam(a,b);
   }
+  const driver=createWorkerBuilder(k)({parent:g,position:[-.85,1.03,0],yaw:Math.PI/2,seated:true,seed:2});
   pose(-.26,-.08,0);
-  return {g,front,boom,bucket,cargo,lip,wheels,pose};
+  return {g,front,boom,bucket,cargo,lip,wheels,pose,driver};
 }

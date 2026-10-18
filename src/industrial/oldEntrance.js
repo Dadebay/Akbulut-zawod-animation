@@ -1,5 +1,5 @@
 import * as T from 'three';
-import {OLD_ENTRANCE,POND_APPROACH} from './siteLayout.js';
+import {OLD_ENTRANCE,OLD_ENTRANCE_YAW,POND_APPROACH} from './siteLayout.js';
 
 // Two successive checkpoints in the reference photographs: the named outer
 // gateway, then the small security cabin at the old factory boundary.
@@ -8,7 +8,7 @@ export function buildOldEntrance(k){
   const wall=material('#eeeae0',.04,.79),trim=material('#c7cbc4',.28,.59);
   const glass=material('#263e4c',.45,.24),glassLight=material('#3a5260',.42,.28);
   const gold=material('#bb9134',.66,.35),stone=material('#bdbbae',0,.94);
-  const paving=material('#737975',0,.97),paint=material('#e6e4d8',0,.88);
+  const paving=m.road,paint=material('#e6e4d8',0,.88);
 
   function lettering(text,width,height,pos,parent){
     const canvas=document.createElement('canvas');
@@ -124,7 +124,7 @@ export function buildOldEntrance(k){
   }
 
   const outer=group([OLD_ENTRANCE.outerX,0,OLD_ENTRANCE.z]);
-  outer.name='old-factory-named-entrance';
+  outer.name='old-factory-named-entrance';outer.rotation.y=OLD_ENTRANCE_YAW;
   forecourt(outer,9,7.6);island(6.6,3.5,outer);
   cabin(outer,{x:-.35,width:3.45,depth:2.8,height:2.9});
   for(const side of [-1,1]){
@@ -156,7 +156,7 @@ export function buildOldEntrance(k){
   mesh(new T.TubeGeometry(emblemPath,80,.06,6,true),gold,[0,0,0],outer);
 
   const inner=group([OLD_ENTRANCE.innerX,0,OLD_ENTRANCE.innerZ]);
-  inner.name='old-factory-security-checkpoint';
+  inner.name='old-factory-security-checkpoint';inner.rotation.y=OLD_ENTRANCE_YAW;
   // Keep the apron open where it meets the courtyard's transverse service lane.
   forecourt(inner,6.2,6.8,false);island(6,3.3,inner);
   cabin(inner,{width:3.0,depth:2.55,height:2.65,roofFrame:true});

@@ -7,14 +7,12 @@ export function buildOldSideLoading(k){
   const white=material('#dfe2db',.04,.86),base=material('#a7aaa2',0,.94);
   const roofMat=material('#4f8069',.25,.60),seam=material('#87a994',.27,.64);
   const steel=material('#bbc8bf',.50,.48),inside=material('#56625d',0,.98);
-  const concrete=material('#b9baae',0,.96),joint=material('#a5a89b',0,.98);
+  const concrete=material('#b9baae',0,.96),asphalt=m.road;
   const {apron:A}=L,front=L.wallZ+L.depth,back=L.wallZ-L.interiorDepth;
   const g=group([L.x,0,L.wallZ]);g.name='old-factory-truck-entrance';
 
   // A flush apron connects to the long courtyard drive on both sides.
-  box(A.east-A.west,.12,A.south-A.north,[(A.east+A.west)/2,-.075,(A.south+A.north)/2],concrete);
-  for(let x=A.west+5;x<A.east;x+=5)box(.018,.006,A.south-A.north,[x,-.009,(A.south+A.north)/2],joint).castShadow=false;
-  for(let z=A.north+5;z<A.south;z+=5)box(A.east-A.west,.006,.018,[(A.east+A.west)/2,-.009,z],joint).castShadow=false;
+  box(A.east-A.west,.12,A.south-A.north,[(A.east+A.west)/2,-.075,(A.south+A.north)/2],asphalt);
   box(L.interiorWidth,.10,L.interiorDepth,[0,-.04,-L.interiorDepth/2],concrete,g);
   box(L.width-.48,.10,L.depth,[0,-.04,L.depth/2],concrete,g);
 
@@ -36,22 +34,19 @@ export function buildOldSideLoading(k){
 
   // Solid side cheeks and one broad opening match the photographed lean-to roof.
   const backHeight=5.65,frontHeight=5.05;
-  const wallShape=new T.Shape();wallShape.moveTo(0,0);wallShape.lineTo(L.depth,0);
-  wallShape.lineTo(L.depth,frontHeight-.08);wallShape.lineTo(0,backHeight-.08);wallShape.closePath();
-  const wallGeo=new T.ExtrudeGeometry(wallShape,{depth:.24,bevelEnabled:false});
-  wallGeo.translate(0,0,-.12);wallGeo.rotateY(-Math.PI/2);
   for(const side of [-1,1]){
+    // Both ends stay open so the trailer drives straight through; only slim posts carry the roof.
     const x=side*(L.width/2-.12);
-    mesh(wallGeo,white,[x,0,0],g);
-    box(.29,.32,L.depth,[x,.16,L.depth/2],base,g);
-    for(let z=.45;z<L.depth;z+=.85){
-      const height=backHeight+(frontHeight-backHeight)*z/L.depth-.2;
-      box(.025,height,.023,[x+side*.135,height/2,z],steel,g);
-    }
     box(.34,frontHeight,.36,[x,frontHeight/2,L.depth-.10],white,g);
+    box(.34,backHeight,.30,[x,backHeight/2,.15],white,g);
     cyl(.075,frontHeight,[x+side*.24,frontHeight/2,L.depth+.08],steel,g,undefined,12);
     cyl(.10,1.15,[x-side*.48,.575,L.depth+.6],m.yellow,g,undefined,12);
   }
+  // The front face is closed with a solid wall and a roller-door panel.
+  box(L.width-.2,frontHeight-.1,.22,[0,(frontHeight-.1)/2,L.depth-.11],white,g);
+  box(L.width-.2,.30,.30,[0,.15,L.depth-.11],base,g);
+  box(L.width*.62,frontHeight-1.0,.06,[0,(frontHeight-1.0)/2+.15,L.depth+.02],steel,g);
+  for(let y=.6;y<frontHeight-1.0;y+=.38)box(L.width*.62,.02,.07,[0,y+.15,L.depth+.045],inside,g);
   const roof=group([0,(backHeight+frontHeight)/2,L.depth/2],g);
   roof.rotation.x=Math.atan2(backHeight-frontHeight,L.depth);
   const slopeLength=Math.hypot(L.depth,backHeight-frontHeight)+.60;
@@ -64,5 +59,5 @@ export function buildOldSideLoading(k){
   for(const x of [-4.8,4.8])box(.55,.09,.25,[x,frontHeight-.40,L.depth-.35],m.light,g);
 
   // Sparse guides stay under the canopy, leaving the through lane unobstructed.
-  for(const x of [-2.0,2.0])box(.07,.008,L.interiorDepth+L.depth-.7,[L.x+x,.019,(back+front-.7)/2],m.yellow).castShadow=false;
+  for(const dz of [-1.5,1.5])box(L.width+10,.008,.07,[L.x,.019,L.wallZ+L.depth/2+dz],m.yellow).castShadow=false;
 }

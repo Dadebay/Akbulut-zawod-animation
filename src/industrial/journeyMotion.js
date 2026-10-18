@@ -2,6 +2,7 @@ import {clamp01,JOURNEY_STAGE as S} from '../journey.js';
 import {FORKLIFT_JOBS,loadingCounts,sampleForklift} from './forkliftMotion.js';
 import {DISPATCH_ROUTE,dispatchPose} from './trafficLayout.js';
 import {INCOMING_HAUL as incoming,RETURN_HAUL as emptyReturn,RAW_STOP} from './siteLayout.js';
+import {QUARRY} from './quarryLayout.js';
 
 const angleAt=(path,p)=>{const d=path.getTangentAt(clamp01(p));return -Math.atan2(d.z,d.x);};
 const mixAngle=(a,b,t)=>a+Math.atan2(Math.sin(b-a),Math.cos(b-a))*clamp01(t);
@@ -21,11 +22,11 @@ export function createJourneyMotion(logistics,vehicleSurface){
   }
   return function update(j){
     const {index,progress}=j;
-    if(index===0){hauler.g.position.set(226,5,39);hauler.g.rotation.y=0;}
+    if(index===0){hauler.g.position.set(QUARRY.x,QUARRY.y,QUARRY.z);hauler.g.rotation.y=0;}
     else if(index===1){place(hauler,incoming,progress);hauler.g.rotation.y=mixAngle(0,hauler.g.rotation.y,progress*10);}
     else if(index===2){hauler.g.position.set(...RAW_STOP);hauler.g.rotation.y=Math.PI;}
     else if(index===3)place(hauler,emptyReturn,progress);
-    else{hauler.g.position.set(226,5,39);hauler.g.rotation.y=0;}
+    else{hauler.g.position.set(QUARRY.x,QUARRY.y,QUARRY.z);hauler.g.rotation.y=0;}
     hauler.g.rotation.z=0;
     if(vehicleSurface){
       const {x,z}=hauler.g.position,yaw=hauler.g.rotation.y,front=1.4275,rear=-4.55;

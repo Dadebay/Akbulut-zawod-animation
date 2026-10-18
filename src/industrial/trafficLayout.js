@@ -1,14 +1,21 @@
 import * as T from 'three';
+import {NEW_FACTORY_ENTRANCE as ENTRANCE} from './siteLayout.js';
 
 // Fixed site roads and vehicle manoeuvres. Metres in scene space.
 // Opposing diagonal rows leave the office-side passenger bays and their aisle clear.
 export const PARKED_TRUCKS=[
-  ...[-35.5,-29,-22.5,-16].map(z=>({position:[-125,0,z],angle:-.6,scale:.82})),
-  ...[-42,-35.5,-29,-22.5].map(z=>({position:[-112.2,0,z],angle:Math.PI-.6,scale:.82}))
+  ...[-35.5,-29,-22.5,-16].map(z=>({position:[-126.1,0,z],angle:-.6,scale:.68})),
+  ...[-41.2,-34.7,-28.2,-21.7].map(z=>({position:[-108.5,0,z],angle:Math.PI-.6,scale:.68}))
 ];
 export const MAIN_ROAD_X=-143;
-export const MAIN_ROAD_WIDTH=9.4;
+export const MAIN_ROAD_WIDTH=7.2;
+// The avenue runs along the plant fence from the railway southwards; the long outer road further west carries the northern traffic.
+export const MAIN_ROAD_NORTH=-51.5;
+// Both sides of the entrance share the same carriageway width and centreline.
+export const MAIN_ROAD_SEGMENTS=[[MAIN_ROAD_NORTH,-6.5,MAIN_ROAD_WIDTH],[-6.5,44,MAIN_ROAD_WIDTH]];
 export const DISPATCH_EXIT_LANE_X=MAIN_ROAD_X+2.25;
+export const DISPATCH_EXIT_ROAD_X=-200;
+export const DISPATCH_EXIT_ROAD_Z=ENTRANCE.z-2.6;
 
 const v=(x,z)=>new T.Vector3(x,0,z);
 const path=new T.CurvePath();
@@ -16,17 +23,15 @@ const line=(a,b)=>path.add(new T.LineCurve3(v(...a),v(...b)));
 const bend=(a,b,c,d)=>path.add(new T.CubicBezierCurve3(v(...a),v(...b),v(...c),v(...d)));
 // Leave the loading berth before passing the dock columns and pallet stock.
 bend([64,-43],[57,-43],[57,-47.7],[48,-47.7]);
-line([48,-47.7],[-66,-47.7]);
-bend([-66,-47.7],[-72.63,-47.7],[-78,-42.33],[-78,-35.7]);
-line([-78,-35.7],[-78,-15]);
-bend([-78,-15],[-78,-7.82],[-83.82,-2],[-91,-2]);
-line([-91,-2],[-130,-2]);
-// Swing wide at the gate so the trailer clears the inside kerb, then settle
-// into the marked outbound lane. All steering stays within the square apron.
-bend([-130,-2],[-138.01,-2],[-144.5,4.49],[-144.5,12.5]);
-line([-144.5,12.5],[-144.5,20]);
-bend([-144.5,20],[-144.5,32],[DISPATCH_EXIT_LANE_X,44],[DISPATCH_EXIT_LANE_X,56]);
-line([DISPATCH_EXIT_LANE_X,56],[DISPATCH_EXIT_LANE_X,180]);
+// Run west along the top of the court, down the fence side and out through the gate
+// onto the gate road that leads to the outer road.
+line([48,-47.7],[-106.6,-47.7]);
+bend([-106.6,-47.7],[-113.23,-47.7],[-118.6,-42.33],[-118.6,-35.7]);
+line([-118.6,-35.7],[-118.6,-16]);
+bend([-118.6,-16],[-118.6,-8.27],[-124.87,-2],[-132.6,-2]);
+// Ease into the northern lane before reaching the planted road divider.
+bend([-132.6,-2],[-140.7,-2],[-148.9,DISPATCH_EXIT_ROAD_Z],[-157,DISPATCH_EXIT_ROAD_Z]);
+line([-157,DISPATCH_EXIT_ROAD_Z],[DISPATCH_EXIT_ROAD_X,DISPATCH_EXIT_ROAD_Z]);
 path.arcLengthDivisions=2000;
 export const DISPATCH_ROUTE=path;
 
@@ -71,6 +76,11 @@ export const FREIGHT_ROAD_AREAS=[
   [-81.5,-65.5,-45.3,-37.2], // Square junction at the north end of the office.
   [-90,-81.5,-16,-6.5],      // Square junction at the south end.
   [-147.7,-135.2,3.5,6.5],   // Gate opening; keep asphalt outside the boundary fence.
+  [ENTRANCE.southFenceX,-81.5,-50,-44.5], // Top lane meets the moved fence.
+  [-123.5,-103.5,-50,-33],   // Turn from the top lane into the central aisle.
+  [-122.6,-114.6,-34,-16],   // Central aisle between the two truck rows.
+  [-135,-114,-18,-6.5],      // Turn from the aisle towards the gate.
+  [-205,-147.7,-6.5,3.5],    // Gate road to the outer road.
 ];
 export const DISPATCH_PAVEMENT=FREIGHT_ROAD_AREAS.map(([west,east,north,south])=>[[east,south],[west,south],[west,north],[east,north]]);
 function distanceToPolygon(x,z,points){
@@ -84,7 +94,8 @@ function distanceToPolygon(x,z,points){
   return inside?0:nearest;
 }
 export function trafficClearance(x,z){
-  let distance=Math.hypot(Math.max(0,Math.abs(x-MAIN_ROAD_X)-MAIN_ROAD_WIDTH/2),Math.max(-174-z,z-201,0));
+  let distance=Infinity;
+  for(const [north,south,width] of MAIN_ROAD_SEGMENTS)distance=Math.min(distance,Math.hypot(Math.max(0,Math.abs(x-MAIN_ROAD_X)-width/2),Math.max(north-z,z-south,0)));
   for(const polygon of DISPATCH_PAVEMENT)distance=Math.min(distance,distanceToPolygon(x,z,polygon));
   return distance;
 }

@@ -1,16 +1,18 @@
 import * as T from 'three';
 import {TRUCK_LAYOUT} from './trucks.js';
-import {RAIL_LAYOUT} from './rail.js';
+import {RAIL_LAYOUT} from './railLayout.js';
+import {routeProfile} from './motionPath.js';
 
 export const FORKLIFT_LAYOUT={
   cargoX:2.10,mastX:.92,mastBaseY:.24,palletOffsetY:-.135,
   frontAxleX:.60,rearAxleX:-.90,frontRadius:.33,rearRadius:.27,
   carryHeight:.46,emptyHeight:.125,turnRadius:1.6,
 };
-const F=FORKLIFT_LAYOUT,clamp=n=>Math.max(0,Math.min(1,n));
+const F=FORKLIFT_LAYOUT;
+export const FORKLIFT_WHEELS=[0,F.rearAxleX-F.frontAxleX].flatMap(axle=>[-.56,.56].map(side=>({axle,side})));
+const clamp=n=>Math.max(0,Math.min(1,n));
 const ease=t=>{t=clamp(t);return t*t*(3-2*t);};
 const mix=(a,b,t)=>a+(b-a)*t;
-const angleDelta=(a,b)=>Math.atan2(Math.sin(b-a),Math.cos(b-a));
 const vector=p=>new T.Vector3(p[0],0,p[1]);
 const line=(a,b)=>new T.LineCurve3(vector(a),vector(b));
 function turn(x,z,direction){
@@ -20,42 +22,36 @@ function turn(x,z,direction){
 function path(...parts){const p=new T.CurvePath();parts.forEach(part=>p.add(part));return p;}
 function heading(route,t){const d=route.getTangentAt(clamp(t));return -Math.atan2(d.z,d.x);}
 
-// Distance-driven acceleration/braking, shared by forward and reverse travel.
-// Reversing samples the same path backwards without turning the chassis around.
-function driveProfile(length,maxSpeed,acceleration=.85){
-  const peak=Math.min(maxSpeed,Math.sqrt(length*acceleration)),ramp=peak/acceleration;
-  const cruise=Math.max(0,(length-peak*peak/acceleration)/peak),duration=ramp*2+cruise;
-  return {duration,at(t){
-    t=Math.max(0,Math.min(duration,t));
-    if(t<ramp)return {distance:.5*acceleration*t*t,speed:acceleration*t};
-    if(t<ramp+cruise)return {distance:.5*peak*ramp+peak*(t-ramp),speed:peak};
-    const remaining=duration-t;
-    return {distance:length-.5*acceleration*remaining*remaining,speed:acceleration*remaining};
-  }};
-}
-
 function makeTrip(source,target,laneZ,{pickupClearance=F.emptyHeight,carryHeight=F.carryHeight}={}){
-  const r=F.turnRadius,staging=[source[0]-r,laneZ],pickupZ=source[2]-F.cargoX;
+  const r=F.turnRadius,staging=[source[0]-r,laneZ],pickupZ=source[2]-F.cargoX+F.frontAxleX;
   const direction=target.rail?-1:1,alignZ=laneZ+direction*r;
-  const dockZ=target.z-direction*F.cargoX;
+  const dockZ=target.z-direction*(F.cargoX-F.frontAxleX);
   const pickupTurn=path(turn(source[0],laneZ,1));
   const pickupStraight=path(line([source[0],laneZ+r],[source[0],pickupZ]));
   const pickup=path(...pickupTurn.curves,...pickupStraight.curves);
   const approach=path(line(staging,[target.x-r,laneZ]),turn(target.x,laneZ,direction));
   const insertion=path(line([target.x,alignZ],[target.x,dockZ]));
   const contactHeight=source[1]-F.palletOffsetY,dropHeight=target.y-F.palletOffsetY;
-  const phases=[];let time=0,travel=0,pose={x:staging[0],z:staging[1],yaw:0},height=F.emptyHeight,tilt=0,carrying=false,picked=false;
+  const phases=[];let time=0,travel=0,wheelTravel=FORKLIFT_WHEELS.map(()=>0),bend=0,pose={x:staging[0]-F.frontAxleX,z:staging[1],yaw:0},height=F.emptyHeight,tilt=0,carrying=false,picked=false;
   function add(duration,options={}){
-    const phase={start:time,duration,travel,pose:{...pose},height,tilt,carrying,picked,...options};
+    const phase={start:time,duration,travel,wheelTravel:[...wheelTravel],bend,pose:{...pose},height,tilt,carrying,picked,...options};
     phases.push(phase);time+=duration;
-    height=options.toHeight??height;tilt=options.toTilt??tilt;
+    height=options.toHeight??height;tilt=options.toTilt??tilt;bend=options.toBend??bend;
     if(options.route){
       const end=options.reverse?0:1,p=options.route.getPointAt(end);
-      pose={x:p.x,z:p.z,yaw:heading(options.route,end)};
+      const yaw=heading(options.route,end);
+      pose={x:p.x-F.frontAxleX*Math.cos(yaw),z:p.z+F.frontAxleX*Math.sin(yaw),yaw};
+      bend=options.profile.at(options.reverse?0:options.profile.duration).curvature;
+      wheelTravel=wheelTravel.map((d,i)=>d+(options.reverse?-1:1)*options.profile.wheelTravel[i]);
       travel+=(options.reverse?-1:1)*options.route.getLength();
     }
   }
-  function drive(route,maxSpeed,reverse=false){const profile=driveProfile(route.getLength(),maxSpeed);add(profile.duration,{route,profile,reverse});}
+  function drive(route,maxSpeed,reverse=false){
+    const profile=routeProfile(route,{speed:maxSpeed,acceleration:carrying?.65:.85,lateral:carrying?.48:.70,wheels:FORKLIFT_WHEELS});
+    const initialBend=profile.at(reverse?profile.duration:0).curvature;
+    if(Math.abs(initialBend-bend)>.03)add(.4,{toBend:initialBend,lookBack:reverse});
+    add(profile.duration,{route,profile,reverse});
+  }
   if(pickupClearance>F.emptyHeight){
     // Clear the adjacent raised dock while turning, then lower the empty tines
     // in the open aisle before inserting them into the ground-level pallet.
@@ -116,20 +112,23 @@ export function sampleForklift(job,elapsed){
   const phaseIndex=trip.phases.findIndex(p=>t<p.start+p.duration);
   const phase=trip.phases[phaseIndex<0?trip.phases.length-1:phaseIndex];
   const local=Math.max(0,Math.min(phase.duration,t-phase.start)),progress=local/phase.duration;
-  let {x,z,yaw}=phase.pose,speed=0,steer=0,travel=phase.travel;
+  let {x,z,yaw}=phase.pose,speed=0,travel=phase.travel,wheelTravel=phase.wheelTravel,curvature=mix(phase.bend,phase.toBend??phase.bend,ease(progress));
   if(phase.route){
-    const motion=phase.profile.at(local),length=phase.route.getLength(),sign=phase.reverse?-1:1;
-    const u=phase.reverse?1-motion.distance/length:motion.distance/length,p=phase.route.getPointAt(clamp(u));
-    x=p.x;z=p.z;yaw=heading(phase.route,u);speed=motion.speed*sign;travel+=motion.distance*sign;
-    const low=clamp(u-.35/length),high=clamp(u+.35/length);
-    const curvature=angleDelta(heading(phase.route,low),heading(phase.route,high))/((high-low)*length||1);
-    steer=-Math.atan((F.frontAxleX-F.rearAxleX)*curvature);
+    const motion=phase.profile.at(phase.reverse?phase.duration-local:local),sign=phase.reverse?-1:1;
+    const p=phase.route.getPointAt(clamp(motion.u));
+    yaw=heading(phase.route,motion.u);
+    // The unsteered front axle follows the path; the chassis and rear axle
+    // follow that axle, so reversing cannot slide the vehicle sideways.
+    x=p.x-F.frontAxleX*Math.cos(yaw);z=p.z+F.frontAxleX*Math.sin(yaw);
+    speed=motion.speed*sign;curvature=motion.curvature;
+    travel+=phase.reverse?motion.distance-phase.profile.length:motion.distance;
+    wheelTravel=phase.wheelTravel.map((d,i)=>d+motion.wheelTravel[i]-(phase.reverse?phase.profile.wheelTravel[i]:0));
   }
   const lookingBack=phase.reverse||phase.lookBack;
   const previous=trip.phases[(phaseIndex<0?trip.phases.length-1:phaseIndex)-1];
   const wasLookingBack=previous?.reverse||previous?.lookBack;
   return {
-    x,z,yaw,speed,travel,steer,kind:trip.target.kind,working,
+    x,z,yaw,speed,travel,wheelTravel,curvature,steer:-Math.atan((F.frontAxleX-F.rearAxleX)*curvature),kind:trip.target.kind,working,
     height:mix(phase.height,phase.toHeight??phase.height,ease(progress)),
     tilt:mix(phase.tilt,phase.toTilt??phase.tilt,ease(progress)),
     carrying:working&&phase.carrying,

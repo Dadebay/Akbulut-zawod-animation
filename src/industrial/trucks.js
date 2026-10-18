@@ -92,6 +92,8 @@ export function createTruckBuilder(k,pallet){
       // Parked wheels and trailers never animate; batch them with their chassis.
       ws.forEach(w=>{w.userData.dynamic=false;});hinge.userData.dynamic=false;
     }
+    k.vehicleLights.push({root:g,front:2.12,width:.86,height:.94,length:24});
+    k.vehicleLights.push({root:trailer,rear:-6.92,width:.62,height:.99,markers:[-6.3,-4.75,-3.2,-1.65,-.1,1.45,3,4.55,6.1],markerWidth:1.34,markerHeight:1.15});
     const record={g,ws,cargo,hinge,trailer,cabMount};records.push(record);return record;
   }
   function load(onLoaded){
@@ -100,7 +102,7 @@ export function createTruckBuilder(k,pallet){
       if(cancelled){asset.scene.traverse(o=>{if(o.isMesh){o.geometry.dispose();o.material.map?.dispose();o.material.dispose();}});return;}
       asset.scene.traverse(o=>{if(o.isMesh){
         const mat=o.material;mat.metalness=0;mat.roughness=.85;
-        if(mat.map)mat.map.anisotropy=k.tablet?2:8;
+        if(mat.map)mat.map.anisotropy=k.tablet?2:4;
         // Preserve the scan's UV detail, recolouring only its red paint. Glass,
         // grille, lamps, wheels and badges keep the original scanned texture.
         mat.onBeforeCompile=shader=>{
@@ -139,6 +141,6 @@ export function createTruckBuilder(k,pallet){
     return()=>{cancelled=true;};
   }
   // Share the existing scan and materials with the quarry's rigid tipper.
-  function mountCab(parent,pos=[0,0,0],scale=1){const cabMount=group(pos,parent,true);cabMount.scale.setScalar(scale);records.push({cabMount});return cabMount;}
+  function mountCab(parent,pos=[0,0,0],scale=1){const cabMount=group(pos,parent,true);cabMount.scale.setScalar(scale);records.push({cabMount});k.vehicleLights.push({root:cabMount,front:2.12,width:.86,height:.94,length:26});return cabMount;}
   return {build,load,mountCab,wheel};
 }

@@ -53,8 +53,9 @@ export function buildOldFrontParking(k,panel){
   box(PARK.canopyWidth,.075,PARK.canopyDepth,[0,0,0],green,roof);
   for(const z of [-PARK.canopyDepth/2,PARK.canopyDepth/2])box(PARK.canopyWidth+.10,.16,.10,[0,-.025,z],frame,roof);
   for(const x of [-PARK.canopyWidth/2,PARK.canopyWidth/2])box(.10,.16,PARK.canopyDepth,[x,-.025,0],frame,roof);
-  for(const z of [-2.45,2.45])box(12.6,.17,.12,[0,-.13,z],frame,roof);
-  for(const x of [-6.2,-3.1,0,3.1,6.2]){
+  for(const z of [-2.45,2.45])box(PARK.canopyWidth-.6,.17,.12,[0,-.13,z],frame,roof);
+  const posts=[-5.5,-2.75,0,2.75,5.5];
+  for(const x of posts){
     box(.10,.15,5.7,[x,-.11,0],frame,roof);
     for(const z of [-2.45,2.45]){
       const top=3.18+Math.sin(.10)*z-.14;
@@ -64,14 +65,14 @@ export function buildOldFrontParking(k,panel){
     }
   }
   // The photographed canopy has a dark gridded top and a slim green fascia.
-  for(let col=0;col<8;col++)for(let row=0;row<3;row++)
-    panel(1.54,1.70,[(col-3.5)*1.61,.11,(row-1)*1.78],roof);
-  for(const x of [-6.2,-3.1,0,3.1,6.2])box(.075,.008,5.7,[x,.016,.15],paint,canopy);
-  for(const x of [-4.65,-1.55,1.55,4.65]){
+  for(let col=0;col<7;col++)for(let row=0;row<3;row++)
+    panel(1.54,1.70,[(col-3)*1.61,.11,(row-1)*1.78],roof);
+  for(const x of posts)box(.075,.008,5.7,[x,.016,.15],paint,canopy);
+  for(const x of [-4.45,-1.35,1.35,4.45]){
     box(1.6,.10,.15,[x,.065,-1.45],curb,canopy);
     for(const dx of [-.6,.6])box(.17,.013,.17,[x+dx,.12,-1.45],m.yellow,canopy);
   }
   const car=createParkedCarBuilder(k);
-  car(PARK.canopyX+.3,PARK.z-4.65,Math.PI,7);
-  car(PARK.canopyX+.3,PARK.z+1.55,Math.PI,1);
+  car(PARK.canopyX+.3,PARK.z-2.9,Math.PI,7);
+  car(PARK.canopyX+.3,PARK.z+2.9,Math.PI,1);
 }

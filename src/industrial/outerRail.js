@@ -15,9 +15,10 @@ export function buildOuterRail(k){
   const rnd=()=>{seed=(1664525*seed+1013904223)>>>0;return seed/4294967296;};
   for(let i=0;i<stones.count;i++){const progress=.4+rnd()*.5,p=path.getPointAt(progress),t=path.getTangentAt(progress),normal=new T.Vector3(-t.z,0,t.x).normalize();o.position.copy(p).addScaledVector(normal,(rnd()>.5?1:-1)*(1.25+rnd()*.9));o.position.y+=.14;o.rotation.set(rnd()*3,rnd()*3,rnd()*3);const s=.05+rnd()*.07;o.scale.set(s,s*.55,s);o.updateMatrix();stones.setMatrixAt(i,o.matrix);}stones.instanceMatrix.needsUpdate=true;stones.userData.detailDistance=110;
   // Road crossing panels stay flush with the running surfaces.
-  box(10,.19,1.30,[-143,.30,z],dark);for(const dz of [-1.32,1.32])box(10,.19,.85,[-143,.30,z+dz],dark);
+  for(const crossingX of [-143,-205]){box(10,.19,1.30,[crossingX,.30,z],dark);for(const dz of [-1.32,1.32])box(10,.19,.85,[crossingX,.30,z+dz],dark);}
   for(const x of [-151,-135]){cyl(.07,3.6,[x,1.8,z-5],m.white);const a=box(.11,1.4,.09,[x,3.3,z-5],m.red);a.rotation.z=.7;const b=box(.11,1.4,.09,[x,3.3,z-5],m.white);b.rotation.z=-.7;}
-  // Concrete drainage and the pole line seen outside the fence.
+  // Keep the drainage outside; the poles stand between the fence and the left rail shoulder.
   box(260,.08,1.6,[-30,-.3,z+5.8],material('#7f7b70',0,1));for(const dz of [-.85,.85])box(260,.3,.15,[-30,-.1,z+5.8+dz],tie);
-  for(let x=-160;x<100;x+=36){cyl(.12,10,[x,5,z+10],tie,k.scene,.08,10);box(.14,.18,2.6,[x,9.3,z+10],dark);for(const dz of [-1,0,1]){cyl(.09,.23,[x,9.5,z+10+dz],m.white);if(x<64)rod([x,9.6,z+10+dz],[x+36,9.6,z+10+dz],.014,dark);}}
+  const poleZ=41.9;
+  for(let x=-160;x<100;x+=36){cyl(.12,10,[x,5,poleZ],tie,k.scene,.08,10);box(.14,.18,2.6,[x,9.3,poleZ],dark);for(const dz of [-1,0,1]){cyl(.09,.23,[x,9.5,poleZ+dz],m.white);if(x<64)rod([x,9.6,poleZ+dz],[x+36,9.6,poleZ+dz],.014,dark);}}
 }

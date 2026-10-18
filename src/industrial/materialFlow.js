@@ -9,14 +9,48 @@ export function buildMaterialFlow(k,logistics){
   const infeed=buildRawInfeed(k),rubble=rubbleAssets(k);
   const makeCurve=routeCurve;
   function belt(points,width=1.4,supports=true){
-    for(let i=0;i<points.length-1;i++){
-      const a=new T.Vector3(...points[i]),b=new T.Vector3(...points[i+1]),d=b.clone().sub(a),length=d.length(),g=group(a.clone().add(b).multiplyScalar(.5).toArray());
+    const path=points.map(p=>new T.Vector3(...p)).filter((p,i,all)=>!i||p.distanceToSquared(all[i-1])>1e-8);
+    if(path.length<2)return;
+    const normals=path.slice(1).map((p,i)=>{
+      const d=p.clone().sub(path[i]);return new T.Vector3(-d.z,0,d.x).normalize();
+    });
+    // Shared, mitred cross-sections close both the carrying surface and its
+    // side rails at horizontal turns and at changes of incline.
+    const sections=path.map((p,i)=>{
+      if(!i)return normals[0].clone();
+      if(i===path.length-1)return normals.at(-1).clone();
+      const bisector=normals[i-1].clone().add(normals[i]);
+      if(bisector.lengthSq()<1e-8)return normals[i].clone();
+      bisector.normalize();
+      return bisector.multiplyScalar(Math.min(2,1/Math.max(.25,bisector.dot(normals[i]))));
+    });
+    function strip(left,right,bottom,top,mat){
+      const positions=[],indices=[];
+      path.forEach((p,i)=>{
+        for(const [offset,y] of [[left,top],[right,top],[right,bottom],[left,bottom]]){
+          const edge=p.clone().addScaledVector(sections[i],offset);
+          positions.push(edge.x,edge.y+y,edge.z);
+        }
+        if(i<path.length-1)for(let side=0;side<4;side++){
+          const a=i*4+side,b=i*4+(side+1)%4;
+          indices.push(a,b,b+4,a,b+4,a+4);
+        }
+      });
+      const end=(path.length-1)*4;
+      indices.push(0,3,2,0,2,1,end,end+1,end+2,end,end+2,end+3);
+      const geometry=new T.BufferGeometry();
+      geometry.setAttribute('position',new T.Float32BufferAttribute(positions,3));
+      geometry.setIndex(indices);geometry.computeVertexNormals();mesh(geometry,mat);
+    }
+    strip(-width/2,width/2,-.13,0,m.rubber);
+    for(const side of [-1,1])strip(side*width/2-.05,side*width/2+.05,-.15,.01,m.blue);
+    for(let i=0;i<path.length-1;i++){
+      const a=path[i],b=path[i+1],d=b.clone().sub(a),length=d.length(),g=group(a.clone().add(b).multiplyScalar(.5).toArray());
       // Keep the carrying face upright on westbound inclines as well.
       g.rotation.set(0,-Math.atan2(d.z,d.x),Math.atan2(d.y,Math.hypot(d.x,d.z)),'YXZ');
-      box(length,.13,width,[0,-.065,0],m.rubber,g);
-      for(const z of [-width/2,width/2])box(length,.16,.1,[0,-.07,z],m.blue,g);
-      for(let x=-length/2;x<length/2;x+=1.5){const roller=cyl(.07,width+.1,[x,-.15,0],m.steel,g,undefined,10);roller.rotation.x=Math.PI/2;}
-      if(d.y>1)for(let x=-length/2+.3;x<length/2;x+=.8)box(.065,.18,width-.16,[x,.07,0],m.rubber,g);
+      const startInset=i?Math.min(width*.65,length*.25):.15,endInset=i<path.length-2?Math.min(width*.65,length*.25):.15;
+      for(let x=-length/2+startInset;x<length/2-endInset;x+=1.5){const roller=cyl(.07,width+.1,[x,-.15,0],m.steel,g,undefined,10);roller.rotation.x=Math.PI/2;}
+      if(d.y>1)for(let x=-length/2+Math.max(.3,startInset);x<length/2-endInset;x+=.8)box(.065,.18,width-.16,[x,.07,0],m.rubber,g);
       if(supports)for(let t=.05;t<1;t+=Math.min(.5,5/length)){const p=a.clone().lerp(b,t);for(const side of [-1,1]){const n=new T.Vector3(-d.z,0,d.x).normalize().multiplyScalar(side*width*.6);rod([p.x+n.x,0,p.z+n.z],[p.x+n.x,p.y-.2,p.z+n.z],.065,m.steel);}}
     }
   }

@@ -1,8 +1,9 @@
 import * as T from 'three';
 import {quarryCycle} from '../quarryCycle.js';
 import {rubbleAssets} from './rubble.js';
+import {quarryPoint} from './quarryLayout.js';
 
-export const HAULER_LAYOUT={bedPivot:[-5.5,1.25,0],bedLength:5.55,bedWidth:2.5,wheelRadius:.562,loadPoint:[223.5,7.35,39]};
+export const HAULER_LAYOUT={bedPivot:[-5.5,1.25,0],bedLength:5.55,bedWidth:2.5,wheelRadius:.562,loadPoint:quarryPoint(-2.5,2.35,0)};
 
 // Original industrial bodies, with the same scanned MAN cab used by the delivery trucks.
 export function createQuarryVehicles(k){
@@ -42,7 +43,7 @@ export function createQuarryVehicles(k){
   }
 
   function buildHauler(truckBuilder){
-    const g=group([226,5,39],k.scene,true),ws=[];truckBuilder.mountCab(g,[.85,0,0],1.05);
+    const g=group(quarryPoint(),k.scene,true),ws=[];truckBuilder.mountCab(g,[.85,0,0],1.05);
     contactShadow(g,10.5,3.7,[-1.65,.075,0]);
     for(const z of [-.49,.49]){box(8.5,.28,.12,[-1.7,.81,z],frame,g);box(8.5,.05,.22,[-1.7,.97,z],steel,g);}
     for(let x=-5.6;x<2.2;x+=.6)box(.12,.16,1.1,[x,.8,0],frame,g);
@@ -81,7 +82,7 @@ export function createQuarryVehicles(k){
   }
 
   function buildExcavator(){
-    const g=group([229,5,43],k.scene,true);g.rotation.y=2.6;
+    const g=group(quarryPoint(3,0,4),k.scene,true);g.rotation.y=2.6;
     for(const z of [-1.28,1.28])contactShadow(g,5.6,1.7,[0,.09,z]);
     // Track shoes follow a continuous stadium-shaped chain around both sprockets.
     const half=1.85,r=.48,perimeter=4*half+2*Math.PI*r;
@@ -139,8 +140,8 @@ export function createQuarryVehicles(k){
     function pose(p){upper.rotation.y=p.slew;boom.rotation.z=p.boom;stick.rotation.z=p.stick;bucket.rotation.z=p.bucket;load.visible=p.bucketLoad>.03;load.scale.y=Math.max(.03,p.bucketLoad);updateRams();}
     // Calibrate the loading pose over the centre of the actual tipper body.
     pose({slew:0,boom:.1,stick:.12,bucket:.13,bucketLoad:1});g.updateMatrixWorld(true);const tip=bucketTip.getWorldPosition(new T.Vector3());g.position.x+=HAULER_LAYOUT.loadPoint[0]-tip.x;g.position.z+=HAULER_LAYOUT.loadPoint[2]-tip.z;
-    function update(j){const p=j.index===0?quarryCycle(j.progress):{slew:-.88,boom:-.35,stick:.22,bucket:-.8,bucketLoad:0,pouring:false};pose(p);return p;}
-    update({index:0,progress:0});return {g,boom,stick,bucket,bucketTip,update};
+    function update(j){const p=j.index===0?quarryCycle(j.progress):{slew:-1.0,boom:-.35,stick:.22,bucket:-.8,bucketLoad:0,pouring:false};pose(p);return p;}
+    update({index:0,progress:0});return {g,upper,boom,stick,bucket,bucketTip,update};
   }
   return {buildHauler,buildExcavator};
 }

@@ -100,7 +100,8 @@ export function buildNewFactoryEntrance(k){
   box(1.92,.035,.06,[11.08,6.60,.90],gold,g);
 
   // White sliding leaf is parked along the right fence so moving trucks can pass.
-  const leaf=group([21.05,0,-.35],g);leaf.name='main-entrance-open-sliding-gate';
+  const fenceDepth=L.x-L.fenceX;
+  const leaf=group([21.05,0,fenceDepth-.35],g);leaf.name='main-entrance-open-sliding-gate';
   const width=15.6;
   box(width,.55,.10,[0,.49,0],white,leaf);
   for(const y of [.19,.79,2.36,2.57])box(width,.065,.09,[0,y,0],metal,leaf);
@@ -110,6 +111,6 @@ export function buildNewFactoryEntrance(k){
   for(const x of [-5.5,5.5]){
     const wheel=k.cyl(.11,.08,[x,.17,0],dark,leaf,undefined,12);wheel.rotation.x=Math.PI/2;
   }
-  box(.42,.65,.48,[13.40,.325,-.65],edge,g);
+  box(.42,.65,.48,[13.40,.325,fenceDepth-.65],edge,g);
   return g;
 }

@@ -1,21 +1,19 @@
 import * as T from 'three';
-import {OLD_LEFT_CAMPUS as L,OLD_ENTRANCE} from './siteLayout.js';
+import {OLD_LEFT_CAMPUS as L,OLD_ENTRANCE,OLD_ENTRANCE_YAW} from './siteLayout.js';
 import {createParkedCarBuilder} from './parkedCars.js';
 
 // Warehouse-side court from the user's close aerial: sheltered cars on the
 // left, an open concrete apron, planted boundary and a long central garden.
 export function buildOldWarehouseCourt(k,plants){
   const {box,cyl,rod,mesh,group,material,m}=k;
-  const concrete=material('#bbbcb0',0,.96),joint=material('#969b8f',0,.94);
+  const concrete=material('#bbbcb0',0,.96),asphalt=m.road,joint=material('#4b5155',0,.94);
   const white=material('#e0e3da',.08,.73),metal=material('#b8c2bb',.52,.44);
   const roofMat=material('#52685d',.24,.64),roofRib=material('#809084',.35,.54);
-  const lawn=material('#637a47',0,.98),soil=material('#77784e',0,1),paint=material('#d6d6c8',0,.93);
+  const lawn=m.grass,soil=material('#77784e',0,1),paint=material('#d6d6c8',0,.93);
   const court=L.forecourt,park=L.parking;
-  box(court.east-court.west,.68,court.south-court.north,[(court.east+court.west)/2,-.36,(court.south+court.north)/2],concrete);
-  for(let x=court.west+4;x<court.east;x+=5)box(.025,.008,court.south-court.north,[x,-.014,(court.south+court.north)/2],joint);
-  for(let z=court.north+4;z<court.south;z+=5)box(court.east-court.west,.008,.025,[(court.east+court.west)/2,-.014,z],joint);
+  box(court.east-court.west,.68,court.south-court.north,[(court.east+court.west)/2,-.36,(court.south+court.north)/2],asphalt);
   // Keep the checkpoint's approach continuous with the concrete court.
-  const entranceApron=box(10,.035,9.0,[L.fenceX-3.3,-.041,OLD_ENTRANCE.innerZ],concrete);
+  const entranceApron=box(10,.035,9.0,[L.fenceX-3.3,-.041,OLD_ENTRANCE.innerZ],asphalt);
   entranceApron.castShadow=false;
 
   const cx=(park.west+park.east)/2,cz=(park.north+park.south)/2;
@@ -63,14 +61,25 @@ export function buildOldWarehouseCourt(k,plants){
     mesh(grass,lawn,[x,-.035,z]);
     box(w-.3,.58,d-.3,[x,-.39,z],concrete);
   }
-  // Two green strips flank the white fence, stopping before the security lanes.
-  roundedBed(4.0,17.4,-31.55,-141.1,1.35);
+  // Continue the outside lawn from the road to the fence and the gate paving.
+  // Its former rounded curb sat inside the planting and left bare margins.
+  const stripWest=L.frontRoadX+3.5,stripEast=L.fenceX;
+  const stripNorth=L.sideFenceZ,stripSouth=OLD_ENTRANCE.innerZ-6.2;
+  const stripMidX=(stripWest+stripEast)/2,stripMidZ=(stripNorth+stripSouth)/2;
+  const outsideLawn=box(stripEast-stripWest,.15,stripSouth-stripNorth,
+    [stripMidX,-.04,stripMidZ],lawn);
+  outsideLawn.castShadow=false;
+  for(const x of [stripWest,stripEast])
+    box(.18,.16,stripSouth-stripNorth,[x,.06,stripMidZ],white).castShadow=false;
+  for(const z of [stripNorth,stripSouth])
+    box(stripEast-stripWest,.16,.18,[stripMidX,.06,z],white).castShadow=false;
+  // The smaller bed remains on the other side of the fence.
   roundedBed(2.4,17.1,-27.55,-141.1,.65);
   for(let i=0;i<5;i++){
     const z=-147.5+i*3.1;
     plants.plant(-31.55+(i%2?.18:-.12),z,.39+(i%3)*.045);
     plants.plant(-27.6,z+.35,.26+(i%2)*.055);
-    const shrub=k.sphere(.32,[-30.3,.38,z+1.35],lawn);shrub.scale.set(1,.7,1.4);
+    plants.plant(-30.3,z+1.35,.28,{plantedBed:true});
   }
 
   const island=L.median,ix=(island.west+island.east)/2,iz=(island.north+island.south)/2;
@@ -96,10 +105,12 @@ export function buildOldWarehouseCourt(k,plants){
     for(const y of [.45,1.52])box(length,.055,.055,[0,y,0],metal,g);
     for(let x=-length/2+.15;x<length/2;x+=.20)box(.025,1.18,.025,[x,1.02,0],metal,g);
   }
-  fence([L.fenceX,L.sideFenceZ],[L.fenceX,OLD_ENTRANCE.innerZ-7.75]);
-  fence([L.fenceX,OLD_ENTRANCE.innerZ-7.75],[OLD_ENTRANCE.innerX,OLD_ENTRANCE.innerZ-7.75]);
+  const gateEnd=side=>[OLD_ENTRANCE.innerX+Math.sin(OLD_ENTRANCE_YAW)*side*7.75,OLD_ENTRANCE.innerZ+Math.cos(OLD_ENTRANCE_YAW)*side*7.75];
+  const northEnd=gateEnd(-1),southEnd=gateEnd(1);
+  fence([L.fenceX,L.sideFenceZ],[L.fenceX,northEnd[1]]);
+  fence([L.fenceX,northEnd[1]],northEnd);
   fence([L.fenceX,L.sideFenceZ],[100,L.sideFenceZ]);
-  fence([OLD_ENTRANCE.innerX,OLD_ENTRANCE.innerZ+7.75],[L.fenceX,-113]);
+  fence(southEnd,[L.fenceX,-113]);
 
   function latticeLamp(x,z,h){
     const g=group([x,0,z]);box(.6,.16,.6,[0,.08,0],concrete,g);

@@ -1,7 +1,7 @@
 import * as T from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {trafficClearance} from './trafficLayout.js';
-import {POND,OUTER_RAIL_Z,POND_APPROACH,OLD_FRONT_PARK,OLD_FRONT_COURT as COURT,OLD_SIDE_LOADING,OLD_REAR_BOUNDARY,OLD_RAW_SILOS,OLD_PAVILION,OLD_LEFT_CAMPUS as LEFT,OLD_ENTRANCE,NEW_FACTORY_ENTRANCE as ENTRANCE,GYPSUM_RECEIVING_HALL,GYPSUM_SILO_TOWER,PROCESS_BUILDINGS,pondAccessClearance,loaderRoadClearance,oldEntranceClearance} from './siteLayout.js';
+import {POND,OUTER_RAIL_Z,POND_APPROACH,OLD_FRONT_PARK,OLD_FRONT_COURT as COURT,OLD_SIDE_LOADING,OLD_REAR_BOUNDARY,OLD_RAW_SILOS,OLD_PAVILION,OLD_LEFT_CAMPUS as LEFT,OLD_APPROACH,NEW_FACTORY_ENTRANCE as ENTRANCE,NEW_ENTRANCE_ROAD as GATE_ROAD,GYPSUM_RECEIVING_HALL,GYPSUM_SILO_TOWER,PROCESS_BUILDINGS,pondAccessClearance,loaderRoadClearance,oldEntranceClearance} from './siteLayout.js';
 
 // A few shared conifer silhouettes, with individual proportions and colours.
 // The planting is deterministic so refreshing never moves a tree onto a road.
@@ -10,22 +10,23 @@ export function createVegetation(k){
   const random=()=>{seed=(1664525*seed+1013904223)>>>0;return seed/4294967296;};
   const rectDistance=(x,z,west,east,north,south)=>Math.hypot(Math.max(west-x,x-east,0),Math.max(north-z,z-south,0));
   const campusLanes=[
-    [LEFT.frontRoadX-3.5,LEFT.frontRoadX+3.5,-151,-61],
-    [LEFT.frontRoadX,0,OLD_ENTRANCE.innerZ-4.5,OLD_ENTRANCE.innerZ+4.5],
+    [LEFT.frontRoadX-3.5,LEFT.frontRoadX+3.5,LEFT.sideRoadZ,-61],
+    [LEFT.frontRoadX,OLD_APPROACH.east,POND_APPROACH.z-POND_APPROACH.width/2,POND_APPROACH.z+POND_APPROACH.width/2],
     [LEFT.frontRoadX,COURT.east,COURT.entryZ-COURT.entryWidth/2,COURT.entryZ+COURT.entryWidth/2],
     [LEFT.frontRoadX,100,LEFT.sideRoadZ-LEFT.sideRoadWidth/2,LEFT.sideRoadZ+LEFT.sideRoadWidth/2],
     [COURT.drive.west,COURT.drive.east,COURT.drive.north,COURT.drive.south],
     [OLD_SIDE_LOADING.apron.west,OLD_SIDE_LOADING.apron.east,OLD_SIDE_LOADING.apron.north,OLD_SIDE_LOADING.apron.south],
     [OLD_REAR_BOUNDARY.x-10,OLD_REAR_BOUNDARY.x+10,OLD_REAR_BOUNDARY.gateZ-OLD_REAR_BOUNDARY.gateWidth/2-.3,OLD_REAR_BOUNDARY.gateZ+OLD_REAR_BOUNDARY.gateWidth/2+.3],
-    [-163,LEFT.frontRoadX,-64.7,-57.3],
+    [GATE_ROAD.west,GATE_ROAD.east,GATE_ROAD.z-GATE_ROAD.width/2-1.5,GATE_ROAD.z+GATE_ROAD.width/2+1.5],
+    [GATE_ROAD.outer.x-GATE_ROAD.outer.width/2-1.5,GATE_ROAD.outer.x+GATE_ROAD.outer.width/2+1.5,GATE_ROAD.outer.north,GATE_ROAD.outer.south],
     [OLD_PAVILION.serviceX,110,-64.7,-57.3],
     [OLD_PAVILION.serviceX-3.7,OLD_PAVILION.serviceX+3.7,-78,-61]
   ];
-  function isClear(tree){
+  function isClear(tree,{plantedBed=false,plantedMedian=false}={}){
     const {x,z,sx,sz,sy,leanX,leanZ}=tree;
     const crown=2.65*Math.max(sx,sz)+7.5*sy*Math.max(Math.abs(leanX),Math.abs(leanZ))+.3;
-    if(trafficClearance(x,z)<crown+.3||pondAccessClearance(x,z)<crown+.6||loaderRoadClearance(x,z)<crown+.4)return false;
-    if(oldEntranceClearance(x,z)<crown+.3)return false;
+    if(!plantedMedian&&(trafficClearance(x,z)<crown+.3||pondAccessClearance(x,z)<crown+.6||loaderRoadClearance(x,z)<crown+.4))return false;
+    if(!plantedMedian&&oldEntranceClearance(x,z)<crown+.3)return false;
     if(rectDistance(x,z,ENTRANCE.x-1.1,ENTRANCE.x+3.8,ENTRANCE.z+ENTRANCE.left,ENTRANCE.z+ENTRANCE.right)<crown+.3)return false;
     if(rectDistance(x,z,OLD_FRONT_PARK.west,OLD_FRONT_PARK.east,OLD_FRONT_PARK.north,OLD_FRONT_PARK.south)<crown+.4)return false;
     if(rectDistance(x,z,LEFT.parking.west,LEFT.parking.east,LEFT.parking.north,LEFT.parking.south)<crown+.25)return false;
@@ -33,19 +34,23 @@ export function createVegetation(k){
       if(rectDistance(x,z,b.x-b.width/2,b.x+b.width/2,b.z-b.depth/2,b.z+b.depth/2)<crown+.3)return false;
     const rear=OLD_REAR_BOUNDARY.building;
     if(rectDistance(x,z,rear.x-2.6,rear.x+2.6,rear.z+rear.depth/2,rear.z+rear.depth/2+2.8)<crown+.3)return false;
-    if(rectDistance(x,z,OLD_PAVILION.garden.west,OLD_PAVILION.annex.x-OLD_PAVILION.annex.width/2,-67.65,-66.35)<crown+.15)return false;
     if(rectDistance(x,z,-13,20,28.3,39.95)<crown+.4)return false;
     for(const b of [GYPSUM_RECEIVING_HALL,GYPSUM_RECEIVING_HALL.wing])
       if(rectDistance(x,z,b.west,b.east,b.north,b.south)<crown+.4)return false;
     if(rectDistance(x,z,POND.x-POND.width/2-1.5,POND.x+POND.width/2+1.5,POND.z-POND.depth/2-1.5,POND.z+POND.depth/2+1.5)<crown)return false;
     if(Math.abs(z-OUTER_RAIL_Z)<3+crown)return false;
-    if(x<116&&Math.abs(z+53)<2.2+crown)return false;
-    if(campusLanes.some(bounds=>rectDistance(x,z,...bounds)<crown+.8))return false;
+    // West of the turnout there is only the main track at z=-53.
+    // Reserve the wider corridor only where the second track exists.
+    const freightRailZ=x<-150?-53:-55.4,freightRailHalfWidth=x<-150?2.6:4.6;
+    if(x<116&&Math.abs(z-freightRailZ)<freightRailHalfWidth+crown)return false;
+    // The pavilion's narrow landscaped beds border a service lane. Trees
+    // deliberately placed in those beds still respect buildings and rail.
+    if(!plantedBed&&!plantedMedian&&campusLanes.some(bounds=>rectDistance(x,z,...bounds)<crown+.8))return false;
     return true;
   }
-  function plant(x,z,size){
+  function plant(x,z,size,options){
     const tree={x,z,sx:size*(.88+random()*.25),sz:size*(.86+random()*.27),sy:size*(.78+random()*.60),yaw:random()*Math.PI*2,leanX:(random()-.5)*.045,leanZ:(random()-.5)*.045,variant:Math.floor(random()*3),tint:Math.floor(random()*5)};
-    if(!isClear(tree))return false;
+    if(!isClear(tree,options))return false;
     sites.push(tree);return true;
   }
   function row(x1,z1,x2,z2,spacing=4.5){
@@ -77,10 +82,12 @@ export function createVegetation(k){
   }
   function grove(x,z,w,d,spacing=4.2){
     const crossesAvenue=x+w/2>POND_APPROACH.west&&x-w/2<POND_APPROACH.east&&Math.abs(z-POND_APPROACH.z)<d/2+POND_APPROACH.width/2+2;
-    k.box(w,.15,d,[x,crossesAvenue?-.24:-.10,z],k.m.grass);scatter(x,z,w,d,spacing);
+    const crossesGateRoad=x+w/2>GATE_ROAD.west&&x-w/2<GATE_ROAD.east&&Math.abs(z-GATE_ROAD.z)<d/2+GATE_ROAD.width/2+2;
+    k.box(w,.15,d,[x,crossesAvenue||crossesGateRoad?-.24:-.10,z],k.m.grass);scatter(x,z,w,d,spacing);
   }
-  function garden(x,z,w,d){
-    k.box(w+.5,.23,d+.5,[x,.02,z],k.m.white,k.scene,.6);k.box(w,.22,d,[x,.12,z],k.m.grass,k.scene,.55);scatter(x,z,w,d,3,true);
+  function garden(x,z,w,d,{curb=true}={}){
+    if(curb)k.box(w+.5,.23,d+.5,[x,.02,z],k.m.white,k.scene,.6);
+    k.box(w,.22,d,[x,.12,z],k.m.grass,k.scene,.55);scatter(x,z,w,d,3,true);
   }
   function finish(){
     const bark=k.material('#655d49',0,1),foliage=k.material('#ffffff',0,.96,{vertexColors:true,side:T.DoubleSide});

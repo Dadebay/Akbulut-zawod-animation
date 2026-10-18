@@ -74,8 +74,8 @@ export function createForkliftBuilder(k,pallet,worker){
       fork.position.y=pose.height-F.mastBaseY;mast.rotation.z=pose.tilt;
       liftRam.scale.y=Math.max(.08,(pose.height+.58)/1.8);
       cargo.visible=pose.carrying&&pose.kind==='panel';bagCargo.visible=pose.carrying&&pose.kind==='bags';
-      steering.forEach(p=>p.rotation.y=pose.steer);
-      ws.forEach(w=>w.rotation.z=-(pose.travel+w.userData.sideOffset*pose.yaw)/w.userData.radius);
+      steering.forEach(p=>p.rotation.y=-Math.atan2((F.frontAxleX-F.rearAxleX)*pose.curvature,1+p.position.z*pose.curvature));
+      ws.forEach((w,i)=>w.rotation.z=-pose.wheelTravel[i]/w.userData.radius);
       steeringWheel.rotation.y=-pose.steer*2.2;
       reverseLights.visible=pose.reverse;driver.update(time,{lookBack:pose.lookBack,steer:pose.steer});
     }

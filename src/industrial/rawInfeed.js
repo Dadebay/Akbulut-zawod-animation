@@ -80,32 +80,34 @@ export function buildRawInfeed(k){
   const outbound=curve(LOADER_TRANSFER_POINTS);
   // Retrace the loaded route backwards; heading stays continuous at both ends.
   const homebound=curve([...LOADER_TRANSFER_POINTS].reverse());
-  const drop=new T.Vector3();
+  const drop=new T.Vector3(),scoopDistance=LOADER_PARK[0]-LOADER_SCOOP[0],approachDistance=LOADER_QUEUE[0]-LOADER_STOP[0],outboundLength=outbound.getLength();
   const place=(path,t,reverse=false)=>{loader.g.position.copy(path.getPointAt(clamp01(t)));const d=path.getTangentAt(clamp01(t));loader.g.rotation.y=-Math.atan2(d.z,d.x)+(reverse?Math.PI:0);};
   return {loader,update(j,{showLines=false}={}){
-    const {id}=j.step,p=j.progress;let lift=-.26,tilt=-.08,fill=0,moving=false;
+    const {id}=j.step,p=j.progress;let lift=-.26,tilt=-.08,fill=0,travel=0,lookBack=0;
     loader.g.position.set(...LOADER_PARK);loader.g.rotation.y=Math.PI;
     if(id==='scoop'){
-      loader.g.position.set(T.MathUtils.lerp(LOADER_PARK[0],LOADER_SCOOP[0],smooth(p/.5)),0,LOADER_SCOOP[2]);moving=p<.5;
+      loader.g.position.set(T.MathUtils.lerp(LOADER_PARK[0],LOADER_SCOOP[0],smooth(p/.5)),0,LOADER_SCOOP[2]);travel=scoopDistance*smooth(p/.5);
       fill=smooth((p-.38)/.3);lift=T.MathUtils.lerp(-.26,-.05,smooth((p-.68)/.32));tilt=T.MathUtils.lerp(-.08,.15,smooth((p-.55)/.4));
     }else if(id==='carry'){
-      lift=-.05;tilt=.15;fill=1;moving=true;
-      if(p<.18){loader.g.position.set(T.MathUtils.lerp(LOADER_SCOOP[0],LOADER_PARK[0],smooth(p/.18)),0,LOADER_SCOOP[2]);loader.g.rotation.y=Math.PI;}
-      else{const t=(p-.18)/.82;place(outbound,t);loader.g.rotation.y=mixAngle(Math.PI,loader.g.rotation.y,smooth(t/.06));}
+      lift=-.05;tilt=.15;fill=1;
+      if(p<.18){loader.g.position.set(T.MathUtils.lerp(LOADER_SCOOP[0],LOADER_PARK[0],smooth(p/.18)),0,LOADER_SCOOP[2]);loader.g.rotation.y=Math.PI;travel=scoopDistance*(1-smooth(p/.18));lookBack=smooth(p/.035);}
+      else{const t=(p-.18)/.82;travel=outboundLength*t;place(outbound,t);loader.g.rotation.y=mixAngle(Math.PI,loader.g.rotation.y,smooth(t/.06));}
     }else if(id==='tip'){
-      loader.g.position.set(T.MathUtils.lerp(LOADER_QUEUE[0],LOADER_STOP[0],smooth((p-.23)/.12)),0,LOADER_STOP[2]);loader.g.rotation.y=Math.PI;moving=p>.23&&p<.35;
+      loader.g.position.set(T.MathUtils.lerp(LOADER_QUEUE[0],LOADER_STOP[0],smooth((p-.23)/.12)),0,LOADER_STOP[2]);loader.g.rotation.y=Math.PI;travel=outboundLength+approachDistance*smooth((p-.23)/.12);
       // Raise outside the bunker, approach with the bucket above its rim, then tip.
       lift=T.MathUtils.lerp(-.05,.85,smooth(p/.22));tilt=T.MathUtils.lerp(.15,-.7,smooth((p-.34)/.08));fill=1-clamp01((p-.42)/.36);
       if(p>.8)tilt=T.MathUtils.lerp(-.7,.15,smooth((p-.8)/.2));
     }else if(j.index>=JOURNEY_STAGE.infeed){
       const elapsed=j.time-JOURNEY_STEPS[JOURNEY_STAGE.infeed].start;lift=-.05;tilt=.15;
-      if(elapsed<3.5){loader.g.position.set(T.MathUtils.lerp(LOADER_STOP[0],LOADER_QUEUE[0],smooth(elapsed/3.5)),0,LOADER_STOP[2]);loader.g.rotation.y=Math.PI;lift=.85;moving=true;}
-      else if(elapsed<27.5){place(homebound,smooth((elapsed-3.5)/24),true);lift=T.MathUtils.lerp(.85,-.05,smooth((elapsed-3.5)/4));moving=true;}
+      if(elapsed<3.5){loader.g.position.set(T.MathUtils.lerp(LOADER_STOP[0],LOADER_QUEUE[0],smooth(elapsed/3.5)),0,LOADER_STOP[2]);loader.g.rotation.y=Math.PI;lift=.85;travel=outboundLength+approachDistance*(1-smooth(elapsed/3.5));lookBack=smooth(elapsed/.5);}
+      else if(elapsed<27.5){place(homebound,smooth((elapsed-3.5)/24),true);lift=T.MathUtils.lerp(.85,-.05,smooth((elapsed-3.5)/4));travel=outboundLength*(1-smooth((elapsed-3.5)/24));lookBack=1;}
       else{lift=T.MathUtils.lerp(-.05,-.26,smooth((elapsed-27.5)/3));tilt=T.MathUtils.lerp(.15,-.08,smooth((elapsed-27.5)/3));}
     }
     loader.g.rotation.z=0;
     loader.pose(lift,tilt,fill);
-    loader.wheels.forEach(w=>{w.rotation.z=moving?-j.time*2.6:0;});
+    // Tyres retain their angle at a stop and reverse by the distance travelled.
+    loader.wheels.forEach(w=>{w.rotation.z=-travel/.87;});
+    loader.driver.update(j.time,{lookBack});
     deliveryStock.scale.y=id==='receive'?.55+.45*clamp01((p-.2)/.5):j.index<JOURNEY_STAGE.receive?.55:1;
     loaderStock.scale.y=id==='scoop'?1-fill*.10:j.index>JOURNEY_STAGE.scoop?.9:1;
     hopperLoad.visible=j.hopperFill>.01||showLines;hopperLoad.scale.y=showLines?.65:Math.max(.01,j.hopperFill);

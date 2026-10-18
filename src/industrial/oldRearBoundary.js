@@ -1,5 +1,5 @@
 import * as T from 'three';
-import {OLD_REAR_BOUNDARY as L} from './siteLayout.js';
+import {OLD_REAR_BOUNDARY as L,OLD_PAVILION} from './siteLayout.js';
 
 // Solid white partition between the factory court and the exterior silo/raw-material yard, plus
 // the small green-roofed service building behind the long warehouse.
@@ -24,7 +24,8 @@ export function buildOldRearBoundary(k){
     }
   }
   const northGate=L.gateZ-L.gateWidth/2,southGate=L.gateZ+L.gateWidth/2;
-  wall(L.north,northGate-.30);wall(southGate+.30,L.south);
+  // Meet the rail-side boundary wall at the court's far corner.
+  wall(L.north,northGate-.30);wall(southGate+.30,OLD_PAVILION.wallZ);
   // Flush vehicle access through the partition, clear of both silos and stored material.
   box(20,.12,L.gateWidth+.6,[L.x,-.065,L.gateZ],concrete);
   for(const z of [northGate,southGate]){

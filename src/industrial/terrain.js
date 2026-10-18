@@ -1,5 +1,7 @@
 import * as T from 'three';
 import {inRawYard,RAW_YARD,outerRailPath} from './siteLayout.js';
+import {QUARRY} from './quarryLayout.js';
+import {freightRailExtensionPath} from './rail.js';
 
 // Sculpted from the supplied aerial photo and the site's Google Maps satellite
 // view. This is a compressed visual reconstruction, not surveyed elevation data.
@@ -33,11 +35,11 @@ export function naturalHeight(x,z){
   h*=1-.48*cut;
   h+=rise*(fbm(x*.18,z*.15)-.5)*2.8;
   // Exposed limestone behind the working apron; open on its downhill side.
-  h+=12*Math.exp(-(((x-271)/45)**2)-((z-39)/51)**2);
-  const q=Math.hypot((x-239)/34,(z-40)/32);
+  h+=12*Math.exp(-(((x-QUARRY.x-45)/45)**2)-((z-QUARRY.z)/51)**2);
+  const q=Math.hypot((x-QUARRY.x-13)/34,(z-QUARRY.z-1)/32);
   if(q<2.1){
-    const terrace=5.51+Math.floor(Math.max(0,q-.78)/.24)*4.1;
-    const floor=q<.78?5.51:Math.min(h,terrace);
+    const terrace=QUARRY.y+.51+Math.floor(Math.max(0,q-.78)/.24)*4.1;
+    const floor=q<.78?QUARRY.y+.51:Math.min(h,terrace);
     h=T.MathUtils.lerp(floor,h,smooth(1.65,2.1,q));
   }
   return Math.max(-.55,h-.55);
@@ -59,26 +61,38 @@ function groundTexture(k){
     ctx.strokeStyle=`rgba(77,70,60,${.08+hash(i,11)*.13})`;ctx.lineWidth=.6+hash(i,6)*1.2;
     ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+l*.4,y+l*.12);ctx.lineTo(x+l*.6,y-l*.14);ctx.lineTo(x+l,y-l*.1);ctx.stroke();
   }
-  const t=k.trackTexture(new T.CanvasTexture(c));t.colorSpace=T.SRGBColorSpace;t.wrapS=t.wrapT=T.RepeatWrapping;t.anisotropy=8;return t;
+  const t=k.trackTexture(new T.CanvasTexture(c));t.colorSpace=T.SRGBColorSpace;t.wrapS=t.wrapT=T.RepeatWrapping;t.anisotropy=4;return t;
 }
 
 export function buildTerrain(k,curve){
   const route=Array.from({length:281},(_,i)=>curve.getPointAt(i/280));
+  const roadBounds=new T.Box3().setFromPoints(route).expandByScalar(12);
   const rail=outerRailPath(),railRoute=Array.from({length:481},(_,i)=>rail.getPointAt(i/480));
+  const freightRail=freightRailExtensionPath(),freightRoute=Array.from({length:181},(_,i)=>freightRail.getPointAt(i/180));
+  const freightBounds=new T.Box3().setFromPoints(freightRoute).expandByScalar(16);
+  function freightRailDistance(x,z){
+    if(x<freightBounds.min.x||x>freightBounds.max.x||z<freightBounds.min.z||z>freightBounds.max.z)return Infinity;
+    let nearest=Infinity;
+    for(const p of freightRoute)nearest=Math.min(nearest,(x-p.x)**2+(z-p.z)**2);
+    return Math.sqrt(nearest);
+  }
   function roadDistance(x,z){
     let nearest=1e9,height=0;
     // The haul loop occupies only a small part of the terrain.
-    if(x>140&&x<285&&z>-155&&z<70)for(const p of route){const d=(x-p.x)**2+(z-p.z)**2;if(d<nearest){nearest=d;height=p.y;}}
+    if(x>roadBounds.min.x&&x<roadBounds.max.x&&z>roadBounds.min.z&&z<roadBounds.max.z)for(const p of route){const d=(x-p.x)**2+(z-p.z)**2;if(d<nearest){nearest=d;height=p.y;}}
     return {distance:Math.sqrt(nearest),height};
   }
   function elevation(x,z){
     let h=naturalHeight(x,z);const {distance,height}=roadDistance(x,z);
     h=T.MathUtils.lerp(height-.06,h,smooth(4,12,distance));
     if(inRawYard(x,z,10)){const edge=Math.max(RAW_YARD.west-x,x-RAW_YARD.east,RAW_YARD.north-z,z-RAW_YARD.south,0);h=T.MathUtils.lerp(-.27,h,smooth(0,10,edge));}
-    if(x>95&&x<515&&z>33&&z<181){let nearest=Infinity,y=0;for(const p of railRoute){const ds=(x-p.x)**2+(z-p.z)**2;if(ds<nearest){nearest=ds;y=p.y;}}h=T.MathUtils.lerp(y-.13,h,smooth(3.5,10,Math.sqrt(nearest)));}
+    // A level track bed with soft shoulders keeps the yard-side line visible
+    // even on the coarser tablet terrain grid.
+    h=T.MathUtils.lerp(-.18,h,smooth(8,16,freightRailDistance(x,z)));
+    if(x>95&&x<575&&z>33&&z<181){let nearest=Infinity,y=0;for(const p of railRoute){const ds=(x-p.x)**2+(z-p.z)**2;if(ds<nearest){nearest=ds;y=p.y;}}h=T.MathUtils.lerp(y-.13,h,smooth(3.5,10,Math.sqrt(nearest)));}
     // Excavator and turnaround apron, at exactly the same level as the vehicles.
-    const apron=Math.hypot((x-228)/17,(z-39)/13);
-    h=T.MathUtils.lerp(4.96,h,smooth(.8,1.25,apron));
+    const apron=Math.hypot((x-QUARRY.x-2)/17,(z-QUARRY.z)/13);
+    h=T.MathUtils.lerp(QUARRY.y-.04,h,smooth(.8,1.25,apron));
     return h;
   }
   const columns=k.tablet?160:320,rows=k.tablet?180:360;
@@ -125,6 +139,12 @@ export function buildTerrain(k,curve){
   };
   ground.customProgramCacheKey=()=> 'akbulut-terrain-triplanar-v1';
   const surface=k.mesh(geometry,ground);surface.castShadow=false;
+  // The sculpted grid ends at x=-230. Continue the same flat plain westwards so the
+  // edge of the model never shows behind the campus (fog hides the far end).
+  const plain=new T.PlaneGeometry(2400,2600);plain.rotateX(-Math.PI/2);plain.translate(-229-1200,-.56,0);
+  const plainColor=new T.Color('#bdb4a0'),plainColors=[];for(let i=0;i<plain.attributes.position.count;i++)plainColors.push(plainColor.r,plainColor.g,plainColor.b);
+  plain.setAttribute('color',new T.Float32BufferAttribute(plainColors,3));
+  k.mesh(plain,ground).castShadow=false;
 
   function ribbon(width,offset,color){
     const positions=[],uvs=[],indices=[];
@@ -151,9 +171,9 @@ export function buildTerrain(k,curve){
   const rocks=k.instances(rockGeo,stone,rockCount),dummy=new T.Object3D(),rockColor=new T.Color();
   for(let i=0;i<rockCount;i++){
     let x=122+hash(i,1)*640,z=(hash(i,3)-.5)*1040;
-    if(i<650){const a=hash(i,4)*Math.PI*2,r=12+hash(i,7)*32;x=244+Math.cos(a)*r;z=40+Math.sin(a)*r;}
-    const gap=roadDistance(x,z).distance,apron=Math.hypot((x-228)/17,(z-39)/13);
-    const scale=gap<4.1||apron<.8||inRawYard(x,z,3)?0:(i<650?.16+hash(i,5)*.65:.10+hash(i,5)**4*1.5);
+    if(i<650){const a=hash(i,4)*Math.PI*2,r=12+hash(i,7)*32;x=QUARRY.x+18+Math.cos(a)*r;z=QUARRY.z+1+Math.sin(a)*r;}
+    const gap=roadDistance(x,z).distance,apron=Math.hypot((x-QUARRY.x-2)/17,(z-QUARRY.z)/13);
+    const scale=gap<4.1||freightRailDistance(x,z)<4||apron<.8||inRawYard(x,z,3)?0:(i<650?.16+hash(i,5)*.65:.10+hash(i,5)**4*1.5);
     dummy.position.set(x,surfaceHeight(x,z)+scale*.06,z);dummy.rotation.set(hash(i,8)*.5,hash(i,9)*6,hash(i,11)*.5);dummy.scale.set(scale*1.4,scale*.55,scale);dummy.updateMatrix();rocks.setMatrixAt(i,dummy.matrix);
     rockColor.set(i%3?'#bcb3a1':'#d4cdbd').multiplyScalar(.9+hash(i,15)*.18);rocks.setColorAt(i,rockColor);
   }
@@ -164,7 +184,7 @@ export function buildTerrain(k,curve){
   const scrub=k.instances(new T.IcosahedronGeometry(1,0),k.material('#76715e',0,1),scrubCount);
   for(let i=0;i<scrubCount;i++){
     const x=115+hash(i,28)*800,z=(hash(i,31)-.5)*1500,gap=roadDistance(x,z).distance;
-    const q=Math.hypot((x-239)/45,(z-40)/43),s=gap<6||q<1.6||inRawYard(x,z,3)?0:.12+hash(i,32)*.45;
+    const q=Math.hypot((x-QUARRY.x-13)/45,(z-QUARRY.z-1)/43),s=gap<6||freightRailDistance(x,z)<4||q<1.6||inRawYard(x,z,3)?0:.12+hash(i,32)*.45;
     dummy.position.set(x,surfaceHeight(x,z)+s*.12,z);dummy.rotation.set(hash(i,36),i,hash(i,37));dummy.scale.set(s,s*.35,s*.8);dummy.updateMatrix();scrub.setMatrixAt(i,dummy.matrix);
   }
   scrub.instanceMatrix.needsUpdate=true;

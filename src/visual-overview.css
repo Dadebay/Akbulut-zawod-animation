@@ -133,3 +133,13 @@
 .process-line-picker button>i {width:9px;height:9px;border-radius:50%;background:var(--line-color);flex-shrink:0;}
 .process-line-picker button.active {box-shadow:inset 0 -2px var(--line-color);}
 .scene-line-label {border-left:3px solid var(--line-color);font-size:10px;letter-spacing:0;max-width:230px;white-space:normal;text-align:center;line-height:1.35;pointer-events:none;}
+
+/* The scene's day/night choice stays accessible beside the camera controls. */
+.factory-toolbar .factory-controls { max-width:100%; flex-wrap:wrap; }
+.visual-factory.is-night { background:#101c30; }
+.is-night .scene-site-label { background:#182b40ed; border-color:#65809a; color:#e2edf7; }
+.is-night .scene-site-link:hover,.is-night .scene-site-link:focus-visible { background:#284964; border-color:#b4d4ef; }
+.is-night .model-credit { color:#c1d3e6; }
+.is-night .model-credit a { color:#e0ecfa; }
+.lighting-switch button { white-space:nowrap; }
+@media(max-width:700px){.factory-toolbar .factory-controls .lighting-switch button{padding:8px}.lighting-switch{flex-shrink:0}}

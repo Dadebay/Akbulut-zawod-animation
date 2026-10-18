@@ -7,6 +7,8 @@ import {OLD_SIDE_LOADING} from './siteLayout.js';
 import {createWorkerBuilder} from './workers.js';
 import {createForkliftBuilder} from './forklift.js';
 import {FORKLIFT_JOBS} from './forkliftMotion.js';
+import {WALK_ROUTES} from './pedestrianMotion.js';
+import {buildServiceTraffic} from './serviceTraffic.js';
 
 export function buildLogistics(k,operators){
   const {m,box,group}=k;
@@ -15,7 +17,9 @@ export function buildLogistics(k,operators){
     const record=worker({position,yaw,zone,seed:humans.length});humans.push(record);return record.g;
   }
   operators.forEach(o=>human(o.pos,o.angle,o.zone));
-  [[33,0,-40.6],[-29,0,-40.9],[3,0,-41.2],[-108,0,-9],[83,0,4]].forEach(p=>human(p,Math.PI,'GP'));
+  WALK_ROUTES.forEach(walk=>humans.push(worker({walk,seed:humans.length,zone:'GP'})));
+  human([83,0,4],Math.PI,'GP');
+  const traffic=buildServiceTraffic(k);
 
   function pallet(parent,pos,kind='panel',dynamic=false){
     const p=group(pos,parent,dynamic);
@@ -32,7 +36,8 @@ export function buildLogistics(k,operators){
   const hauler=createQuarryVehicles(k).buildHauler(truckBuilder);hauler.route=haulCurve();vehicles.push(hauler);
   for(const {position,angle,scale} of PARKED_TRUCKS)truck(position,angle).scale.setScalar(scale);
   // The old hall's covered side entrance accepts a full-size articulated truck.
-  truck([OLD_SIDE_LOADING.x,0,OLD_SIDE_LOADING.wallZ-7],Math.PI/2);
+  // The truck drives in through the open left and right ends of the shed, whose front is closed.
+  truck([OLD_SIDE_LOADING.x-6.2,0,OLD_SIDE_LOADING.wallZ+OLD_SIDE_LOADING.depth/2],Math.PI);
   truck([64,0,-43],Math.PI,false,true);
 
   const forklift=createForkliftBuilder(k,pallet,worker);
@@ -49,5 +54,5 @@ export function buildLogistics(k,operators){
     const g=group(source,k.scene,true);g.rotation.y=Math.PI;
     return {g,panel:pallet(g,[0,0,0],'panel',true),bags:pallet(g,[0,0,0],'bags',true)};
   });
-  return {humans,vehicles,pallet,hauler,dispatchTruck,train,trainCargo,railWheels,truckFork,railForkA,railForkB,stock,loadTruckModels:truckBuilder.load};
+  return {humans,traffic,vehicles,pallet,hauler,dispatchTruck,train,trainCargo,railWheels,truckFork,railForkA,railForkB,stock,loadTruckModels:truckBuilder.load};
 }

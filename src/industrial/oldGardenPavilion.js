@@ -62,7 +62,7 @@ export function buildOldGardenPavilion(k,plants,solarPanel){
   box(w-.25,.07,d-.18,[0,h+.22,0],base,annex);
   for(const z of [-d/2,d/2])box(w+.30,.20,.12,[0,h+.34,z],white,annex);
   for(const x of [-w/2,w/2])box(.12,.20,d+.3,[x,h+.34,0],white,annex);
-  // Garden-side door and a shallow doorstep; the central path stays open.
+  // Garden-side door and a shallow doorstep.
   box(1.40,2.45,.045,[0,1.37,d/2+.09],glass,annex);
   for(const x of [-.7,0,.7])box(.055,2.5,.09,[x,1.37,d/2+.125],trim,annex);
   for(const x of [-.12,.12])rod([x,1.05,d/2+.18],[x,1.45,d/2+.18],.018,trim,annex);
@@ -85,26 +85,18 @@ export function buildOldGardenPavilion(k,plants,solarPanel){
   }
   box(.22,.38,.07,[w/2-.5,2.2,-d/2-.05],dark,annex);
 
-  // Continuous lawn in front and a planted strip along the rail-side wall.
-  const canvas=document.createElement('canvas');canvas.width=canvas.height=128;
-  const ctx=canvas.getContext('2d'),pixels=ctx.createImageData(128,128);let seed=391;
-  for(let y=0;y<128;y++)for(let x=0;x<128;x++){
-    seed=(1664525*seed+1013904223)>>>0;
-    const variation=(seed%15)+6*Math.sin(x*.14)*Math.cos(y*.11),i=(y*128+x)*4;
-    pixels.data[i]=82+variation;pixels.data[i+1]=105+variation;pixels.data[i+2]=58+variation;pixels.data[i+3]=255;
-  }
-  ctx.putImageData(pixels,0,0);
-  const grassMap=k.trackTexture(new T.CanvasTexture(canvas));grassMap.colorSpace=T.SRGBColorSpace;
-  grassMap.wrapS=grassMap.wrapT=T.RepeatWrapping;grassMap.repeat.set(3,3);
-  const lawn=material('#ffffff',0,1,{map:grassMap}),soil=material('#6b6d45',0,1);
+  // Match the lawn colour and grain used by every planted bed on the site.
+  const lawn=m.grass;
   const annexFront=A.x-A.width/2,gardenEnd=annexFront-.3;
-  box(gardenEnd-G.west,.14,G.south-G.north,[(gardenEnd+G.west)/2,-.035,(G.north+G.south)/2],lawn);
+  const lawnNorth=-77.1;
+  box(gardenEnd-G.west,.14,G.south-lawnNorth,[(gardenEnd+G.west)/2,-.035,(lawnNorth+G.south)/2],lawn);
   box(G.east-gardenEnd,.14,G.south+61.5,[(G.east+gardenEnd)/2,-.035,(-61.5+G.south)/2],lawn);
-  box(gardenEnd-G.west-.8,.045,1.15,[(gardenEnd+G.west)/2,.06,G.south-1.0],soil);
-  box(1.1,.045,G.south-G.north-1.2,[G.west+1.0,.06,(G.north+G.south)/2],soil);
-  box(G.east-gardenEnd,.045,1.1,[(G.east+gardenEnd)/2,.06,G.south-1],soil);
-  box(annexFront-G.west+.8,.10,1.3,[(annexFront+G.west-.8)/2,.05,A.z],pavers);
-  for(let x=G.west-.5;x<annexFront;x+=.7)box(.018,.008,1.3,[x,.104,A.z],base);
+  // Outline the exposed outside edges of the joined lawn, meeting the
+  // existing fence at the west end and the solar annex at the east end.
+  const lawnEdge=.22,annexNorth=A.z-A.depth/2;
+  box(gardenEnd-G.west+2*lawnEdge,.14,lawnEdge,[(gardenEnd+G.west)/2,.06,lawnNorth-lawnEdge/2],white);
+  box(lawnEdge,.14,G.north-lawnNorth,[G.west-lawnEdge/2,.06,(lawnNorth+G.north)/2],white);
+  box(lawnEdge,.14,annexNorth-lawnNorth,[gardenEnd+lawnEdge/2,.06,(lawnNorth+annexNorth)/2],white);
 
   function fence(a,b,solid=false){
     const dx=b[0]-a[0],dz=b[1]-a[1],length=Math.hypot(dx,dz);
@@ -123,21 +115,15 @@ export function buildOldGardenPavilion(k,plants,solarPanel){
   }
   fence([G.west,G.north],[G.west,A.z-.85]);
   fence([G.west,A.z+.85],[G.west,G.south]);
-  fence([G.west,G.north],[annexFront,G.north]);
   fence([G.west,G.south],[G.east,G.south],true);
   fence([G.east,G.south],[G.east,-61.5],true);
-  // Uneven conifers line the boundaries, leaving the middle as open lawn.
-  const trees=[
-    [G.west+2.5,-70.7,.50],[G.west+6,-70.9,.43],[G.west+9.6,-70.5,.54],[G.west+12.7,-70.8,.45],
-    [G.west+2.6,-63.4,.47],[G.west+2.4,-59.4,.54],
-    [G.west+6.1,-59.1,.45],[G.west+9.6,-59.3,.51],[G.west+12.7,-59.1,.42],
-    [-13.7,-70.6,.55],[-10.7,-71.1,.64],[-7.6,-70.5,.47],[-4.5,-70.8,.62],[-.3,-71,.48],
-    [-13.6,-63.9,.57],[-13.3,-60.4,.65],[-10.3,-59.1,.48],[-7.4,-59.3,.58],[-3.7,-59.1,.46],
-    [-.2,-60.3,.55],[3.1,-58.9,.45],[6.4,-58.8,.46],[10,-58.7,.43],[13.4,-58.9,.49],
-    [16.6,-58.7,.45],[20.0,-58.8,.42],[23.6,-58.9,.48],[27.1,-58.8,.44],
-    [-9.4,-63.5,.32],[-4.8,-61.8,.28],[-.5,-64.0,.36]
-  ];
-  for(const [x,z,size] of trees)plants.plant(x,z,size);
+  // Fill the joined garden with varied, closely spaced conifers. The rows
+  // overlap in plan view so the former open strip reads as one green canopy.
+  for(let row=0;row<4;row++)for(let col=0;col<13;col++){
+    const x=G.west+2.0+col*2.43+(row%2)*.95;
+    const z=G.north+2.1+row*2.75+.18*Math.sin(col*1.7+row);
+    if(x<gardenEnd-1.25)plants.plant(x,z,.52+.09*Math.sin(col*2.1+row*1.4),{plantedBed:true});
+  }
   // A slim lattice light mast sits inside the garden corner, as photographed.
   const mast=group([G.west+1.9,0,G.south-1.7]);
   for(const x of [-.2,.2])for(const z of [-.2,.2])rod([x,0,z],[x*.55,5.3,z*.55],.025,trim,mast);
