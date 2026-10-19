@@ -1,3 +1,4 @@
+import {addTreeWind} from './treeWind.js';
 import * as T from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {trafficClearance} from './trafficLayout.js';
@@ -80,17 +81,18 @@ export function createVegetation(k){
       const key=`${ix},${iz}`;if(!cells.has(key))cells.set(key,[]);cells.get(key).push([xx,zz]);added++;
     }
   }
-  function grove(x,z,w,d,spacing=4.2){
+  function grove(x,z,w,d,spacing=4.2,{surface=true}={}){
     const crossesAvenue=x+w/2>POND_APPROACH.west&&x-w/2<POND_APPROACH.east&&Math.abs(z-POND_APPROACH.z)<d/2+POND_APPROACH.width/2+2;
     const crossesGateRoad=x+w/2>GATE_ROAD.west&&x-w/2<GATE_ROAD.east&&Math.abs(z-GATE_ROAD.z)<d/2+GATE_ROAD.width/2+2;
-    k.box(w,.15,d,[x,crossesAvenue||crossesGateRoad?-.24:-.10,z],k.m.grass);scatter(x,z,w,d,spacing);
+    if(surface)k.box(w,.15,d,[x,crossesAvenue||crossesGateRoad?-.24:-.10,z],k.m.grass);scatter(x,z,w,d,spacing);
   }
-  function garden(x,z,w,d,{curb=true}={}){
+  function garden(x,z,w,d,{curb=true,surface=true}={}){
     if(curb)k.box(w+.5,.23,d+.5,[x,.02,z],k.m.white,k.scene,.6);
-    k.box(w,.22,d,[x,.12,z],k.m.grass,k.scene,.55);scatter(x,z,w,d,3,true);
+    if(surface)k.box(w,.22,d,[x,.12,z],k.m.grass,k.scene,.55);scatter(x,z,w,d,3,true);
   }
   function finish(){
-    const bark=k.material('#655d49',0,1),foliage=k.material('#ffffff',0,.96,{vertexColors:true,side:T.DoubleSide});
+    const bark=k.material('#655d49',0,1,{unique:true}),foliage=k.material('#ffffff',0,.96,{unique:true,vertexColors:true,side:T.DoubleSide});
+    for(const mat of [bark,foliage])addTreeWind(k,mat);
     const tints=['#ffffff','#e5eecf','#cbdcd2','#eef0c8','#c1d5bd'].map(c=>new T.Color(c));
     const shades=['#385331','#466334','#58743c','#71874b','#405e36'].map(c=>new T.Color(c));
     for(let variant=0;variant<3;variant++){
@@ -142,9 +144,11 @@ export function createVegetation(k){
       const trunk=mergeGeometries(trunkParts);trunkParts.forEach(g=>g.dispose());
       const crown=new T.BufferGeometry();crown.setAttribute('position',new T.Float32BufferAttribute(leaves,3));crown.setAttribute('color',new T.Float32BufferAttribute(colors,3));crown.computeVertexNormals();
       const woody=k.instances(trunk,bark,trees.length),leafy=k.instances(crown,foliage,trees.length),o=new T.Object3D();
+      woody.customDepthMaterial=bark.userData.treeDepth;leafy.customDepthMaterial=foliage.userData.treeDepth;
       trees.forEach((tree,i)=>{
         const {x,z,sx,sy,sz,yaw,leanX,leanZ,tint}=tree;
-        o.position.set(x,0,z);o.scale.set(sx,sy,sz);o.rotation.set(leanX,yaw,leanZ);o.updateMatrix();woody.setMatrixAt(i,o.matrix);leafy.setMatrixAt(i,o.matrix);leafy.setColorAt(i,tints[tint]);
+        o.position.set(x,0,z);o.scale.set(sx,sy,sz);o.rotation.set(leanX,yaw,leanZ);o.updateMatrix();
+        woody.setMatrixAt(i,o.matrix);leafy.setMatrixAt(i,o.matrix);leafy.setColorAt(i,tints[tint]);
       });
       woody.instanceMatrix.needsUpdate=true;leafy.instanceMatrix.needsUpdate=true;leafy.instanceColor.needsUpdate=true;
     }

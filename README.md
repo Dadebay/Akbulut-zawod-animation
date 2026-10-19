@@ -97,13 +97,11 @@ Dağıtım adımları ve nginx konumları: [deploy/README.md](deploy/README.md).
 - **TIR:** yüklü aracı yakından gösterir ve hareketi duraklatır. Dorsenin iki yanındaki perdeler toplanmıştır; panel ve torba paletleri görünür. Oynat düğmesi sevkiyatı başlatır; alttaki **10 · Ýükleme** düğmesi forkliftlerle yüklemeyi baştan gösterir.
 - **Köne zawod:** hava fotoğrafına göre yeniden kurulmuş yeşil çatılı eski üretim holleri, ofis, servis avlusu ve çevre yolları.
 - **Çig mal:** kuru dağlık arazi, ekskavatör ve yük alıp boşaltan kamyon. Yol ve çevrim gösterim amaçlıdır.
-- **Harita:** gerçek koordinattaki OpenStreetMap haritası; GPS servisi bağlanana kadar `GPS birikdirilmedi` gösterilir. Uydu bağlantısı Google Maps'i açar.
-- **Suratlar:** kullanıcının gerçek hava fotoğrafı ve beş mimari referansı.
-- **Paneller:** kullanıcının TV konseptlerine göre beyaz-mavi beş bilgi paneli: genel yönetim, alçıpan hattı, paketleme/lojistik, kalite/güvenlik ve enerji/teknik durum. **Görsel nusgalar** düğmesi altı özgün resmi büyütülebilir galeride açar; panelin yanındaki örnek resim de açılabilir. Genel bölüm mevcut uygulama verisini kullanır; ek proses ölçümleri demo modunda örnektir, canlı modda veri bağlanana kadar boş gösterilir.
+- **Paneller (`?area=panels` doğrudan bağlantısı, üst menüde düğmesi yok):** kullanıcının TV konseptlerine göre beyaz-mavi beş bilgi paneli: genel yönetim, alçıpan hattı, paketleme/lojistik, kalite/güvenlik ve enerji/teknik durum. **Görsel nusgalar** düğmesi altı özgün resmi büyütülebilir galeride açar; panelin yanındaki örnek resim de açılabilir. Genel bölüm mevcut uygulama verisini kullanır; ek proses ölçümleri demo modunda örnektir, canlı modda veri bağlanana kadar boş gösterilir.
 
 3D/üst görünüm, çatı, hareketi durdur/devam et ve senaryo düğmeleri sağ üsttedir. Fareyle sürükleyerek döndürün, tekerlekle yaklaşın. 3D görünüm üst menünün altında ekranı doldurur; Enjamlar görünümündeki Silolar / Degirmen / Peç / Garyjy / Panel / Gaplama / Robot düğmeleri ilgili makineye yaklaşır ve örnek üretim aşamasını başlatır. 720 noktalı cihaz listesine ve durum filtrelerine üstteki Enjamlar sekmesinden ulaşılır. Escape ayrıntı panelini kapatır. Sistem hareket azaltma tercihi animasyonları durdurur.
 
-Sol üstteki büyük üretim başlığı kaldırıldı. **Kän** bölümündeki ekskavatör; palet zincirleri, camlı operatör kabini, eklemli kol, hidrolik pistonlar ve dişli kepçe içerir. İki kepçe çevrimi kamyonu doldurur. **Daşama** kamyonu, paylaşılan MAN kabiniyle birlikte üç akslı şase, çift arka lastikler, açık damper ve görünür taş yükü kullanır. Kamera hareket eden kamyonu takip eder; fareyle döndürme veya yakınlaştırma serbest kameraya geçer. Kabul edişte hidrolik damper ve arka kapak açılarak yük bunkere boşalır. Araç yüksekliği ve eğimi yol yüzeyine göre ayarlanır; modeller ve çevrim sunum amaçlıdır.
+Sol üstteki büyük üretim başlığı kaldırıldı. **Kän** bölümündeki ekskavatör; palet zincirleri, camlı operatör kabini, eklemli kol, hidrolik pistonlar ve dişli kepçe içerir. Dört 18 saniyelik kepçe çevrimi kamyonu doldurur. **Daşama** kamyonu, paylaşılan MAN kabiniyle birlikte üç akslı şase, çift arka lastikler, açık damper ve görünür taş yükü kullanır. Kamera hareket eden kamyonu takip eder; fareyle döndürme veya yakınlaştırma serbest kameraya geçer. Kabul edişte hidrolik damper ve arka kapak açılarak yük bunkere boşalır. Araç yüksekliği ve eğimi yol yüzeyine göre ayarlanır; modeller ve çevrim sunum amaçlıdır.
 
 ## Referanslar ve doğruluk
 
@@ -113,15 +111,15 @@ Orijinal renkler ve 10. yıl tasarımı korunmuştur. Resmî site internette kon
 edildi; dosya indirme bağlantısı zaman aşımına uğradığından aynı web sitesi
 projesindeki yerel dosya kopyalandı. Kaynak kaydı: `docs/brand-source.json`.
 
-`public/reference/220,224,225,226,227.jpg`: kullanıcının Telegram klasöründeki mimari görseller. Bina oranları, yerleşim ve çatı düzeninin ana referansıdır; güncel fotoğraf olarak sunulmaz.
+Dağıtım paketinden kaldırılan mimari fotoğraflar (`220,224,225,226,227.jpg`): kullanıcının Telegram klasöründeki mimari görseller. Bina oranları, yerleşim ve çatı düzeninin ana referansıdır; güncel fotoğraf olarak sunulmaz.
 
-`public/reference/aerial.jpg`: kullanıcının 16 Ekim 2026 tarihinde paylaştığı hava fotoğrafı. Kuru arazi, arka tepeler, yol düzeni, yeşil çatılı komşu tesis ve dikim alanları için kullanıldı. Ağaçlar kullanıcının isteğiyle yolka biçiminde modellendi.
+Dağıtım paketinden kaldırılan hava fotoğrafı (`aerial.jpg`): kullanıcının 16 Ekim 2026 tarihinde paylaştığı hava fotoğrafı. Kuru arazi, arka tepeler, yol düzeni, yeşil çatılı komşu tesis ve dikim alanları için kullanıldı. Ağaçlar kullanıcının isteğiyle yolka biçiminde modellendi.
 
 `public/reference/panels/*.jpg`: kullanıcının `Telegram Desktop/new` klasöründen sağladığı altı TV sunum görseli; kırpılmadan kopyalandı. Bir yerleşim konsepti ve beş bilgi paneli içerir. Görsellerdeki ölçümler örnektir; üretim telemetrisi sayılmaz. Ek grafik serileri gösterim amacıyla oluşturuldu. Kaynak dosya eşlemesi `docs/panel-sources.json` içindedir.
 
 `public/equipment/*.png`: kullanıcının indirdiği Higgsfield arşivinden altı bölümün temsilci cihaz resmi. Arşiv 90 PNG ve 26 MP4 içerir; GLB/FBX bulunmadı. Bunlar otomatik olarak 3D modele dönüştürülmedi. 3D makineler kodla oluşturuldu; fotoğraflar ayrıntı panellerinde bölüm örneği olarak etiketlenir. Videolar kullanılmadı. Seçim kaydı `docs/equipment-sources.json` içindedir.
 
-720 nokta kullanıcı tarafından belirtilmiştir; altı bölüm, makine kodları, ölçüler, çalışma durumları ve alarmlar gösterim verisidir. Sahnedeki kodlar bölüm başına bir temsilci cihazı gösterir; 720 ayrı fiziksel cihazın ölçülmüş modeli değildir. Operatörler görsel öğedir. Bu sürüm ölçülü CAD, arazi ölçümü veya gerçek SCADA/GPS bağlantısı değildir. Yerleşim referanslara yaklaştırılmıştır; gerçek koordinatlar yalnızca Harita bölümündedir. Kullanıcı, uydu görüntüsündeki boş alanın artık kurulmuş olduğunu bildirmiştir; eski görüntü güncel inşaat durumu sayılmaz.
+720 nokta kullanıcı tarafından belirtilmiştir; altı bölüm, makine kodları, ölçüler, çalışma durumları ve alarmlar gösterim verisidir. Sahnedeki kodlar bölüm başına bir temsilci cihazı gösterir; 720 ayrı fiziksel cihazın ölçülmüş modeli değildir. Operatörler görsel öğedir. Bu sürüm ölçülü CAD, arazi ölçümü veya gerçek SCADA/GPS bağlantısı değildir. Yerleşim referanslara yaklaştırılmıştır; Harita ve fotoğraf sekmeleri ile kullanılmayan kaynakları kaldırılmıştır. Kullanıcı, uydu görüntüsündeki boş alanın artık kurulmuş olduğunu bildirmiştir; eski görüntü güncel inşaat durumu sayılmaz.
 
 Makinelerin metal yüzeyleri, şaseleri, motorları, boruları, korkulukları ve operatörleri Three.js geometrisidir. Sabit parçalar birleştirilir; yolka ağaçları ve taşlar GPU instancing kullanır.
 
@@ -166,3 +164,7 @@ forklift ve ekskavatör gövdeleri beyazdır; üretim ekipmanları beyaz-mavi ka
 Model kodu `src/industrial/turkmenLocomotive.js` içindedir.
 
 Eski tesisin uzun, yeşil çatılı holleri ve birbirine paralel çatı sıraları kullanıcı hava fotoğrafına dayanır. Kapılar, pencere bantları, oluklar, küçük silolar ve servis ekipmanları temsili ayrıntılardır. Çevrede asfalt servis döngüsü, kaldırımlar, açık kavşaklar, bordürler, yol çizgileri, yaya geçişleri ve drenaj ızgaraları vardır. Yükleme kapılarının önü yolka ağaçlarından arındırılmıştır. `src/industrial/oldCampus.js`, `roads.js` ve `rail.js` bu parçaları kurar.
+
+## 18 Ekim sahne iyileştirmeleri
+
+Ayrıntılı uygulama ve doğrulama kaydı: `docs/CODEX_GOREVLER.md`. Ayarlardaki **Eko · 30 FPS** seçeneği cihazda saklanır. `?perf=1` üretim derlemesinde de FPS, çizim çağrısı, üçgen ve tarayıcı destekliyorsa JS belleğini gösterir. Varsayılan hafif model kullanılır; `?hq` tam detay profilidir. Sunucuya yükleme kullanıcı tarafından yapılır.

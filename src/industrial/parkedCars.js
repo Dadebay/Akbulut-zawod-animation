@@ -15,7 +15,7 @@ export function createParkedCarBuilder(k){
   const sideGeo=new T.ShapeGeometry(windowShape),carGlass=material('#30464e',.4,.24,{side:T.DoubleSide});
   function car(x,z,angle,index=1,moving=false){
     const g=group([x,.01,z],k.scene,moving),wheels=[],steering=[];g.rotation.y=angle;const colour=bodyPaint[index%7===0?2:index%5===0?1:0];
-    const tailMaterial=moving?material('#ab3b39',.2,.5,{emissive:'#ff3020',emissiveIntensity:0}):m.red;
+    const tailMaterial=moving?material('#ab3b39',.2,.5,{unique:true,emissive:'#ff3020',emissiveIntensity:0}):m.red;
     box(4.45,.51,1.78,[0,.61,0],colour,g,.15);box(3.8,.17,1.55,[0,.29,0],m.dark,g,.04);
     const glazing=moving?material('#30464e',.12,.18,{transparent:true,opacity:.48,depthWrite:false,side:T.DoubleSide}):carGlass;
     if(moving){

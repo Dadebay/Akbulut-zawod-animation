@@ -1,3 +1,4 @@
+import {createDust} from './dust.js';
 import * as T from 'three';
 import {clamp01,JOURNEY_STAGE as S} from '../journey.js';
 import {PROCESS_LINES,CALCITE_INTAKE,BOARD_PALLET_OUT,BAG_PALLET_OUT,routeCurve} from './processPlan.js';
@@ -79,7 +80,8 @@ export function buildMaterialFlow(k,logistics){
   }
   const rawLines=PROCESS_LINES.slice(0,2).flatMap(line=>[line.points,...(line.branches||[])].map(points=>{
     const coarse=line.id==='gypsum'&&points===line.points;
-    if(coarse){belt(points.slice(1,3),1.35);belt(points.slice(3,6),1.35);belt(points.slice(5,7),1.35,false);duct(points.slice(6));}
+    // buildCornerSilo owns the hollow receiving chute at the lift head.
+    if(coarse){belt(points.slice(1,3),1.35);belt(points.slice(3,6),1.35);belt(points.slice(5,7),1.35,false);}
     else if(line.id==='gypsum')duct(points);
     else {belt(points.slice(0,4),1.35);duct(points.slice(3));}
     const path=makeCurve(points),length=path.getLength(),objects=[];
@@ -95,7 +97,7 @@ export function buildMaterialFlow(k,logistics){
     const exposed=[];let offset=0;
     path.curves.forEach((segment,index)=>{
       const end=offset+segment.getLength();
-      if(coarse?[0,1,3,4,5].includes(index):line.id==='calcite'&&index<3)exposed.push([offset,end]);
+      if(coarse?[0,1,3,4,5,6,7].includes(index):line.id==='calcite'&&index<3)exposed.push([offset,end]);
       offset=end;
     });
     return {line,path,length,objects,coarseUntil,exposed};
@@ -174,7 +176,7 @@ export function buildMaterialFlow(k,logistics){
     return {line,path,arrows};
   }));
   const falling=[];for(let i=0;i<26;i++){const rock=group([0,0,0],k.scene,true),chunk=mesh(rubble.geometries[i%4],rubble.material,[0,0,0],rock);chunk.scale.setScalar(.24+(i%3)*.045);falling.push(rock);}
-  const drop=new T.Vector3(),loadSurface=new T.Vector3();
+  const drop=new T.Vector3(),loadSurface=new T.Vector3(),dustOrigin=new T.Vector3(),dust=createDust(k);
   return {loader:infeed.loader,update(j,landscape,{showLines=false,showInterior=false,active}={}){
     const isRunning=zone=>!active||active.get(zone)?.status==='running';
     traces.visible=showLines;
@@ -199,9 +201,12 @@ export function buildMaterialFlow(k,logistics){
     const quarryPose=landscape.update(j);
     if(j.index===2)logistics.hauler.dischargePoint.getWorldPosition(drop);else landscape.bucketTip.getWorldPosition(drop);
     logistics.hauler.bed.updateWorldMatrix(true,false);loadSurface.set(2.5,.3+j.rawLoad*.65,0).applyMatrix4(logistics.hauler.bed.matrixWorld);
+    dustOrigin.copy(drop);dustOrigin.y=j.index===0?loadSurface.y:.2;
+    const dustStrength=j.index===0&&quarryPose.completed<4?Math.max(0,1-Math.abs(quarryPose.phase-.78)/.19):j.index===2?Math.max(0,1-Math.abs(j.progress-.48)/.34):0;
+    dust.update(dustOrigin,j.time,dustStrength);
     falling.forEach((o,i)=>{
       const quarry=j.index===0&&quarryPose.pouring,tip=j.index===2&&j.progress>.2&&j.progress<.7;o.visible=quarry||tip;if(!o.visible)return;
-      const height=quarry?Math.max(.05,drop.y-loadSurface.y):Math.min(.8,Math.max(.05,drop.y-.2));
+      const height=quarry?Math.max(.05,drop.y-loadSurface.y):Math.max(.05,drop.y-.2);
       const flight=Math.sqrt(2*height/9.81),t=(j.elapsed+i/26*flight)%flight,spread=(i%5-2)*.17;
       const y=drop.y-.5*9.81*t*t;
       o.position.set(drop.x+spread+t*(i%3-1)*.12,y,drop.z+Math.sin(i)*(quarry?.3:.5));

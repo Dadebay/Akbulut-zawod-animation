@@ -6,7 +6,7 @@ export const WALK_ROUTES=[
   {bounds:[-72.4,-67.1,-25.65,-24.35,.60,.08],speed:.90,pause:3,offset:0},
   {bounds:[POND.x-POND.width/2-1.7,POND.x-POND.width/2-1.1,POND.z-POND.depth/2+6,POND.z+POND.depth/2-7,.29,-.085],speed:.85,pause:5,offset:14},
   {bounds:[-54,-42,-41.5,-40.7,.38,-.05],speed:.95,pause:4,offset:8},
-  {bounds:[-23,-10,-131,-129.6,.65,0],speed:.90,pause:3.5,offset:6},
+  {bounds:[-23,-10,-132,-130.8,.55,0],speed:.90,pause:3.5,offset:6},
 ];
 
 export function pedestrianMotion(config){

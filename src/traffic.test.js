@@ -2,10 +2,56 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as T from 'three';
 import {PARKED_TRUCKS,DISPATCH_PAVEMENT,DISPATCH_EXIT_ROAD_X,DISPATCH_EXIT_ROAD_Z,dispatchPose,truckFootprint,trafficClearance} from './industrial/trafficLayout.js';
-import {NEW_ENTRANCE_MEDIAN} from './industrial/siteLayout.js';
+import {NEW_ENTRANCE_MEDIAN,VISITOR_PARK} from './industrial/siteLayout.js';
+import {SERVICE_ROUTE_BOUNDS,serviceMotion} from './industrial/serviceTraffic.js';
+import {OLD_SOUTH_GARDENS} from './industrial/oldCampus.js';
+import {RAIL_CROSSINGS,RAIL_CROSSING_POSTS} from './industrial/outerRail.js';
+import {WALK_ROUTES,pedestrianMotion} from './industrial/pedestrianMotion.js';
 import {createVegetation} from './industrial/vegetation.js';
+import {FORKLIFT_JOBS,sampleForklift,forkliftFootprint} from './industrial/forkliftMotion.js';
+import {QUARRY,QUARRY_LOAD_POINT,EXCAVATOR_LAYOUT,excavatorLoadingPose} from './industrial/quarryLayout.js';
 
 const rectangle=(x,z,w,d)=>[[x-w/2,z-d/2],[x+w/2,z-d/2],[x+w/2,z+d/2],[x-w/2,z+d/2]];
+test('both outer railway crossings have opposing barrier and sign posts',()=>{
+  for(const x of [-143,-205]){assert.ok(RAIL_CROSSINGS.includes(x));assert.equal(RAIL_CROSSING_POSTS.filter(p=>Math.abs(p.x-x)<6).length,2);}
+});
+test('the pond-side pedestrian stays entirely behind the road kerb',()=>{
+  const sample=pedestrianMotion(WALK_ROUTES[3]);
+  for(let t=0;t<120;t+=.1)assert.ok(sample(t).position.z+.3<-129.7);
+});
+test('adjoining old-campus lawns have no overlapping coplanar surfaces',()=>{
+  assert.equal(overlaps(...OLD_SOUTH_GARDENS.map(bed=>rectangle(...bed))),false);
+});
+test('service car stays inside the resized visitor park without heading flips',()=>{
+  const [west,east,,,radius]=SERVICE_ROUTE_BOUNDS,route=serviceMotion();
+  assert.ok(east-west>=2*radius+6);
+  let previous;
+  for(let t=0;t<120;t+=.1){
+    const p=route.sample(t);
+    if(previous)assert.ok(Math.abs(Math.atan2(Math.sin(p.yaw-previous.yaw),Math.cos(p.yaw-previous.yaw)))<.5);
+    for(const [x,z] of rectangle(0,0,4.7,2).map(([a,b])=>[p.x+a*Math.cos(p.yaw)+b*Math.sin(p.yaw),p.z-a*Math.sin(p.yaw)+b*Math.cos(p.yaw)])){
+      assert.ok(x>VISITOR_PARK.west&&x<VISITOR_PARK.east-11);
+      assert.ok(z>VISITOR_PARK.north&&z<VISITOR_PARK.south-12);
+    }
+    previous=p;
+  }
+});
+test('finished forklifts park clear of the departing articulated truck',()=>{
+  const parked=FORKLIFT_JOBS.map(job=>sampleForklift(job,job.duration));
+  for(const pose of parked)assert.ok(pose.z>-44);
+  for(let i=0;i<=1500;i++)for(const truck of truckFootprint(dispatchPose(i/1500),.35))
+    for(const pose of parked)assert.equal(overlaps(truck,forkliftFootprint(pose)),false,`forklift collision at ${i/1500}`);
+});
+test('quarry excavator clears the truck by 60 cm while its bucket reaches the load point',()=>{
+  const {position:[x,y,z],yaw}=EXCAVATOR_LAYOUT;
+  const body=rectangle(0,0,5.2,3.5).map(([a,b])=>[x+a*Math.cos(yaw)+b*Math.sin(yaw),z-a*Math.sin(yaw)+b*Math.cos(yaw)]);
+  assert.equal(overlaps(body,rectangle(QUARRY.x-1.7,QUARRY.z,9.8+1.2,2.8+1.2)),false);
+  const pose=excavatorLoadingPose(),p=new T.Vector3(1.3,-.85,0).applyAxisAngle(new T.Vector3(0,0,1),pose.bucket).add(new T.Vector3(2.25,-2.5,0));
+  p.applyAxisAngle(new T.Vector3(0,0,1),pose.stick).add(new T.Vector3(2.8,3.55,0));
+  p.applyAxisAngle(new T.Vector3(0,0,1),pose.boom).add(new T.Vector3(.95,2.15,.43));
+  p.applyAxisAngle(new T.Vector3(0,1,0),yaw+pose.slew).add(new T.Vector3(x,y,z));
+  assert.ok(p.distanceTo(new T.Vector3(...QUARRY_LOAD_POINT))<1e-8);
+});
 function overlaps(a,b){
   for(const poly of [a,b])for(let i=0;i<poly.length;i++){
     const p=poly[i],q=poly[(i+1)%poly.length],axis=[p[1]-q[1],q[0]-p[0]];
@@ -46,28 +92,34 @@ test('freight roads have straight axis-aligned edges instead of a curved swept o
   }
 });
 
-test('smaller waiting trucks fit wholly inside their parking area and do not overlap',()=>{
+test('full-size waiting trucks fit their bays and leave the dispatch route clear',()=>{
   const footprints=[];
   for(const {position:[x,,z],angle,scale} of PARKED_TRUCKS){
-    assert.ok(scale<1&&scale>=.6);
+    assert.equal(scale,1);
     const corners=rectangle(-6.2,0,17.6,2.7).map(([along,side])=>[x+scale*(along*Math.cos(angle)+side*Math.sin(angle)),z+scale*(-along*Math.sin(angle)+side*Math.cos(angle))]);
-    for(const [px,pz] of corners){assert.ok(px>-135.5&&px<-85);assert.ok(pz>-44&&pz<-8);}
+    for(const [px,pz] of corners){assert.ok(px>-135.5&&px<-104.7);assert.ok(pz>-44&&pz<-8);}
     for(const other of footprints)assert.equal(overlaps(corners,other),false);
     footprints.push(corners);
   }
+  for(let i=0;i<=1200;i++)for(const moving of truckFootprint(dispatchPose(i/1200),.35))
+    for(const parked of footprints)assert.equal(overlaps(moving,parked),false,`parked TIR collision at ${i/1200}`);
 });
 
 test('planting excludes the full conifer crown from both traffic lanes and trailer turns',()=>{
-  const meshes=[];
-  const kit={tablet:true,box(){},m:{},material:()=>new T.MeshBasicMaterial(),instances(geometry,material,count){const mesh=new T.InstancedMesh(geometry,material,count);meshes.push(mesh);return mesh;}};
+  const meshes=[],updaters=[],previousDocument=globalThis.document;
+  globalThis.document={createElement:()=>({getContext:()=>new Proxy({},{get:()=>()=>{}})})};
+  const kit={tablet:true,windTime:{value:0},trackMaterial(){},onDetailUpdate:fn=>updaters.push(fn),trackTexture:t=>t,box(){},m:{},material:()=>new T.MeshBasicMaterial(),instances(geometry,material,count){const mesh=new T.InstancedMesh(geometry,material,count);meshes.push(mesh);return mesh;}};
   const plants=createVegetation(kit);
   plants.row(-147,-150,-147,36,5); // Old row intruded on the main road.
   plants.row(-151,-150,-151,36,5); // Relocated row retains the planted boundary.
   plants.grove(-173,-5,48,88,4.2);plants.grove(-110,21,47,33,3.8);
   plants.garden(-69,-31,6,10);plants.garden(-69,-16,7,9);plants.garden(-84,-29.5,2,25);
   plants.finish();
-  assert.ok(meshes[0].count>20,'keep landscaping outside traffic');
+  updaters.forEach(fn=>fn({position:new T.Vector3(-500,50,0)}));
+  globalThis.document=previousDocument;
+  const active=meshes.filter(m=>m.count);
+  assert.ok(active.reduce((sum,m)=>sum+m.count,0)>20,'keep landscaping outside traffic');
   const matrix=new T.Matrix4(),p=new T.Vector3(),q=new T.Quaternion(),scale=new T.Vector3();
-  for(let i=0;i<meshes[0].count;i++){meshes[0].getMatrixAt(i,matrix);matrix.decompose(p,q,scale);assert.ok(trafficClearance(p.x,p.z)>=2.5*scale.x+.499);}
+  for(const mesh of active)for(let i=0;i<mesh.count;i++){mesh.getMatrixAt(i,matrix);matrix.decompose(p,q,scale);assert.ok(trafficClearance(p.x,p.z)>=2.5*scale.x+.499);}
   for(const mesh of meshes){mesh.geometry.dispose();mesh.material.dispose();mesh.dispose();}
 });

@@ -1,6 +1,11 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createRenderClock,createResolutionBudget} from './renderBudget.js';
+import {createRenderClock,createResolutionBudget,antialiasMode} from './renderBudget.js';
+
+test('all resolutions filter thin edges and subpixel rendering releases MSAA',()=>{
+  assert.deepEqual(antialiasMode(.7),{samples:0,useFXAA:true});
+  assert.deepEqual(antialiasMode(1),{samples:4,useFXAA:true});
+});
 
 test('30 and 60 Hz rendering preserve journey time on 60 Hz and 120 Hz displays',()=>{
   for(const fps of [30,60])for(const refresh of [60,120]){
@@ -32,4 +37,9 @@ test('returning from a hidden tab does not fast-forward the tour',()=>{
   assert.equal(clock.next(60000),0);
   assert.equal(clock.next(60010),null);
   assert.equal(clock.next(60040),.04);
+});
+
+test('Eko maintains full resolution at its intended 30 FPS',()=>{
+  const budget=createResolutionBudget(30);
+  for(let i=0;i<900;i++)assert.equal(budget.sample(1/30),null);
 });

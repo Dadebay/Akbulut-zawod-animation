@@ -76,9 +76,9 @@ export const OLD_REAR_BOUNDARY={
   height:2.2,gateZ:-108,gateWidth:12,
   building:{x:91.5,z:-146,width:8,depth:6,height:3.25}
 };
-// The paired receiving silos stand west of the transfer conveyor, near the
-// railway-side edge of the raw-material yard.
-export const OLD_RAW_SILOS={x:RAW_YARD.west+15.5,z:-73,width:18,depth:10};
+// Keep the rail-side silo in place; its neighbour sits directly beside it
+// along the rear wall, toward the transfer conveyor.
+export const OLD_RAW_SILOS={x:RAW_YARD.west+11.7,z:-76.8,width:10,depth:18};
 export const RAW_STOCK=[RAW_YARD_APRON.east-8,0,RAW_YARD_CONVEYOR.z+4];
 export const RAW_STOP=[RAW_STOCK[0]-5.5,0,RAW_STOCK[2]];
 // Tall white auxiliary tower directly beside the exposed corner silo.
@@ -110,7 +110,8 @@ export const GYPSUM_STOCKYARD={
 // The loader works from the right-hand heap beside the bunker, within this yard.
 export const LOADER_STOCK=[66,0,14.5];
 export const LOADER_PARK=[81,0,14.5];
-export const LOADER_SCOOP=[73.6,0,14.5];
+// Only the bucket's cutting edge enters the heap; the axle and lift arms stay clear.
+export const LOADER_SCOOP=[77.3,0,14.5];
 export const LOADER_GATE=[GYPSUM_RECEIVING_HALL.east+8,0,GYPSUM_INTAKE[2]];
 export const LOADER_QUEUE=[GYPSUM_INTAKE[0]+10.2,0,GYPSUM_INTAKE[2]];
 export const LOADER_STOP=[GYPSUM_INTAKE[0]+4.31,0,GYPSUM_INTAKE[2]];
@@ -118,7 +119,7 @@ export const LOADER_TRANSFER_POINTS=[LOADER_PARK,[83.5,0,18],[84,0,25],[84,0,31]
 export const LOADER_PAVEMENT=[[73,89,10,39],[16,85,29.5,39]];
 export function loaderRoadClearance(x,z){return Math.min(...LOADER_PAVEMENT.map(([west,east,north,south])=>Math.hypot(Math.max(west-x,x-east,0),Math.max(north-z,z-south,0))));}
 export const INCOMING_HAUL_POINTS=[quarryPoint(),quarryPoint(16,0,0),quarryPoint(28,-1,-26),[330,9,-139],[292,5,-143],[260,1,-133],[250,0,-116],[220,0,-120],[RAW_STOP[0]+13,0,RAW_STOP[2]+16],[RAW_STOP[0]+1,0,RAW_STOP[2]+10],[RAW_STOP[0]+2,0,RAW_STOP[2]+3],[RAW_STOP[0]+2,0,RAW_STOP[2]],RAW_STOP];
-export const RETURN_HAUL_POINTS=[RAW_STOP,[RAW_STOP[0]-10,0,RAW_STOP[2]+6],[RAW_STOP[0]-12.5,0,RAW_STOP[2]+16],[177,0,-108],[205,0,-110],[235,0,-108],[253,0,-102],[270,2,-78],[288,7,-52],[319,12,-47],quarryPoint(21,0,16),quarryPoint(4,0,17),quarryPoint(-5,0,12),quarryPoint(-7,0,5),quarryPoint(-6,0,0),quarryPoint()];
+export const RETURN_HAUL_POINTS=[RAW_STOP,[RAW_STOP[0]-10,0,RAW_STOP[2]],[RAW_STOP[0]-12.5,0,RAW_STOP[2]+16],[177,0,-108],[205,0,-110],[235,0,-108],[253,0,-102],[270,2,-78],[288,7,-52],[319,12,-47],quarryPoint(21,0,16),quarryPoint(4,0,17),quarryPoint(-5,0,12),quarryPoint(-7,0,5),quarryPoint(-6,0,0),quarryPoint()];
 const curve=points=>new T.CatmullRomCurve3(points.map(p=>new T.Vector3(...p)),false,'catmullrom',.12);
 export const INCOMING_HAUL=curve(INCOMING_HAUL_POINTS),RETURN_HAUL=curve(RETURN_HAUL_POINTS);
 export function haulRoad(){const path=new T.CurvePath();path.add(INCOMING_HAUL);path.add(RETURN_HAUL);return path;}

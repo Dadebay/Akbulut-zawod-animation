@@ -1,8 +1,7 @@
-import {useEffect,useState} from 'react';
+import {useEffect,useState,lazy,Suspense} from 'react';
 import {Box,Layers3,Pause,Play,SlidersHorizontal,Truck,Factory,TrainFront,Warehouse,Mountain,Route,RotateCcw,Repeat2,ZoomIn,Waves,Sun,Moon} from 'lucide-react';
 import PlantScene from './PlantScene.jsx';
-import FleetMap from './FleetMap.jsx';
-import FactoryPanels from './FactoryPanels.jsx';
+const FactoryPanels=lazy(()=>import('./FactoryPanels.jsx'));
 import {assetUrl} from './assets.js';
 import {JOURNEY_STEPS,JOURNEY_STAGE as S} from './journey.js';
 import {STATIONS} from './industrial/production.js';
@@ -10,17 +9,16 @@ import {PROCESS_LINES} from './industrial/processPlan.js';
 import {INTERIOR_VIEWS} from './industrial/interiorEquipment.js';
 
 const AREAS=[['site','Zawod',Factory],['process','Enjamlar',Warehouse],['lines','Hatlar',Route],['dispatch','Otly',TrainFront],['trucks','TIR',Truck],['oldsite','Köne zawod',Factory],['raw','Çig mal',Mountain],['rawyard','Kabul ediş',Truck],['pond','Howuz',Waves]];
-const PHOTOS=[['aerial','Hakyky görnüş'],['220','Taslama · 01'],['224','Taslama · 02'],['225','Taslama · 03'],['226','Meýilnama'],['227','Umumy meýdan'],['process-plan','Önümçilik hatlary']];
 const EQUIPMENT=[...STATIONS,{id:'robot',name:'Robot'},...INTERIOR_VIEWS];
-const initialArea=()=>{const requested=new URLSearchParams(location.search).get('area');return AREAS.some(([id])=>id===requested)?requested:'site';};
+const initialArea=()=>{const requested=new URLSearchParams(location.search).get('area');return requested==='panels'?'panels':AREAS.some(([id])=>id===requested)?requested:'site';};
 const initialEquipment=()=>{const id=new URLSearchParams(location.search).get('equipment');return EQUIPMENT.some(item=>item.id===id)?id:null;};
-export default function VisualOverview({machines,production,history,selected,onSelect,view,setView,paused,setPaused,mode,error,onSettings}) {
+export default function VisualOverview({machines,production,history,selected,onSelect,view,setView,paused,setPaused,mode,error,onSettings,eco}) {
   const [equipmentFocus,setEquipmentFocus]=useState(()=>initialEquipment()||'BS'),[cameraRequest,setCameraRequest]=useState(0);
-  const [area,setArea]=useState(initialArea),[roof,setRoof]=useState(()=>!['process','lines'].includes(initialArea())),[photo,setPhoto]=useState('aerial'),[night,setNight]=useState(false);
+  const [area,setArea]=useState(initialArea),[roof,setRoof]=useState(()=>!['process','lines'].includes(initialArea())),[night,setNight]=useState(false);
   const [follow,setFollow]=useState(false),[speed,setSpeed]=useState(1),[journey,setJourney]=useState({index:0,progress:0,blocked:false}),[request,setRequest]=useState({index:0,nonce:0});
   const [loopStep,setLoopStep]=useState(null);
   useEffect(()=>{if(initialArea()==='process'&&initialEquipment()){setView('detail');setPaused(false);}},[setView,setPaused]);
-  const isScene=!['map','reference','panels'].includes(area),step=JOURNEY_STEPS[journey.index];
+  const isScene=area!=='panels',step=JOURNEY_STEPS[journey.index];
   const showInterior=isScene&&(follow?step.cutaway:!roof);
   function seek(index,repeat=false){setLoopStep(repeat?index:null);setRequest(r=>({index,nonce:r.nonce+1}));setFollow(true);setPaused(false);}
   function releaseCamera(cutaway=step.cutaway){if(follow)setRoof(!cutaway);setFollow(false);}
@@ -35,7 +33,7 @@ export default function VisualOverview({machines,production,history,selected,onS
       <div className="factory-areas">{AREAS.map(([id,title,Icon])=><button key={id} className={!follow&&area===id?'active':''} onClick={()=>showArea(id)}><Icon size={15}/>{title}</button>)}</div>
       {isScene&&<div className="factory-controls"><div className="view-switch lighting-switch" role="group" aria-label="Gündiz ýa-da gije"><button className={!night?'active':''} aria-pressed={!night} onClick={()=>setNight(false)}><Sun size={15}/>Gündiz</button><button className={night?'active':''} aria-pressed={night} onClick={()=>setNight(true)}><Moon size={15}/>Gije</button></div><div className="view-switch"><button className={view==='perspective'?'active':''} onClick={()=>chooseView('perspective')}><Box size={15}/>3D</button><button className={view==='top'?'active':''} onClick={()=>chooseView('top')}><Layers3 size={15}/>Üstden</button>{['trucks','dispatch','process'].includes(area)&&<button className={view==='detail'?'active':''} aria-label={area==='process'?'Enjamyň ýakyn görnüşi':'Ulagyň ýakyn görnüşi'} onClick={()=>{if(area==='process')inspectEquipment(equipmentFocus);else chooseView('detail');}}><ZoomIn size={15}/>Ýakyn</button>}</div><button className={`icon-button bordered ${!showInterior?'active':''}`} aria-label={showInterior?'Üçegi görkez':'Üçegi gizle'} onClick={()=>{setFollow(false);setRoof(showInterior);}}><Warehouse size={17}/></button><button className="icon-button bordered" aria-label={paused?'Hereketi dowam et':'Hereketi sakla'} onClick={()=>setPaused(!paused)}>{paused?<Play size={17}/>:<Pause size={17}/>}</button><button className="icon-button bordered" aria-label="Görkeziş sazlamalary" onClick={onSettings}><SlidersHorizontal size={17}/></button></div>}
       </div>
-      {isScene?<PlantScene night={night} area={area} cameraRequest={cameraRequest} equipmentFocus={equipmentFocus} roof={roof} machines={machines} selected={selected} onSelect={onSelect} view={view} paused={paused} follow={follow} speed={speed} loopStep={loopStep} journeyRequest={request} onJourney={setJourney} onManualCamera={({cutaway})=>releaseCamera(cutaway)}/>:area==='map'?<FleetMap/>:area==='panels'?<FactoryPanels machines={machines} production={production} history={history} mode={mode}/>:<div className="reference-view"><img src={assetUrl(`reference/${photo}.jpg`)} alt={photo==='aerial'?'Zawodyň ulanyjy tarapyndan berlen howa suraty':'Zawodyň binagärlik taslamasy'}/><div className="reference-picker">{PHOTOS.map(([id,label])=><button key={id} onClick={()=>setPhoto(id)} className={photo===id?'active':''}><img src={assetUrl(`reference/${id}.jpg`)} alt=""/><span>{label}</span></button>)}</div></div>}
+      {isScene?<PlantScene eco={eco} night={night} area={area} cameraRequest={cameraRequest} equipmentFocus={equipmentFocus} roof={roof} machines={machines} selected={selected} onSelect={onSelect} view={view} paused={paused} follow={follow} speed={speed} loopStep={loopStep} journeyRequest={request} onJourney={setJourney} onManualCamera={({cutaway})=>releaseCamera(cutaway)}/>:<Suspense fallback={<div className="scene-fallback">Ýüklenýär…</div>}><FactoryPanels machines={machines} production={production} history={history} mode={mode}/></Suspense>}
       {showInterior&&(follow||area!=='lines')&&<div className="equipment-picker" aria-label="Enjamy ýakyndan gör">{EQUIPMENT.map(s=><button key={s.id} className={!follow&&view==='detail'&&equipmentFocus===s.id?'active':''} onClick={()=>inspectEquipment(s.id)}><span>{s.id==='robot'?'GP-02':s.zone||s.id}</span>{s.name}</button>)}</div>}
       {showInterior&&area==='lines'&&!follow&&<div className="equipment-picker process-line-picker" aria-label="Önümçilik liniýalary">{PROCESS_LINES.map(line=><button key={line.id} title={line.name} style={{'--line-color':line.color}} className={view==='detail'&&equipmentFocus===line.id?'active':''} onClick={()=>inspectLine(line)}><i/>{line.short}</button>)}</div>}
       {isScene&&<div className="journey-panel">

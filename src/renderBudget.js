@@ -16,17 +16,20 @@ export function createRenderClock(fps=Infinity){
 
 // Lower pixel fill only after sustained pressure, recovering slowly to avoid
 // oscillation. Geometry and the sharp HTML interface are independent of scale.
-export function createResolutionBudget(){
+export function createResolutionBudget(targetFPS=60){
   let scale=1,seconds=0,frames=0,fastWindows=0;
   return {sample(dt){
     if(dt<=0)return null;
     seconds+=dt;frames++;
     if(seconds<2)return null;
     const fps=frames/seconds;seconds=0;frames=0;const previous=scale;
-    if(fps<48){scale=Math.max(.7,scale-.1);fastWindows=0;}
-    else if(fps>57){if(++fastWindows>=3){scale=Math.min(1,scale+.05);fastWindows=0;}}
+    if(fps<targetFPS*.8){scale=Math.max(.7,scale-.1);fastWindows=0;}
+    else if(fps>targetFPS*.95){if(++fastWindows>=3){scale=Math.min(1,scale+.05);fastWindows=0;}}
     else fastWindows=0;
     scale=Math.round(scale*100)/100;
     return scale===previous?null:scale;
   },reset(){seconds=0;frames=0;fastWindows=0;}};
 }
+
+// Retain a final contrast filter for subpixel roof ribs and road markings even at 1×.
+export const antialiasMode=pixelRatio=>({samples:pixelRatio<1?0:4,useFXAA:true});

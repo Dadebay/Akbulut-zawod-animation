@@ -61,6 +61,7 @@ export function buildInteriorEquipment(k,{root,equipment,machines,network}){
     for(const xx of [-w*.35,0,w*.35])box(.18,.1,d,[xx,.23,0],m.wood,g);
     for(let n=0;n<layers;n++)box(w-.08,.035,d-.08,[0,.32+n*.039,0],m.paper,g);
     for(const xx of [-w*.28,w*.28])box(.045,.02,d,[xx,.35+layers*.039,0],m.blue,g);
+    return g;
   }
   // Processing-block floors survive the architectural cutaway.
   for(const [x,z,w,d] of [[-29,5,16.5,28.5],[-8,11,24.5,20.5],[-47,-5,12.5,12.5],[-36.5,33,15.5,12]]){
@@ -174,7 +175,7 @@ export function buildInteriorEquipment(k,{root,equipment,machines,network}){
   receiver.rotation.y=Math.PI;
   for(const z of [-1.4,1.4])box(3.6,.85,.10,[0,1.55,z],panel,receiver);
   box(3.7,.12,2.9,[0,2,0],steel,receiver);box(.12,.85,2.9,[1.8,1.55,0],panel,receiver);
-  pallet(5,-26.5,2.4,1.4,22);
+  pallet(5,-26.5,2.4,1.4,22).name='ceiling-supply-pallet';
   // Drive motors, suspended metal detector and connected dust extraction.
   for(const x of [14,28,40,53]){
     const drive=group(localPoint([x,.1,-25.4]),root);equipment.gearmotor([0,0,0],drive,.75);

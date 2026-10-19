@@ -60,7 +60,7 @@ export function buildProduction(k){
     const stop=cyl(.048,.045,[.2,-.1,.09],m.red,console);stop.rotation.x=Math.PI/2;
     pipe([[3.4,.45,2.85],[3.4,.28,2.4],[2,.28,2.4],[2,.4,1.5]],.035,m.black,g);
     operators.push({pos:[s.pos[0]+3,s.pos[1]+.25,s.pos[2]+4.4],zone:s.id,angle:Math.PI});
-    const lm=material('#3ca878',.1,.3,{emissive:'#3ca878',emissiveIntensity:.3});const lamp=group([3.4,2.1,3],g,true);cyl(.055,.3,[0,0,0],m.dark,lamp);cyl(.07,.12,[0,.2,0],lm,lamp);lamps.push({mat:lm,zone:s.id});
+    const lm=material('#3ca878',.1,.3,{unique:true,emissive:'#3ca878',emissiveIntensity:.3});const lamp=group([3.4,2.1,3],g,true);cyl(.055,.3,[0,0,0],m.dark,lamp);cyl(.07,.12,[0,.2,0],lm,lamp);lamps.push({mat:lm,zone:s.id});
   });
   // Jaw crusher: deep feed throat, steel cheek plates, eccentric flywheel and drive belt.
   const jaw=group(localPoint(GYPSUM_CRUSHER),outdoor);plinth(6,5,jaw);frame(5,3.7,1.1,jaw);
@@ -70,8 +70,9 @@ export function buildProduction(k){
   for(let z=-1.15;z<1.2;z+=.19)box(.13,2.15,.08,[-1.42,2.4,z],m.dark,jaw);
   box(3.7,.18,3.5,[0,3.6,0],m.dark,jaw);equipment.hollowHopper(3.5,3.2,2.7,2.4,1.0,[0,3.65,0],jaw);
   for(const z of [-1.65,1.65]){const wheel=group([.5,2.4,z],jaw,true);const disk=cyl(1.15,.22,[0,0,0],m.steel,wheel);disk.rotation.x=Math.PI/2;k.ring(1.05,.1,[0,0,0],m.dark,wheel,'z');for(let n=0;n<8;n++){const a=n*Math.PI/4;rod([0,0,.14],[Math.cos(a)*.9,Math.sin(a)*.9,.14],.065,m.dark,wheel);}rotors.push({object:wheel,axis:'z',zone:'CR',speed:.5});}
-  equipment.gearmotor([3,.4,0],jaw,1.55);for(const z of [-1.95,1.95])equipment.fence(3.3,2.8,[.5,.4,z],jaw);for(const x of [-1.6,1.6])for(const z of [-1.5,1.5])equipment.bolt([x,3.75,z],jaw);cabinet([-2.5,0,3],jaw);operators.push({pos:localPoint([GYPSUM_CRUSHER[0]-2,0,GYPSUM_CRUSHER[2]+4]),zone:'CR',angle:Math.PI});
-  operators.push({pos:localPoint([3.4,0,-26]),zone:'GP',angle:Math.PI});
+  equipment.gearmotor([3,.4,0],jaw,1.55);for(const z of [-1.95,1.95])equipment.fence(3.3,2.8,[.5,.4,z],jaw);for(const x of [-1.6,1.6])for(const z of [-1.5,1.5])equipment.bolt([x,3.75,z],jaw);cabinet([-2.5,0,3],jaw);operators.push({pos:localPoint([GYPSUM_CRUSHER[0]-2,0,GYPSUM_CRUSHER[2]+4.6]),zone:'CR',angle:Math.PI});
+  // Inspect the feeder from the aisle beside its supply pallet and robot fence.
+  operators.push({pos:localPoint([2,0,-25]),zone:'GP',angle:Math.PI,walkAxis:'z'});
   // Slurry is formed and allowed to set before cutting, then enters the dryer.
   const forming=group(localPoint([BOARD_START[0],0,BOARD_START[2]]),root);frame(3.5,3.4,2.7,forming);
   for(const x of [-1.6,1.6]){const roll=cyl(.52,2.6,[x,2.7,0],m.paper,forming);roll.rotation.x=Math.PI/2;for(const z of [-1.32,1.32]){equipment.cylinder(.18,.04,[x,2.7,z],m.wood,forming,'z');equipment.cylinder(.085,.06,[x,2.7,z],m.black,forming,'z');box(.18,1.5,.2,[x,1.8,z],equipment.cast,forming);}const axle=cyl(.10,3.4,[x,2.7,0],m.steel,forming);axle.rotation.x=Math.PI/2;}
@@ -146,6 +147,7 @@ export function buildProduction(k){
   // A compact vacuum feeder visibly takes the top sheet from the adjacent
   // supply pallet and follows it into the magazine's open rear mouth.
   const feeder=group(localPoint([5,0,-24.5]),root);
+  feeder.name='ceiling-vacuum-feeder';
   for(const x of [-1.35,1.35]){
     box(.10,.12,3.5,[x,2.35,-.25],m.blue,feeder);
     box(.10,.35,.10,[x,2.22,1.05],m.steel,feeder);
@@ -178,8 +180,10 @@ export function buildProduction(k){
   for(const z of [-.5,0,.5])box(1.4,.10,.16,[0,.05,z],m.wood,bagPallet);
   for(const x of [-.5,0,.5])box(.16,.12,1.1,[x,.15,0],m.wood,bagPallet);
   for(let n=0;n<4;n++)for(const x of [-.31,.31])for(const z of [-.27,.27])box(.58,.19,.48,[x,.32+n*.2,z],m.paper,bagPallet,.07);
-  operators.push({pos:localPoint([-39,0,-31]),zone:'GR',angle:Math.PI});textPlate('GURY GARYNDY',3,.5,[-51,5.8,-5.2],root);
-  for(const [x,z] of [[-41,-9],[8,-9],[48,-9],[60,-19],[-18,-23],[-7,-34]])operators.push({pos:localPoint([x,0,z]),zone:x< -30?'GR':'GK',angle:Math.PI});
+  operators.push({pos:localPoint([-38.5,0,-29.8]),zone:'GR',angle:Math.PI});textPlate('GURY GARYNDY',3,.5,[-51,5.8,-5.2],root);
+  // Walk along each free aisle, including the north/south passage west of the
+  // board return rollers. The former (-18,-23) position was inside that belt.
+  for(const [x,z,walkAxis='x'] of [[-40.3,-9],[8,-9],[48,-9],[60,-19],[-20.25,-23,'z'],[-7.8,-34]])operators.push({pos:localPoint([x,0,z]),zone:x< -30?'GR':'GK',angle:Math.PI,walkAxis});
   const interior=buildInteriorEquipment(k,{root,equipment,machines,network});
   flows.push(...network.connections);network.capUnused();
   const machineClocks=new Map();

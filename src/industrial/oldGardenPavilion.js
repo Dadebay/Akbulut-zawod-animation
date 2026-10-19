@@ -1,10 +1,10 @@
 import * as T from 'three';
 import {OLD_PAVILION as LAYOUT} from './siteLayout.js';
 
-// The reference shows a green-roofed hall with a lower glazed solar annex
-// attached to its end, opening onto an enclosed lawn beside the railway.
+// The railway-side dormitory has a green-roofed hall and a lower glazed
+// solar annex opening onto its enclosed garden.
 export function buildOldGardenPavilion(k,plants,solarPanel){
-  const {box,cyl,rod,mesh,group,material,m}=k;
+  const {box,cyl,rod,mesh,group,material,textPlate,m}=k;
   const {hall:H,annex:A,garden:G}=LAYOUT;
   const white=material('#e2e4db',.05,.79),base=material('#a8aea3',0,.93);
   const roof=material('#497c60',.27,.58),roofShade=material('#35624e',.26,.62),seam=material('#779982',.35,.54);
@@ -14,6 +14,7 @@ export function buildOldGardenPavilion(k,plants,solarPanel){
   box(G.east-G.west,.62,G.south-G.north,[(G.east+G.west)/2,-.40,(G.north+G.south)/2],base);
 
   const hall=group([H.x,0,H.z]);hall.name='old-pavilion-green-hall';
+  hall.userData.buildingType='dormitory';hall.userData.label='ÝATAKHANA';
   box(H.width+.4,.15,H.depth+.4,[0,-.05,0],pavers,hall);
   box(H.width,H.height,H.depth,[0,H.height/2,0],white,hall);
   box(H.width+.08,.32,H.depth+.08,[0,.16,0],base,hall);
@@ -34,15 +35,18 @@ export function buildOldGardenPavilion(k,plants,solarPanel){
   const gable=new T.Shape();gable.moveTo(-H.depth/2,0);gable.lineTo(H.depth/2,0);gable.lineTo(0,rise);gable.closePath();
   const gableGeo=new T.ExtrudeGeometry(gable,{depth:.10,bevelEnabled:false});gableGeo.rotateY(Math.PI/2);
   for(const side of [-1,1])mesh(gableGeo,white,[side*H.width/2,H.height,0],hall);
-  // A modest service door faces the courtyard, with a clear paved approach.
+  // Dormitory entrance and sign face the courtyard.
   box(1.2,2.5,.06,[3,1.33,-H.depth/2-.04],roofShade,hall);
   box(.65,.60,.025,[3,1.95,-H.depth/2-.08],glass,hall);
   rod([3.43,1.15,-H.depth/2-.11],[3.43,1.43,-H.depth/2-.11],.02,trim,hall);
   box(1.8,.10,2.1,[3,.005,-H.depth/2-1.05],pavers,hall);
+  const sign=textPlate('ÝATAKHANA',4.2,.52,[-.4,2.2,-H.depth/2-.075],hall,'#917627','#e2e4db');
+  sign.rotation.y=Math.PI;
 
   // Its own flat roof and white fascia make the attached front volume distinct.
   const annex=group([A.x,0,A.z]);annex.rotation.y=-Math.PI/2;
   annex.name='old-pavilion-attached-solar-annex';
+  annex.userData.buildingType='dormitory';annex.userData.label='ÝATAKHANA';
   const w=A.depth,d=A.width,h=A.height;
   box(w+.2,.15,d+.2,[0,-.05,0],pavers,annex);
   box(w,h,d,[0,h/2,0],white,annex);

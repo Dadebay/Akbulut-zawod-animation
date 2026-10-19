@@ -3,7 +3,7 @@ import {POND} from './siteLayout.js';
 
 export function buildFishPond(k){
   const {box,cyl,rod,mesh,group,material,m,textPlate}=k,{x,z,width:w,depth:d}=POND;
-  const concrete=material('#bab9a8',0,.92),bank=material('#d2d0bd',0,.86),water=material('#2498c3',.06,.23,{transparent:true,opacity:.48,depthWrite:false}),nursery=material('#45a9d0',.04,.27,{transparent:true,opacity:.32,depthWrite:false});
+  const concrete=material('#bab9a8',0,.92),bank=material('#d2d0bd',0,.86),water=material('#2498c3',.06,.23,{unique:true,transparent:true,opacity:.48,depthWrite:false}),nursery=material('#45a9d0',.04,.27,{unique:true,transparent:true,opacity:.32,depthWrite:false});
   // Concrete-lined earth reservoir: sloping sides, perimeter access and a
   // smaller nursery cell in one corner, matching the second aerial photograph.
   box(w+5,.14,d+5,[x,-.16,z],material('#9f9b87',0,1));
@@ -75,7 +75,7 @@ export function buildFishPond(k){
   for(const [xx,zz] of [[x-6,z+5],[x+7,z+15]]){
     for(const dx of [-1.3,1.3]){const float=box(2.8,.25,.5,[xx+dx,.48,zz],m.blue);float.castShadow=false;}
     rod([xx-2,.6,zz],[xx+2,.6,zz],.08,m.steel);box(.7,.5,.7,[xx,.8,zz],m.white);
-    for(let i=0;i<4;i++){const g=group([xx,.29,zz],k.scene,true);const ring=mesh(new T.RingGeometry(.65,.69,24),material('#c6d0ba',0,.5,{transparent:true,opacity:.28,side:T.DoubleSide}),[0,0,0],g);ring.rotation.x=-Math.PI/2;ring.castShadow=false;bubbles.push({g,material:ring.material,offset:i/4});}
+    for(let i=0;i<4;i++){const g=group([xx,.29,zz],k.scene,true);const ring=mesh(new T.RingGeometry(.65,.69,24),material('#c6d0ba',0,.5,{unique:true,transparent:true,opacity:.28,side:T.DoubleSide}),[0,0,0],g);ring.rotation.x=-Math.PI/2;ring.castShadow=false;bubbles.push({g,material:ring.material,offset:i/4});}
   }
   function update(time){
     ripple.offset.set(time*.007,time*.004);

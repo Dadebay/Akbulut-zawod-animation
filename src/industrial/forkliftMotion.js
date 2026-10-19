@@ -22,7 +22,7 @@ function turn(x,z,direction){
 function path(...parts){const p=new T.CurvePath();parts.forEach(part=>p.add(part));return p;}
 function heading(route,t){const d=route.getTangentAt(clamp(t));return -Math.atan2(d.z,d.x);}
 
-function makeTrip(source,target,laneZ,{pickupClearance=F.emptyHeight,carryHeight=F.carryHeight}={}){
+function makeTrip(source,target,laneZ,{pickupClearance=F.emptyHeight,carryHeight=F.carryHeight,park}={}){
   const r=F.turnRadius,staging=[source[0]-r,laneZ],pickupZ=source[2]-F.cargoX+F.frontAxleX;
   const direction=target.rail?-1:1,alignZ=laneZ+direction*r;
   const dockZ=target.z-direction*(F.cargoX-F.frontAxleX);
@@ -78,12 +78,21 @@ function makeTrip(source,target,laneZ,{pickupClearance=F.emptyHeight,carryHeight
   drive(insertion,.65,true);
   add((dropHeight-.035-F.emptyHeight)/.55,{toHeight:F.emptyHeight,lookBack:true});
   drive(approach,1.8,true);
+  if(park){
+    const [px,pz]=park,entry=px-2*r,k=.5522847498307936*r;
+    // Finish all loading before vacating the dispatch lane into a parallel bay.
+    if(entry<staging[0])drive(path(line([entry,laneZ],staging)),1.2,true);
+    else drive(path(line(staging,[entry,laneZ])),1.2);
+    const parking=path(turn(px-r,laneZ,1),line([px-r,laneZ+r],[px-r,pz-r]),
+      new T.CubicBezierCurve3(vector([px-r,pz-r]),vector([px-r,pz-r+k]),vector([px-k,pz]),vector([px,pz])));
+    drive(parking,.8);
+  }
   add(.7);
   return {phases,duration:time,depositAt,source,target,staging};
 }
-function job(source,laneZ,targets,options){
+function job(source,laneZ,targets,options={}){
   let time=0;
-  const trips=targets.map(target=>{const trip=makeTrip(source,target,laneZ,options);trip.start=time;time+=trip.duration;return trip;});
+  const trips=targets.map((target,i)=>{const trip=makeTrip(source,target,laneZ,{...options,park:i===targets.length-1?options.park:undefined});trip.start=time;time+=trip.duration;return trip;});
   return {source,trips,duration:time};
 }
 const truckTargets=TRUCK_LAYOUT.cargoXs.map((x,i)=>({
@@ -95,10 +104,14 @@ const railTargets=RAIL_LAYOUT.wagonCentres.flatMap((x,n)=>RAIL_LAYOUT.cargoXs.ma
   kind:n%2?'bags':'panel',index:n*2+i,rail:true,
 })));
 export const FORKLIFT_JOBS=[
-  job([51,.06,-43],-48.8,truckTargets),
-  job([-24,.06,-41.7],-46.7,railTargets.slice(0,4)),
-  job([11.5,.06,-41.7],-46.7,railTargets.slice(4),{pickupClearance:.70,carryHeight:.85}),
+  job([51,.06,-43],-48.8,truckTargets,{park:[48,-43.2]}),
+  job([-24,.06,-41.7],-46.7,railTargets.slice(0,4),{park:[-28,-43.2]}),
+  job([11.5,.06,-41.7],-46.7,railTargets.slice(4),{pickupClearance:.70,carryHeight:.85,park:[-3,-43.2]}),
 ];
+export function forkliftFootprint({x,z,yaw},padding=0){
+  return [[-1.45-padding,-.8-padding],[2.85+padding,-.8-padding],[2.85+padding,.8+padding],[-1.45-padding,.8+padding]]
+    .map(([along,side])=>[x+along*Math.cos(yaw)+side*Math.sin(yaw),z-along*Math.sin(yaw)+side*Math.cos(yaw)]);
+}
 export const LOADING_DURATION=Math.ceil(Math.max(...FORKLIFT_JOBS.map(j=>j.duration))+2);
 export function loadingCounts(elapsed){
   const counts=FORKLIFT_JOBS.map(j=>j.trips.filter(t=>elapsed>=t.start+t.depositAt).length);

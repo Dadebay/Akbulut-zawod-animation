@@ -1,5 +1,7 @@
 import * as T from 'three';
 import {OUTER_RAIL_Z as z,outerRailPath} from './siteLayout.js';
+export const RAIL_CROSSINGS=[-143,-205];
+export const RAIL_CROSSING_POSTS=RAIL_CROSSINGS.flatMap(x=>[-1,1].map(side=>({x:x+side*5.4,z:z+side*5,side})));
 
 export function buildOuterRail(k){
   const {box,cyl,rod,material,m}=k,ballast=material('#8f897c',0,1),steel=material('#8a8b86',.78,.4),tie=material('#b1b0a4',0,.96),dark=material('#545751',.6,.7);
@@ -15,8 +17,15 @@ export function buildOuterRail(k){
   const rnd=()=>{seed=(1664525*seed+1013904223)>>>0;return seed/4294967296;};
   for(let i=0;i<stones.count;i++){const progress=.4+rnd()*.5,p=path.getPointAt(progress),t=path.getTangentAt(progress),normal=new T.Vector3(-t.z,0,t.x).normalize();o.position.copy(p).addScaledVector(normal,(rnd()>.5?1:-1)*(1.25+rnd()*.9));o.position.y+=.14;o.rotation.set(rnd()*3,rnd()*3,rnd()*3);const s=.05+rnd()*.07;o.scale.set(s,s*.55,s);o.updateMatrix();stones.setMatrixAt(i,o.matrix);}stones.instanceMatrix.needsUpdate=true;stones.userData.detailDistance=110;
   // Road crossing panels stay flush with the running surfaces.
-  for(const crossingX of [-143,-205]){box(10,.19,1.30,[crossingX,.30,z],dark);for(const dz of [-1.32,1.32])box(10,.19,.85,[crossingX,.30,z+dz],dark);}
-  for(const x of [-151,-135]){cyl(.07,3.6,[x,1.8,z-5],m.white);const a=box(.11,1.4,.09,[x,3.3,z-5],m.red);a.rotation.z=.7;const b=box(.11,1.4,.09,[x,3.3,z-5],m.white);b.rotation.z=-.7;}
+  for(const crossingX of RAIL_CROSSINGS){box(10,.19,1.30,[crossingX,.30,z],dark);for(const dz of [-1.32,1.32])box(10,.19,.85,[crossingX,.30,z+dz],dark);}
+  for(const {x,z:postZ,side} of RAIL_CROSSING_POSTS){
+    cyl(.07,3.6,[x,1.8,postZ],m.white);
+    for(const [angle,mat] of [[.7,m.red],[-.7,m.white]]){const sign=box(.11,1.4,.09,[x,3.3,postZ],mat);sign.rotation.z=angle;}
+    box(.42,1.1,.45,[x,.55,postZ],m.steel);
+    const arm=k.group([x,1.15,postZ]);arm.rotation.z=-side*1.35;
+    box(4.8,.13,.12,[-side*2.4,0,0],m.white,arm);
+    for(let a=.4;a<4.8;a+=.8)box(.28,.14,.13,[-side*a,0,0],m.red,arm);
+  }
   // Keep the drainage outside; the poles stand between the fence and the left rail shoulder.
   box(260,.08,1.6,[-30,-.3,z+5.8],material('#7f7b70',0,1));for(const dz of [-.85,.85])box(260,.3,.15,[-30,-.1,z+5.8+dz],tie);
   const poleZ=41.9;

@@ -1,11 +1,12 @@
 import * as T from 'three';
 import {NEW_FACTORY_ENTRANCE as ENTRANCE} from './siteLayout.js';
+import {routeProfile} from './motionPath.js';
 
 // Fixed site roads and vehicle manoeuvres. Metres in scene space.
 // Opposing diagonal rows leave the office-side passenger bays and their aisle clear.
 export const PARKED_TRUCKS=[
-  ...[-35.5,-29,-22.5,-16].map(z=>({position:[-126.1,0,z],angle:-.6,scale:.68})),
-  ...[-41.2,-34.7,-28.2,-21.7].map(z=>({position:[-113.5,0,z],angle:Math.PI-.6,scale:.68}))
+  ...[-29,-20.5,-12].map(z=>({position:[-127.4,0,z],angle:-1.1,scale:1})),
+  ...[[-114.4,-31],[-115.2,-25.5]].map(([x,z])=>({position:[x,0,z],angle:2.04,scale:1}))
 ];
 export const MAIN_ROAD_X=-143;
 export const MAIN_ROAD_WIDTH=7.2;
@@ -26,14 +27,19 @@ bend([64,-43],[57,-43],[57,-47.7],[48,-47.7]);
 // Run west along the top of the court, down the fence side and out through the gate
 // onto the gate road that leads to the outer road.
 line([48,-47.7],[-106.6,-47.7]);
-bend([-106.6,-47.7],[-113.23,-47.7],[-118.6,-42.33],[-118.6,-35.7]);
-line([-118.6,-35.7],[-118.6,-16]);
-bend([-118.6,-16],[-118.6,-8.27],[-124.87,-2],[-132.6,-2]);
+bend([-106.6,-47.7],[-113.23,-47.7],[-120.2,-42.33],[-120.2,-35.7]);
+line([-120.2,-35.7],[-120.2,-16]);
+bend([-120.2,-16],[-120.2,-8.27],[-124.87,-2],[-132.6,-2]);
 // Ease into the northern lane before reaching the planted road divider.
 bend([-132.6,-2],[-140.7,-2],[-148.9,DISPATCH_EXIT_ROAD_Z],[-157,DISPATCH_EXIT_ROAD_Z]);
 line([-157,DISPATCH_EXIT_ROAD_Z],[DISPATCH_EXIT_ROAD_X,DISPATCH_EXIT_ROAD_Z]);
 path.arcLengthDivisions=2000;
 export const DISPATCH_ROUTE=path;
+export const DISPATCH_PROFILE=routeProfile(path,{speed:p=>p.x< -132&&p.z> -10?8/3.6:15/3.6,acceleration:.6,lateral:.48});
+export function dispatchMotion(progress){
+  const time=T.MathUtils.clamp(progress,0,1)*DISPATCH_PROFILE.duration,m=DISPATCH_PROFILE.at(time);
+  return {...dispatchPose(m.u),...m,braking:DISPATCH_PROFILE.at(time+.2).speed<m.speed-.005};
+}
 
 const length=path.getLength(),count=Math.ceil(length/.20),samples=[];
 let trailerYaw=Math.PI,previousHitch;

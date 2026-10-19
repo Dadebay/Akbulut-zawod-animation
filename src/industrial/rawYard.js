@@ -116,11 +116,11 @@ export function buildRawYard(k){
     cyl(.27,.15,[0,1.01,0],siloFrame,g,.27,24);
     return g;
   }
-  // Keep both vessels on the same line; turn the right-hand vessel's ladder
-  // and service face toward the transfer conveyor.
-  receivingSilo(OLD_RAW_SILOS.x-3.8,OLD_RAW_SILOS.z,8.4);
-  const rightSilo=receivingSilo(OLD_RAW_SILOS.x+3.8,OLD_RAW_SILOS.z,8.4);
-  rightSilo.rotation.y=Math.atan2(unitX-rightSilo.position.x,unitZ-rightSilo.position.z);
+  // The rail-side vessel stays fixed. Place the other on its conveyor-side
+  // left at the same distance from the wall, rather than behind it.
+  receivingSilo(OLD_RAW_SILOS.x,OLD_RAW_SILOS.z+3.8,8.4);
+  const conveyorSilo=receivingSilo(OLD_RAW_SILOS.x,OLD_RAW_SILOS.z-3.8,8.4);
+  conveyorSilo.rotation.y=Math.atan2(unitX-conveyorSilo.position.x,unitZ-conveyorSilo.position.z);
   // The single pile is supplied by the existing delivery animation.
   const [pileX,,pileZ]=RAW_STOCK;
   for(const z of [pileZ-3.4,pileZ+3.4])box(7.5,1.4,.22,[pileX+2,.70,z],steel);

@@ -46,3 +46,16 @@ test('spatial instance batches preserve colors, transforms and distance culling'
     kit.updateDetailVisibility({position:new T.Vector3(200,4,0)});assert.equal(batches[0].visible,false);assert.equal(batches[1].visible,true);
   }finally{kit.dispose();globalThis.document=oldDocument;}
 });
+
+test('material cache shares equal parameters but isolates animated state and textures',()=>{
+  const previous=globalThis.document;
+  globalThis.document={createElement:()=>({getContext:()=>new Proxy({createImageData:(w,h)=>({data:new Uint8ClampedArray(w*h*4)})},{get:(o,k)=>o[k]??(()=>{})})})};
+  const kit=createKit(new T.Scene());
+  try{
+    assert.equal(kit.material('#123456',.1,.7,{opacity:.5,transparent:true}),kit.material('#123456',.1,.7,{transparent:true,opacity:.5}));
+    assert.notEqual(kit.material('#123456',.1,.7,{unique:true}),kit.material('#123456',.1,.7,{unique:true}));
+    assert.notEqual(kit.material('#fff',0,.7,{map:new T.Texture()}),kit.material('#fff',0,.7,{map:new T.Texture()}));
+    kit.box(1,1,1,[0,0,0]);kit.box(1,1,1,[2,0,0]);kit.box(1,1,1,[130,0,0]);kit.box(1,1,1,[132,0,0]);
+    kit.optimize();assert.equal(kit.scene.children.filter(o=>o.isMesh).length,2,'distant cells retain independent culling');
+  }finally{kit.dispose();globalThis.document=previous;}
+});

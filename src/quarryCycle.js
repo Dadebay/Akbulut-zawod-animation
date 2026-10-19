@@ -2,9 +2,11 @@ const clamp=n=>Math.max(0,Math.min(1,n));
 const smooth=n=>{const t=clamp(n);return t*t*(3-2*t);};
 const mix=(a,b,t)=>a+(b-a)*smooth(t);
 
-// Two complete scoop / lift / slew / discharge cycles in the opening scene.
+export const QUARRY_SCOOPS=4;
+export const QUARRY_LOADING_SECONDS=QUARRY_SCOOPS*18;
+// Four full 18-second scoop / lift / slew / discharge cycles.
 export function quarryCycle(progress){
-  const elapsed=clamp(progress)*2,completed=Math.min(2,Math.floor(elapsed));
+  const elapsed=clamp(progress)*QUARRY_SCOOPS,completed=Math.min(QUARRY_SCOOPS,Math.floor(elapsed));
   const phase=elapsed-completed,pour=clamp((phase-.62)/.18);
   // The boom stays raised above the cab roof while the house slews between the face and the
   // tipper, and only lowers once the bucket is over the middle of the body.
@@ -21,5 +23,5 @@ export function quarryCycle(progress){
     // Rise clear of the cab first, then lower only after the slew has almost finished.
     boom=t<.4?mix(.1,lifted,t/.4):lifted-(lifted+.35)*Math.pow((t-.4)/.6,3);
   }
-  return {slew,boom,stick,bucket,pouring:completed<2&&phase>=.62&&phase<.8,bucketLoad:phase<.24?smooth(phase/.24):1-pour,rawLoad:clamp((completed+pour)/2)};
+  return {phase,completed,slew,boom,stick,bucket,pouring:completed<QUARRY_SCOOPS&&phase>=.62&&phase<.8,bucketLoad:phase<.24?smooth(phase/.24):1-pour,rawLoad:clamp((completed+pour)/QUARRY_SCOOPS)};
 }

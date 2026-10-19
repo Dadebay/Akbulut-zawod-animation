@@ -1,3 +1,4 @@
+import {SHIFT_WALKS,OLD_HALL_WALKS,oldForkMotion,operatorWork} from './campusLife.js';
 import {haulCurve} from './landscape.js';
 import {createTruckBuilder} from './trucks.js';
 import {buildRail} from './rail.js';
@@ -16,7 +17,8 @@ export function buildLogistics(k,operators){
   function human(position,yaw=0,zone='GP'){
     const record=worker({position,yaw,zone,seed:humans.length});humans.push(record);return record.g;
   }
-  operators.forEach(o=>human(o.pos,o.angle,o.zone));
+  operators.forEach((o,i)=>humans.push(worker({position:o.pos,yaw:o.angle+(i%3-1)*.35,zone:o.zone,seed:i,work:operatorWork(o.pos,i,o.walkAxis)})));
+  [...SHIFT_WALKS,...OLD_HALL_WALKS].forEach((walk,i)=>humans.push(worker({walk,seed:i+20,zone:'GP'})));
   WALK_ROUTES.forEach(walk=>humans.push(worker({walk,seed:humans.length,zone:'GP'})));
   human([83,0,4],Math.PI,'GP');
   const traffic=buildServiceTraffic(k);
@@ -43,17 +45,18 @@ export function buildLogistics(k,operators){
   const forklift=createForkliftBuilder(k,pallet,worker);
   const [truckFork,railForkA,railForkB]=FORKLIFT_JOBS.map((_,i)=>forklift(i));
   vehicles.push(truckFork,railForkA,railForkB);
+  const oldFork=forklift(3),oldPose=oldForkMotion();oldFork.update(oldPose(0),0);
 
-  const {train,trainCargo,railWheels}=buildRail(k,pallet);
+  const {train,trainCargo,railWheels,updateArrival}=buildRail(k,pallet);
 
   // Loading stock. Keep vehicle aisles and pedestrian walkways clear.
   const loadingStock=[];
-  for(let x=5;x<29;x+=2.2)if(Math.abs(x-FORKLIFT_JOBS[2].source[0])>1.6)loadingStock.push(pallet(k.scene,[x,.8,-41],x%4>2?'bags':'panel'));
-  for(let x=-21;x<-9;x+=2.5)loadingStock.push(pallet(k.scene,[x,0,-42.3]));
+  for(let x=5;x<29;x+=2.2)if(Math.abs(x-FORKLIFT_JOBS[2].source[0])>1.6)loadingStock.push(pallet(k.scene,[x,.8,-41],x%4>2?'bags':'panel',true));
+  for(let x=-21;x<-9;x+=2.5)loadingStock.push(pallet(k.scene,[x,0,-42.3],'panel',true));
   const stock=FORKLIFT_JOBS.map(({source})=>{
     box(1.8,.06,1.8,[source[0],.03,source[2]],m.concrete);
     const g=group(source,k.scene,true);g.rotation.y=Math.PI;
     return {g,panel:pallet(g,[0,0,0],'panel',true),bags:pallet(g,[0,0,0],'bags',true)};
   });
-  return {humans,traffic,vehicles,pallet,hauler,dispatchTruck,train,trainCargo,railWheels,truckFork,railForkA,railForkB,stock,loadingStock,loadTruckModels:truckBuilder.load};
+  return {humans,traffic,updateArrival,updateOldLife:time=>oldFork.update(oldPose(time),time),vehicles,pallet,hauler,dispatchTruck,train,trainCargo,railWheels,truckFork,railForkA,railForkB,stock,loadingStock,loadTruckModels:truckBuilder.load};
 }

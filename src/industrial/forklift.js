@@ -4,8 +4,8 @@ export function createForkliftBuilder(k,pallet,worker){
   const {m,box,cyl,sphere,ring,rod,group,material}=k;
   const paint=material('#e5e9e5',.16,.42),frame=material('#35414a',.55,.54);
   const tyre=material('#252a2b',0,.97),seatMat=material('#242c30',0,.9);
-  const amber=material('#dda12c',0,.4,{emissive:'#c07512',emissiveIntensity:.25});
-  const reverseMat=material('#f3f1dd',0,.3,{emissive:'#fff7dc',emissiveIntensity:.75});
+  const amber=material('#dda12c',0,.4,{unique:true,emissive:'#c07512',emissiveIntensity:.25});
+  const reverseMat=material('#f3f1dd',0,.3,{unique:true,emissive:'#fff7dc',emissiveIntensity:.75});
   return function forklift(index){
     const g=group([0,0,0],k.scene,true),ws=[],steering=[];
     box(2.30,.35,1.19,[-.25,.48,0],frame,g,.09);
@@ -41,6 +41,7 @@ export function createForkliftBuilder(k,pallet,worker){
     for(const z of [-.57,.57])box(1.48,.065,.065,[-.14,2.19,z],frame,g);
     for(let x=-.83;x<.59;x+=.23)box(.055,.055,1.17,[x,2.22,0],paint,g);
     cyl(.065,.10,[-.72,2.30,-.43],amber,g,undefined,16);
+    const beacon=group([-.72,2.32,-.43],g,true);box(.09,.07,.025,[.045,0,0],amber,beacon);
     for(const z of [-.55,.55]){box(.08,.10,.14,[.54,1.93,z],frame,g,.015);box(.015,.065,.10,[.586,1.93,z],m.light,g);}
     const reverseLights=group([0,0,0],g,true);
     for(const z of [-.43,.43]){box(.018,.08,.14,[-1.45,1.08,z],m.red,g);box(.02,.065,.075,[-1.462,.91,z],reverseMat,reverseLights);}
@@ -77,7 +78,7 @@ export function createForkliftBuilder(k,pallet,worker){
       steering.forEach(p=>p.rotation.y=-Math.atan2((F.frontAxleX-F.rearAxleX)*pose.curvature,1+p.position.z*pose.curvature));
       ws.forEach((w,i)=>w.rotation.z=-pose.wheelTravel[i]/w.userData.radius);
       steeringWheel.rotation.y=-pose.steer*2.2;
-      reverseLights.visible=pose.reverse;driver.update(time,{lookBack:pose.lookBack,steer:pose.steer});
+      beacon.rotation.y=time*6;reverseLights.visible=pose.reverse&&Math.floor(time*3)%2===0;driver.update(time,{lookBack:pose.lookBack,steer:pose.steer});
     }
     return {type:'fork',g,ws,fork,mast,cargo,bagCargo,driver,update};
   };

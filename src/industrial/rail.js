@@ -1,3 +1,4 @@
+import {secondTrackPath,arrivalTrainPose} from './arrivalTrain.js';
 import * as T from 'three';
 import {buildTurkmenLocomotive} from './turkmenLocomotive.js';
 import {RAW_YARD,RAW_YARD_APRON,RAIL_ACCESS_CROSSING} from './siteLayout.js';
@@ -68,10 +69,7 @@ export function buildRail(k,pallet){
   // A second track runs beside the main line near the plant: one carries cargo in, the other takes it away.
   // It leaves the main line with a gentle S-curve and joins it again at the far end.
   {
-    const upperZ=-57.6,track=new T.CurvePath(),P=(x,z)=>new T.Vector3(x,0,z);
-    track.add(new T.CubicBezierCurve3(P(-150,RAIL_LAYOUT.z),P(-130,RAIL_LAYOUT.z),P(-130,upperZ),P(-110,upperZ)));
-    track.add(new T.LineCurve3(P(-110,upperZ),P(68,upperZ)));
-    track.add(new T.CubicBezierCurve3(P(68,upperZ),P(88,upperZ),P(88,RAIL_LAYOUT.z),P(108,RAIL_LAYOUT.z)));
+    const track=secondTrackPath();
     const length=track.getLength(),segments=Math.ceil(length/2);
     function strip(width,y,mat,offset=0){
       const pos=[],idx=[];
@@ -235,5 +233,33 @@ export function buildRail(k,pallet){
   }
 
   buildTurkmenLocomotive(k,train,{z:RAIL_LAYOUT.z,bogie,coupling});
-  return {train,trainCargo,railWheels};
+  const incoming=[],firstIncomingWheel=railWheels.length;
+  for(let i=0;i<3;i++){
+    const g=group([0,0,0],k.scene,true);incoming.push(g);
+    bogie(g,-3.6);bogie(g,3.6);box(i?13.4:10.5,.25,2.8,[0,1.42,0],blue,g);
+    if(i===0){
+      box(6,1.65,2.65,[.5,2.4,0],blue,g,.12);box(2.8,2.7,2.9,[-3.1,2.92,0],white,g,.08);
+      for(const side of [-1,1])box(2,.9,.035,[-3.1,3.5,side*1.47],glass,g);
+      box(.04,.9,2.5,[-1.68,3.5,0],glass,g);cyl(.13,.7,[2.1,3.55,0],frame,g);
+      textPlate('AK BULUT',2,.35,[.4,2.7,1.34],g,'#ffffff','#1b507e');
+    }else{
+      box(13.2,.08,2.65,[0,1.58,0],m.wood,g);
+      for(const side of [-1,1])box(13.3,.45,.08,[0,1.83,side*1.4],blue,g);
+      for(const x of [-6.6,6.6])box(.08,.45,2.85,[x,1.83,0],blue,g);
+    }
+    for(const x of [-6.9,6.9])coupling(g,x,Math.sign(x));
+  }
+  const incomingWheels=railWheels.splice(firstIncomingWheel),tongues=[];
+  for(const side of [-1,1]){
+    const hinge=group([-149,.40,RAIL_LAYOUT.z+side*.76],k.scene,true);
+    box(5,.065,.055,[2.5,0,0],steel,hinge);tongues.push(hinge);
+  }
+  function updateArrival(time){
+    const lead=arrivalTrainPose(time);
+    incoming.forEach((car,i)=>{const pose=arrivalTrainPose(time,i*15.2);car.position.copy(pose.position);car.rotation.y=pose.yaw;});
+    incomingWheels.forEach(w=>{w.rotation.z=-lead.distance/.46;});
+    tongues.forEach((tongue,i)=>{tongue.rotation.y=(i?1:-1)*.025+lead.switch*.055;});
+  }
+  updateArrival(0);
+  return {train,trainCargo,railWheels,updateArrival};
 }

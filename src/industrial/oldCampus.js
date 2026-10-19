@@ -9,8 +9,9 @@ import {OLD_LEFT_CAMPUS as LEFT,OLD_SIDE_LOADING as LOADING,OLD_PAVILION,OLD_REA
 
 // Proportions and facade details follow the user's close aerial photograph.
 // These are visual estimates; the site has not been surveyed.
+export const OLD_SOUTH_GARDENS=[[36,-64.25,9,8.5],[53.3,-61.6,25.4,3.2]];
 export function buildOldCampus(k,plants){
-  const {m,box,cyl,rod,ring,group,mesh,material,textPlate}=k;
+  const {m,box,cyl,rod,ring,group,mesh,material,textPlate}=k,shells=[];
   const wall=material('#dfe2db',.04,.86),base=material('#a7aaa2',0,.94),roof=material('#699780',.27,.58),roofShade=material('#4f8069',.23,.67),seamMat=material('#87a994',.27,.64),trim=material('#c1d0c7',.44,.53),glass=material('#36545d',.38,.27),dark=material('#3c4c50',.46,.6),paving=material('#8b908d',0,.96),door=material('#718e82',.22,.65);
   const glassPanes=[glass,material('#46636d',.38,.28),material('#304b55',.38,.29)];
   const solarPanel=createSolarPanels(k);
@@ -18,22 +19,15 @@ export function buildOldCampus(k,plants){
   const courtWest=-28,courtEast=OLD_REAR_BOUNDARY.x+.2;
   box(courtEast-courtWest,.14,79,[(courtWest+courtEast)/2,-.20,-110.5],paving,k.scene,2.5);
   function ridgeHall(x,z,w,d,h,bays=1,frontLoading=true,sideLoading=null){
-    const g=group([x,0,z]);
+    const g=group([x,0,z],k.scene,true);shells.push(g);
     const openingX=sideLoading?sideLoading.x-x:0,openingWidth=sideLoading?.interiorWidth||0;
+    box(w,.12,d,[x,-.03,z],m.floor);
+    for(const side of [-1,1])box(.24,h,d,[side*w/2,h/2,0],wall,g);
+    box(w,h,.24,[0,h/2,-d/2],wall,g);
     if(sideLoading){
-      // Leave a full-height vehicle passage in the south wall, with actual interior depth.
-      const west=openingX-openingWidth/2,east=openingX+openingWidth/2;
-      for(const [a,b] of [[-w/2,west],[east,w/2]]){
-        box(b-a,h,d,[(a+b)/2,h/2,0],wall,g);
-        box(b-a,.45,d+.1,[(a+b)/2,.225,0],base,g);
-      }
-      const backDepth=d-sideLoading.interiorDepth,insideZ=d/2-sideLoading.interiorDepth/2;
-      box(openingWidth,h,backDepth,[openingX,h/2,-sideLoading.interiorDepth/2],wall,g);
-      box(openingWidth,.45,backDepth,[openingX,.225,-sideLoading.interiorDepth/2],base,g);
-      box(openingWidth,h-sideLoading.clearHeight,sideLoading.interiorDepth,[openingX,(h+sideLoading.clearHeight)/2,insideZ],wall,g);
-    }else{
-      box(w,h,d,[0,h/2,0],wall,g);box(w+.1,.45,d+.1,[0,.225,0],base,g);
-    }
+      for(const [a,b] of [[-w/2,openingX-openingWidth/2],[openingX+openingWidth/2,w/2]])box(b-a,h,.24,[(a+b)/2,h/2,d/2],wall,g);
+      box(openingWidth,h-sideLoading.clearHeight,.24,[openingX,(h+sideLoading.clearHeight)/2,d/2],wall,g);
+    }else box(w,h,.24,[0,h/2,d/2],wall,g);
     const bay=d/bays,rise=1.05;
     for(let b=0;b<bays;b++){
       const zz=-d/2+bay*(b+.5),slope=Math.atan2(rise,bay/2),length=Math.hypot(bay/2,rise)+.42;
@@ -104,7 +98,9 @@ export function buildOldCampus(k,plants){
   box(7.2,.07,18.2,[0,5.67,0],roof,office);
   box(7.6,.30,18.6,[0,.15,0],base,office);
   curtainWall(-13.76,.34,-96.2,18.4,4.76,-Math.PI/2);
-  curtainWall(0,.34,-86.94,27.4,4.76);
+  // End the glazing at the main hall: its white wall must stay ungridded.
+  const glazedCornerWest=-13.7,glazedCornerEast=-7.15;
+  curtainWall((glazedCornerWest+glazedCornerEast)/2,.34,-86.94,glazedCornerEast-glazedCornerWest,4.76);
   box(27.8,.26,.42,[0,5.44,-86.87],wall);
   box(27.8,.10,1.05,[0,5.62,-86.65],roof);
   const entry=group([-13.87,0,-98.5]);
@@ -150,10 +146,11 @@ export function buildOldCampus(k,plants){
   buildOldGardenPavilion(k,plants,solarPanel);
   glazedPavilion(78,OLD_PAVILION.wallZ-3.35,17);
   buildOldFrontCourt(k,plants);
-  // Plant the narrow asphalt verge along the green-roofed hall. Keep the
-  // covered truck entrance open between the two lawn sections.
+  // Plant only the lawn west of the covered truck entrance. Its east side
+  // is an open asphalt apron, without the former two rows of conifers.
   const hallVergeNorth=-86.5,hallVergeSouth=-83.15;
-  for(const [west,east] of [[-4,32],[56,69]]){
+  {
+    const west=-4,east=32;
     const verge=box(east-west,.17,hallVergeSouth-hallVergeNorth,
       [(west+east)/2,-.055,(hallVergeNorth+hallVergeSouth)/2],m.grass);
     verge.castShadow=false;
@@ -223,6 +220,7 @@ export function buildOldCampus(k,plants){
     const pairedNorth=houseBed.z-houseBed.depth/2;
     const pairedSouth=houseBed.z+houseBed.depth/2;
     const houseSideEdge=69.3,houseSideSouth=-60.4;
+    const hallBedWest=7.5,hallBedEast=31;
     // Extend the rail-side lawn into the recessed asphalt between the green
     // hall and the small glazed building. The two beds behind the house now
     // have the same footprint; the strip beside its left wall is planted too.
@@ -231,16 +229,20 @@ export function buildOldCampus(k,plants){
       [41.5,-65],[65,-65],[pairedWest,pairedSouth],
       [pairedWest,pairedNorth],[pairedEast,pairedNorth]
     ];
-    const lawnOutline=[...lawnRim,[pairedEast,pairedSouth],
-      [houseSideEdge,pairedSouth],[houseSideEdge,houseSideSouth],
-      [66,houseSideSouth],[66,-63.2],[40.5,-63.2],
-      [40.5,-68.5],[31.5,-68.5]];
+    // One outline replaces the raised rectangular beds and overlapping bridge.
+    // Only the exterior kerb remains; there are no bevels, height steps or
+    // shadow-casting edges between the hall strip and the rail-side gardens.
+    const lawnOutline=[[hallBedWest,-73.9],[hallBedEast,-73.9],...lawnRim,
+      [houseBed.x+houseBed.width/2,pairedNorth],[houseBed.x+houseBed.width/2,pairedSouth],
+      [houseSideEdge,pairedSouth],[houseSideEdge,-60.1],
+      [30.25,-60.1],[30.25,-71.3],[hallBedWest,-71.3]];
     const lawnShape=new T.Shape();
     lawnOutline.forEach(([x,z],i)=>i?lawnShape.lineTo(x,-z):lawnShape.moveTo(x,-z));
     lawnShape.closePath();
     const lawnGeometry=new T.ShapeGeometry(lawnShape);
     lawnGeometry.rotateX(-Math.PI/2);
-    mesh(lawnGeometry,m.grass,[0,.20,0]).castShadow=false;
+    const connectedLawn=mesh(lawnGeometry,m.grass,[0,.20,0]);
+    connectedLawn.name='old-campus-connected-lawn';connectedLawn.castShadow=false;
     const lawnCurb=material('#e2e4db',.05,.79);
     for(let i=0;i<lawnRim.length-1;i++){
       const [ax,az]=lawnRim[i],[bx,bz]=lawnRim[i+1];
@@ -266,11 +268,10 @@ export function buildOldCampus(k,plants){
       [34.5,-62.9],[37.1,-62.9],
       [68.3,-70.0],[71.2,-70.0],[74.1,-70.0]
     ])plants.plant(x,z,.24,{plantedBed:true});
-    plants.garden(-9.5,-67.2,19.5,13.5,{curb:false});plants.grove(-9.5,-67.2,17,11.5,2.6);
-    plants.garden(36,-64.25,9,8.5,{curb:false});
-    plants.garden(48.5,-61.6,35,3.2,{curb:false});
+    plants.garden(-9.5,-67.2,19.5,13.5,{curb:false,surface:false});plants.grove(-9.5,-67.2,17,11.5,2.6,{surface:false});
+    for(const bed of OLD_SOUTH_GARDENS)plants.garden(...bed,{curb:false,surface:false});
     // Frame only the outside of the adjoining bed, leaving their shared edge green.
-    plants.garden(houseBed.x,houseBed.z,houseBed.width,houseBed.depth,{curb:false});
+    plants.garden(houseBed.x,houseBed.z,houseBed.width,houseBed.depth,{curb:false,surface:false});
     for(const z of [pairedNorth,pairedSouth])
       box(houseBed.width,.17,.23,[houseBed.x,.18,z],lawnCurb);
     box(.23,.17,houseBed.depth,[houseBed.x+houseBed.width/2,.18,houseBed.z],lawnCurb);
@@ -283,8 +284,7 @@ export function buildOldCampus(k,plants){
     yolkaRow(-27.3,1.3,-74.95,2.15,.28,1.07);
     yolkaRow(-27.3,1.3,-73.55,2.15,.28,.54);
     // Keep the outside white rim, but omit the east curb between the joined lawns.
-    plants.garden(19.25,-72.6,23.5,2.6,{curb:false});
-    const hallBedWest=19.25-23.5/2,hallBedEast=19.25+23.5/2;
+    plants.garden(19.25,-72.6,23.5,2.6,{curb:false,surface:false});
     for(const z of [-73.9-.12,-71.3+.12])
       box(hallBedEast-hallBedWest+.12,.16,.24,
         [(hallBedWest+hallBedEast)/2-.06,.16,z],lawnCurb);
@@ -294,19 +294,6 @@ export function buildOldCampus(k,plants){
     const outerJoin=box(outerJoinLength+.08,.17,.23,
       [(outerJoinStart[0]+outerJoinEnd[0])/2,.18,(outerJoinStart[1]+outerJoinEnd[1])/2],lawnCurb);
     outerJoin.rotation.y=-Math.atan2(outerJoinEnd[1]-outerJoinStart[1],outerJoinEnd[0]-outerJoinStart[0]);
-    // Clip the lawn bridge to the angled outer curb so no green corner spills
-    // into the asphalt while the two planted beds still meet at the hall.
-    const bridgeOutline=[
-      [30.1,-73.8],[31,-73.8],lawnRim[0],
-      [32.4,-72.2],[32.4,-60.4],[30.1,-60.4]
-    ];
-    const bridgeShape=new T.Shape();
-    bridgeOutline.forEach(([x,z],i)=>i?bridgeShape.lineTo(x,-z):bridgeShape.moveTo(x,-z));
-    bridgeShape.closePath();
-    const bridgeGeometry=new T.ShapeGeometry(bridgeShape);
-    bridgeGeometry.rotateX(-Math.PI/2);
-    const hallSideLawn=mesh(bridgeGeometry,m.grass,[0,.232,0]);
-    hallSideLawn.castShadow=false;
     for(const z of [-67.5,-64.6,-62.0])
       plants.plant(32.15,z,.24,{plantedBed:true});
     // Keep the hall's service-door path above the lawn and free of trees.
@@ -332,4 +319,5 @@ export function buildOldCampus(k,plants){
     for(const [x,z,size] of bedYolka)plants.plant(x,z,size,{plantedBed:true});
   }
   for(const [x,z] of [[93,-87],[93,-122],[95,-135]]){cyl(.055,6,[x,3,z],trim);rod([x,5.9,z],[x+1,6.15,z],.045,trim);box(.8,.10,.30,[x+1,6.15,z],m.light);}
+  return {shells};
 }

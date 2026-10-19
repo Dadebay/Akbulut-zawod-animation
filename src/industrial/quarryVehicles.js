@@ -1,9 +1,9 @@
 import * as T from 'three';
 import {quarryCycle} from '../quarryCycle.js';
 import {rubbleAssets} from './rubble.js';
-import {quarryPoint} from './quarryLayout.js';
+import {quarryPoint,QUARRY_LOAD_POINT,EXCAVATOR_LAYOUT,excavatorLoadingPose} from './quarryLayout.js';
 
-export const HAULER_LAYOUT={bedPivot:[-5.5,1.25,0],bedLength:5.55,bedWidth:2.5,wheelRadius:.562,loadPoint:quarryPoint(-2.5,2.35,0)};
+export const HAULER_LAYOUT={bedPivot:[-5.5,1.25,0],bedLength:5.55,bedWidth:2.5,wheelRadius:.562,loadPoint:QUARRY_LOAD_POINT};
 
 // Original industrial bodies, with the same scanned MAN cab used by the delivery trucks.
 export function createQuarryVehicles(k){
@@ -37,19 +37,20 @@ export function createQuarryVehicles(k){
       const x=.45+col*(length-.6)/8+(random()-.5)*.13,z=(row-1)*width*.30+(random()-.5)*.09;
       const y=.4+layer*.45+(row===1?.1:0)+(random()-.5)*.08,size=.35+random()*.07;
       const rock=mesh(rubble.geometries[(col+row+layer)%4],rubble.material,[x,y,z],cargo);
+      rock.userData.dynamic=true;rock.userData.rest=rock.position.clone();
       rock.scale.set(size*1.12,size*.8,size);rock.rotation.set(random()*.6,random()*6,random()*.6);
     }
     return cargo;
   }
 
   function buildHauler(truckBuilder){
-    const g=group(quarryPoint(),k.scene,true),ws=[];truckBuilder.mountCab(g,[.85,0,0],1.05);
+    const g=group(quarryPoint(),k.scene,true),ws=[],steering=[];truckBuilder.mountCab(g,[.85,0,0],1.05);
     contactShadow(g,10.5,3.7,[-1.65,.075,0]);
     for(const z of [-.49,.49]){box(8.5,.28,.12,[-1.7,.81,z],frame,g);box(8.5,.05,.22,[-1.7,.97,z],steel,g);}
     for(let x=-5.6;x<2.2;x+=.6)box(.12,.16,1.1,[x,.8,0],frame,g);
     for(const x of [-4.55,-3.15,1.4275]){
       axisCylinder(.10,2.0,[x,.562,0],frame,g);const diff=mesh(new T.SphereGeometry(.21,20,14),frame,[x,.56,0],g);diff.scale.set(1,.9,1.1);
-      for(const z of [-1.1235,1.1235]){ws.push(truckBuilder.wheel(g,x,z,HAULER_LAYOUT.wheelRadius,x<0));for(let layer=0;layer<4;layer++)box(1.2-layer*.13,.025,.12,[x,.69+layer*.03,z*.56],wear,g);}
+      for(const z of [-1.1235,1.1235]){if(x>0){const front=truckBuilder.steeredWheel(g,x,z,HAULER_LAYOUT.wheelRadius);ws.push(front.wheel);steering.push(front.pivot);}else ws.push(truckBuilder.wheel(g,x,z,HAULER_LAYOUT.wheelRadius,true));for(let layer=0;layer<4;layer++)box(1.2-layer*.13,.025,.12,[x,.69+layer*.03,z*.56],wear,g);}
     }
     rod([-4.55,.58,0],[.75,.67,0],.07,steel,g);
     for(const z of [-1.2,1.2]){
@@ -76,13 +77,22 @@ export function createQuarryVehicles(k){
     for(const z of [-1.1,0,1.1])box(.08,1.22,.12,[-.08,-.61,z],paint,tailgate);for(const y of [-1.2,0])box(.14,.12,2.5,[-.05,y,0],steel,tailgate);
     for(const z of [-1.08,1.08]){axisCylinder(.09,.3,[0,0,z],steel,tailgate);axisCylinder(.11,.32,[0,0,z],frame,bed);}
     const cargo=rockPile(bed,5.18,2.13),dischargePoint=group([-.02,.2,0],bed,true);
+    const cargoRocks=[...cargo.children];
+    function updateCargo(load,unloading){
+      cargo.visible=load>.001;cargo.scale.y=1;
+      const slide=unloading?(1-load)*5.7:0;
+      for(const rock of cargoRocks){
+        const rest=rock.userData.rest;rock.position.copy(rest);rock.position.x-=slide;
+        rock.visible=unloading?rock.position.x>=.15:rest.y<=.4+load*.6;
+      }
+    }
     const hoist=hydraulic(g,.14),anchor=new T.Vector3(-3.9,.86,0),moving=new T.Vector3();
     function updateHoist(){moving.set(4.25,-.05,0).applyAxisAngle(new T.Vector3(0,0,1),bed.rotation.z).add(bed.position);hoist(anchor,moving);}
-    updateHoist();return {type:'haul',g,ws,bed,tailgate,cargo,dischargePoint,updateHoist,zone:'CR'};
+    updateHoist();return {type:'haul',g,ws,steering,bed,tailgate,cargo,dischargePoint,updateHoist,updateCargo,zone:'CR'};
   }
 
   function buildExcavator(){
-    const g=group(quarryPoint(3,0,4),k.scene,true);g.rotation.y=2.6;
+    const g=group(EXCAVATOR_LAYOUT.position,k.scene,true);g.rotation.y=EXCAVATOR_LAYOUT.yaw;
     for(const z of [-1.28,1.28])contactShadow(g,5.6,1.7,[0,.09,z]);
     // Track shoes follow a continuous stadium-shaped chain around both sprockets.
     const half=1.85,r=.48,perimeter=4*half+2*Math.PI*r;
@@ -138,9 +148,8 @@ export function createQuarryVehicles(k){
     function localPoint(object,point,parent,out){object.updateWorldMatrix(true,false);parent.updateWorldMatrix(true,false);inv.copy(parent.matrixWorld).invert();return out.set(...point).applyMatrix4(object.matrixWorld).applyMatrix4(inv);}
     function updateRams(){for(const ram of boomRams){a.set(.6,.3,.43+ram.z);localPoint(boom,[1.8,2.55,ram.z],upper,b);ram.move(a,b);}a.set(.7,2.2,.36);localPoint(stick,[.6,-.45,.36],boom,b);stickRam(a,b);a.set(.65,-.8,.3);localPoint(bucket,[.3,.44,.3],stick,b);bucketRam(a,b);}
     function pose(p){upper.rotation.y=p.slew;boom.rotation.z=p.boom;stick.rotation.z=p.stick;bucket.rotation.z=p.bucket;load.visible=p.bucketLoad>.03;load.scale.y=Math.max(.03,p.bucketLoad);updateRams();}
-    // Calibrate the loading pose over the centre of the actual tipper body.
-    pose({slew:0,boom:.1,stick:.12,bucket:.13,bucketLoad:1});g.updateMatrixWorld(true);const tip=bucketTip.getWorldPosition(new T.Vector3());g.position.x+=HAULER_LAYOUT.loadPoint[0]-tip.x;g.position.z+=HAULER_LAYOUT.loadPoint[2]-tip.z;
-    function update(j){const p=j.index===0?quarryCycle(j.progress):{slew:-1.0,boom:-.35,stick:.22,bucket:-.8,bucketLoad:0,pouring:false};pose(p);return p;}
+    const loadingPose=excavatorLoadingPose();
+    function update(j){const p=j.index===0?quarryCycle(j.progress):{slew:-1.0,boom:-.35,stick:.22,bucket:-.8,bucketLoad:0,pouring:false};pose({...p,slew:p.slew+loadingPose.slew,boom:p.boom+loadingPose.boom-.1,stick:p.stick+loadingPose.stick-.12});return p;}
     update({index:0,progress:0});return {g,upper,boom,stick,bucket,bucketTip,update};
   }
   return {buildHauler,buildExcavator};

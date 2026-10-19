@@ -1,3 +1,4 @@
+import {createWorkerBuilder} from './workers.js';
 import * as T from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {assetUrl} from '../assets.js';
@@ -13,6 +14,7 @@ export function createTruckBuilder(k,pallet){
   const curtain=material('#f0f1ef',0,.87),curtainBlue=curtain,marker=material('#d69a40',.15,.38);
   function wheel(parent,x,z,r=.51,dual=false){
     const g=group([x,r,z],parent,true);g.userData.wheelKey=`truck:${r}:${Math.sign(z)}:${dual}`;
+    g.userData.radius=r;g.userData.contact={x,z};
     const profile=[[r*.55,-.17],[r*.76,-.17],[r*.96,-.14],[r,-.095],[r,.095],[r*.96,.14],[r*.76,.17],[r*.55,.17]].map(([rr,z])=>new T.Vector2(rr,z));
     const tyre=mesh(new T.LatheGeometry(profile,k.tablet?24:64),m.rubber,[0,0,0],g);tyre.rotation.x=Math.PI/2;
     if(dual){const second=tyre.clone();second.position.z=z>0?-.29:.29;g.add(second);}
@@ -27,7 +29,19 @@ export function createTruckBuilder(k,pallet){
     ring(r*.87,.005,[0,0,side*.154],m.black,g,'z');
     const treads=k.tablet?20:64;
     for(let a=0;a<treads;a++){const t=a/treads*Math.PI*2;const tread=box(.013,.005,.19,[Math.sin(t)*(r-.001),Math.cos(t)*(r-.001),0],m.black,g);tread.rotation.z=-t;}
+    if(k.tablet){
+      const near=group([0,0,0],g,true);
+      for(const child of [...g.children])if(child!==near)near.add(child);
+      const far=group([0,0,0],g,true);
+      const tire=cyl(r,dual?.55:.34,[0,0,0],m.rubber,far,undefined,12);tire.rotation.x=Math.PI/2;
+      const hub=cyl(r*.56,.36,[0,0,0],alloy,far,undefined,8);hub.rotation.x=Math.PI/2;
+      const lod=new T.LOD();lod.userData.dynamic=true;g.add(lod);lod.addLevel(near,0);lod.addLevel(far,65,.12);
+    }
     return g;
+  }
+  function steeredWheel(parent,x,z,r){
+    const w=wheel(parent,x,z,r),pivot=group(w.position.toArray(),parent,true);
+    pivot.add(w);w.position.set(0,0,0);return {wheel:w,pivot};
   }
   function fender(parent,x,z,r=.58){
     const cover=mesh(new T.TorusGeometry(r,.05,5,24,Math.PI),frame,[x,.51,z],parent);cover.scale.z=4;
@@ -43,8 +57,8 @@ export function createTruckBuilder(k,pallet){
   }
   function build(pos,angle=0,active=false){
     const g=group(pos,k.scene,true);g.rotation.y=angle;
-    const ws=[];
-    for(const z of [-1.07,1.07])ws.push(wheel(g,.55,z,.535));
+    const ws=[],steering=[];
+    for(const z of [-1.07,1.07]){const front=steeredWheel(g,.55,z,.535);ws.push(front.wheel);steering.push(front.pivot);}
     // The scanned cab is installed asynchronously. The chassis stays editable so
     // the fifth wheel, trailer and load can move as separate assemblies.
     for(const z of [-.42,.42])box(5.2,.22,.12,[-1.3,.74,z],frame,g);
@@ -90,18 +104,35 @@ export function createTruckBuilder(k,pallet){
     const cargo=TRUCK_LAYOUT.cargoXs.map((x,i)=>pallet(trailer,[x,TRUCK_LAYOUT.deckHeight,active?TRUCK_LAYOUT.cargoZ:0],i<3?'panel':'bags',active));
     if(k.tablet&&!active){
       // Parked wheels and trailers never animate; batch them with their chassis.
-      ws.forEach(w=>{w.userData.dynamic=false;});hinge.userData.dynamic=false;
+      ws.forEach(w=>{w.userData.dynamic=false;});steering.forEach(p=>{p.userData.dynamic=false;});hinge.userData.dynamic=false;
     }
     k.vehicleLights.push({root:g,front:2.12,width:.86,height:.94,length:24});
     k.vehicleLights.push({root:trailer,rear:-6.92,width:.62,height:.99,markers:[-6.3,-4.75,-3.2,-1.65,-.1,1.45,3,4.55,6.1],markerWidth:1.34,markerHeight:1.15});
-    const record={g,ws,cargo,hinge,trailer,cabMount};records.push(record);return record;
+    let driver,brakes,signals;
+    if(active){
+      driver=createWorkerBuilder(k)({parent:g,position:[.65,.88,.50],yaw:Math.PI/2,seated:true,seed:7,hardHat:false});
+      brakes=group([0,0,0],trailer,true);
+      const brakeMat=material('#ff3020',0,.25,{unique:true,emissive:'#ff2010',emissiveIntensity:2,toneMapped:false});
+      for(const z of [-.62,.62])box(.018,.13,.37,[-6.89,.99,z],brakeMat,brakes);
+      const signalMat=material('#ffb528',0,.25,{emissive:'#ff8700',emissiveIntensity:2,toneMapped:false});
+      signals=[-1,1].map(side=>{const lamp=group([0,0,0],g,true);box(.06,.12,.20,[2.13,1.02,side*.91],signalMat,lamp);box(.18,.1,.035,[.4,1.36,side*1.05],signalMat,lamp);return lamp;});
+    }
+    function updateLights(motion,time){
+      if(!active)return;
+      brakes.visible=!motion||motion.speed<.04||motion.braking;
+      const turn=motion?.curvature||0;
+      signals.forEach((lamp,i)=>{lamp.visible=Math.abs(turn)>.004&&((turn>0)===(i===1))&&Math.floor(time*2.5)%2===0;});
+      driver.update(time,{steer:Math.atan(3.4*turn)});
+    }
+    updateLights(null,0);
+    const record={g,ws,steering,cargo,hinge,trailer,cabMount,updateLights};records.push(record);return record;
   }
   function load(onLoaded){
     let cancelled=false;
     new GLTFLoader().load(assetUrl(k.tablet?'models/man-tractor-cab-tablet.glb':'models/man-tractor-cab.glb'),asset=>{
       if(cancelled){asset.scene.traverse(o=>{if(o.isMesh){o.geometry.dispose();o.material.map?.dispose();o.material.dispose();}});return;}
       asset.scene.traverse(o=>{if(o.isMesh){
-        const mat=o.material;mat.metalness=0;mat.roughness=.85;
+        const mat=o.material;mat.metalness=0;mat.roughness=.85;mat.transparent=false;mat.depthWrite=true;mat.alphaHash=true;
         if(mat.map)mat.map.anisotropy=k.tablet?2:4;
         // Preserve the scan's UV detail, recolouring only its red paint. Glass,
         // grille, lamps, wheels and badges keep the original scanned texture.
@@ -119,7 +150,7 @@ export function createTruckBuilder(k,pallet){
               float scanShade = 0.90 + sampledDiffuseColor.r * 0.10;
               diffuseColor.rgb = mix(diffuseColor.rgb, bodyPaint * scanShade, redPaint);
               bool glazing = vCabHeight > 2.24 && vCabHeight < 2.99 && vCabPosition.x > 1.72 && abs(vCabPosition.z) < 0.98;
-              if(glazing) diffuseColor.rgb = vec3(0.035, 0.055, 0.072);
+              if(glazing) { diffuseColor.rgb = vec3(0.12, 0.21, 0.25); diffuseColor.a = 0.38; }
             #endif`).replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
             #ifdef USE_MAP
               if(glazing) roughnessFactor = 0.20;
@@ -142,5 +173,5 @@ export function createTruckBuilder(k,pallet){
   }
   // Share the existing scan and materials with the quarry's rigid tipper.
   function mountCab(parent,pos=[0,0,0],scale=1){const cabMount=group(pos,parent,true);cabMount.scale.setScalar(scale);records.push({cabMount});k.vehicleLights.push({root:cabMount,front:2.12,width:.86,height:.94,length:26});return cabMount;}
-  return {build,load,mountCab,wheel};
+  return {build,load,mountCab,wheel,steeredWheel};
 }

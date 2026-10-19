@@ -1,10 +1,10 @@
 import * as T from 'three';
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
-import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
+import {mergeGeometries,mergeVertices} from 'three/addons/utils/BufferGeometryUtils.js';
 
 // Dimensions are in metres. These are original illustrative models, not vendor CAD.
 export function createKit(scene,{tablet=false}={}) {
-  const geometries=new Set(), textures=new Set(), materials=new Set(),detailChunks=[],materialEffects=new Set(),vehicleLights=[];
+  const geometries=new Set(), textures=new Set(), materials=new Set(),detailChunks=[],materialEffects=new Set(),vehicleLights=[],detailUpdaters=[],materialCache=new Map(),windTime={value:0};
   function registerMaterial(mat){if(!materials.has(mat)){materials.add(mat);materialEffects.forEach(effect=>effect(mat));}}
   function addMaterialEffect(effect){materialEffects.add(effect);materials.forEach(effect);}
   function texture(kind){
@@ -19,7 +19,15 @@ export function createKit(scene,{tablet=false}={}) {
     textures.add(t);return t;
   }
   const grain=texture('steel'),concrete=texture('concrete'),grassGrain=texture('grass'),asphaltGrain=texture('asphalt');
-  function material(color,metalness=0,roughness=.7,more={}){const m=new T.MeshStandardMaterial({color,metalness,roughness,...more});registerMaterial(m);return m;}
+  function material(color,metalness=0,roughness=.7,{unique=false,...more}={}){
+    const params={color,metalness,roughness,...more};
+    const key=JSON.stringify(Object.keys(params).sort().map(key=>[key,params[key]?.uuid??params[key]]));
+    if(!unique&&materialCache.has(key))return materialCache.get(key);
+    const mat=new T.MeshStandardMaterial(params);mat.userData.independent=unique;registerMaterial(mat);
+    if(!unique)materialCache.set(key,mat);return mat;
+  }
+  function onDetailUpdate(update){detailUpdaters.push(update);}
+
   const m={
     blue:material('#18569c',.5,.34),blueLight:material('#427fb5',.45,.36),white:material('#dce2e5',.25,.42),
     steel:material('#a9b4bb',.86,.3,{roughnessMap:grain}),polished:material('#c0c9cf',.92,.21),dark:material('#33424c',.7,.42),
@@ -43,15 +51,25 @@ export function createKit(scene,{tablet=false}={}) {
       #endif`);
   };
   m.road.customProgramCacheKey=()=> 'site-asphalt-world-uv-v1';
+  // Lawn patches share the same texture scale and phase, including shaped
+  // beds whose default UVs differ from neighbouring boxes.
+  m.grass.onBeforeCompile=shader=>{
+    shader.vertexShader=shader.vertexShader.replace('#include <uv_vertex>',`#include <uv_vertex>
+      #ifdef USE_MAP
+        vMapUv = (modelMatrix * vec4(position, 1.0)).xz / 6.0;
+      #endif`);
+  };
+  m.grass.customProgramCacheKey=()=> 'site-grass-world-uv-v1';
   const geoCache=new Map();
   function cached(key,fn){if(!geoCache.has(key)){const g=fn();geometries.add(g);geoCache.set(key,g);}return geoCache.get(key);}
   // Asphalt receives building/tree shadows; overlapping ground slabs must
   // not cast stripes or seam shadows onto one another.
   function mesh(geo,mat,pos=[0,0,0],parent=scene){geometries.add(geo);const o=new T.Mesh(geo,mat);o.position.set(...pos);o.castShadow=mat!==m.road;o.receiveShadow=true;parent.add(o);return o;}
   function instances(geo,mat,count,parent=scene){geometries.add(geo);const o=new T.InstancedMesh(geo,mat,count);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o;}
+  function trackGeometry(g){geometries.add(g);return g;}
   function trackTexture(t){textures.add(t);return t;}
   function trackObject(root){root.traverse(o=>{if(!o.isMesh)return;geometries.add(o.geometry);for(const mat of Array.isArray(o.material)?o.material:[o.material]){registerMaterial(mat);for(const value of Object.values(mat))if(value?.isTexture)textures.add(value);}});return root;}
-  function box(w,h,d,pos,mat=m.white,parent=scene,bevel=0){const geo=cached(`b${w},${h},${d},${bevel}`,()=>bevel?new RoundedBoxGeometry(w,h,d,tablet?1:2,Math.min(bevel,w/4,h/4,d/4)):new T.BoxGeometry(w,h,d));return mesh(geo,mat,pos,parent);}
+  function box(w,h,d,pos,mat=m.white,parent=scene,bevel=0){const geo=cached(`b${w},${h},${d},${bevel}`,()=>bevel?mergeVertices(new RoundedBoxGeometry(w,h,d,tablet?1:2,Math.min(bevel,w/4,h/4,d/4))):new T.BoxGeometry(w,h,d));return mesh(geo,mat,pos,parent);}
   function cyl(r,h,pos,mat=m.steel,parent=scene,rt=r,segments=32){segments=tablet?Math.min(segments,r<.15?8:16):segments;return mesh(cached(`c${r},${h},${rt},${segments}`,()=>new T.CylinderGeometry(rt,r,h,segments)),mat,pos,parent);}
   function sphere(r,pos,mat=m.steel,parent=scene){return mesh(cached(`s${r}`,()=>new T.SphereGeometry(r,tablet?10:16,tablet?6:10)),mat,pos,parent);}
   function ring(r,t,pos,mat=m.steel,parent=scene,axis='y'){const o=mesh(cached(`t${r},${t}`,()=>new T.TorusGeometry(r,t,tablet?4:8,tablet?(r<.16?12:20):48)),mat,pos,parent);if(axis==='y')o.rotation.x=Math.PI/2;if(axis==='x')o.rotation.y=Math.PI/2;return o;}
@@ -70,19 +88,38 @@ export function createKit(scene,{tablet=false}={}) {
   function bolts(r,pos,parent=scene,axis='y',count=12){for(let i=0;i<count;i++){const a=i/count*Math.PI*2;let p=axis==='x'?[pos[0],pos[1]+Math.sin(a)*r,pos[2]+Math.cos(a)*r]:[pos[0]+Math.sin(a)*r,pos[1],pos[2]+Math.cos(a)*r];const b=cyl(.045,.07,p,m.dark,parent,undefined,6);if(axis==='x')b.rotation.z=Math.PI/2;}}
   function motor(pos,parent=scene,scale=1){const g=group(pos,parent);g.scale.setScalar(scale);const b=cyl(.35,.9,[0,.45,0],m.blue,g);b.rotation.z=Math.PI/2;for(let x=-.4;x<=.4;x+=.1){const f=cyl(.39,.025,[x,.45,0],m.blue,g);f.rotation.z=Math.PI/2;}box(.28,.18,.32,[0,.88,0],m.dark,g,.025);box(1,.1,.6,[0,.05,0],m.dark,g);const cap=cyl(.35,.08,[.5,.45,0],m.dark,g);cap.rotation.z=Math.PI/2;bolts(.25,[.55,.45,0],g,'x',8);return g;}
   function cabinet(pos,parent=scene){const g=group(pos,parent);box(.8,1.6,.46,[0,.8,0],m.white,g,.025);box(.71,1.45,.012,[0,.8,.24],m.steel,g);box(.30,.21,.018,[0,1.27,.26],m.black,g);box(.24,.15,.01,[0,1.28,.275],m.blueLight,g);for(let i=0;i<3;i++)sphere(.033,[-.18+i*.18,.94,.27],i===0?m.red:m.dark,g);box(.035,.22,.02,[.24,.6,.27],m.dark,g);return g;}
+  const textTiles=new Map(),atlases=[];
   function textPlate(text,w,h,pos,parent=scene,color='#194f86',bg='#e8ecee'){
-    const c=document.createElement('canvas');c.width=512;c.height=128;const ctx=c.getContext('2d');ctx.fillStyle=bg;ctx.fillRect(0,0,512,128);ctx.fillStyle=color;ctx.font='600 68px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,256,68);const map=new T.CanvasTexture(c);map.colorSpace=T.SRGBColorSpace;textures.add(map);const mat=material('#ffffff',.05,.6,{map});return box(w,h,.015,pos,mat,parent);
+    const key=JSON.stringify([text,color,bg]);
+    if(!textTiles.has(key)){
+      let atlas=atlases.at(-1);
+      if(!atlas||atlas.count===64){
+        const canvas=document.createElement('canvas');canvas.width=canvas.height=1024;
+        const map=trackTexture(new T.CanvasTexture(canvas));map.colorSpace=T.SRGBColorSpace;
+        atlas={canvas,map,count:0,mat:material('#ffffff',.05,.6,{map})};atlases.push(atlas);
+      }
+      const index=atlas.count++,x=index%4*256,y=Math.floor(index/4)*64,c=atlas.canvas.getContext('2d');
+      c.fillStyle=bg;c.fillRect(x,y,256,64);c.fillStyle=color;c.font='600 34px Arial';c.textAlign='center';c.textBaseline='middle';c.fillText(text,x+128,y+34,248);atlas.map.needsUpdate=true;
+      textTiles.set(key,{atlas,x,y});
+    }
+    const {atlas,x,y}=textTiles.get(key),geo=new T.BoxGeometry(w,h,.015),uv=geo.attributes.uv;
+    for(let i=0;i<uv.count;i++)uv.setXY(i,(x+2+uv.getX(i)*252)/1024,1-(y+2+(1-uv.getY(i))*60)/1024);
+    return mesh(geo,atlas.mat,pos,parent);
   }
+
   // Batch fixed parts within each moving assembly, preserving its local coordinates.
-  function optimize(){
+  function optimize({preserveRepeated=false}={}){
+    const repeats=new Map();
+    if(preserveRepeated)scene.traverse(o=>{if(o.isMesh)repeats.set(o.geometry,(repeats.get(o.geometry)||0)+1);});
     scene.updateMatrixWorld(true);const roots=[scene];scene.traverse(o=>{if(o.userData.dynamic)roots.push(o);});
     for(const root of roots){
       const groups=new Map(),inverse=root.matrixWorld.clone().invert();
       function collect(o){
         if(o!==root&&o.userData.dynamic)return;
-        if(o.isMesh&&!o.isInstancedMesh&&!Array.isArray(o.material)&&!o.material.transparent){
+        if(o.isMesh&&!o.isInstancedMesh&&!Array.isArray(o.material)&&!o.material.transparent&&!(preserveRepeated&&repeats.get(o.geometry)>2)){
           const layout=Object.entries(o.geometry.attributes).sort(([a],[b])=>a.localeCompare(b)).map(([name,a])=>`${name}:${a.itemSize}:${a.normalized}:${a.array.constructor.name}`).join('|');
-          const key=`${o.material.uuid}:${o.castShadow}:${o.receiveShadow}:${layout}`;
+          const cell=root===scene?`${Math.floor(o.matrixWorld.elements[12]/60)},${Math.floor(o.matrixWorld.elements[14]/60)}`:'assembly';
+          const key=`${cell}:${o.material.uuid}:${o.castShadow}:${o.receiveShadow}:${layout}`;
           if(!groups.has(key))groups.set(key,{mat:o.material,castShadow:o.castShadow,receiveShadow:o.receiveShadow,parts:[],originals:[]});
           // Keep shared vertices; expanding every triangle tripled many buffers.
           const g=o.geometry.clone();
@@ -109,6 +146,7 @@ export function createKit(scene,{tablet=false}={}) {
         for(const matrices of cells.values()){
           const chunk=instances(field.geometry,field.material,matrices.length,field.parent);chunk.position.copy(field.position);chunk.quaternion.copy(field.quaternion);chunk.scale.copy(field.scale);
           chunk.castShadow=field.castShadow;chunk.receiveShadow=field.receiveShadow;
+          chunk.customDepthMaterial=field.customDepthMaterial;
           matrices.forEach(({matrix,color},i)=>{chunk.setMatrixAt(i,matrix);if(color)chunk.setColorAt(i,color);});chunk.instanceMatrix.needsUpdate=true;if(chunk.instanceColor)chunk.instanceColor.needsUpdate=true;chunk.computeBoundingSphere();
           if(field.userData.detailDistance){chunk.updateWorldMatrix(true,false);const sphere=chunk.boundingSphere.clone().applyMatrix4(chunk.matrixWorld);detailChunks.push({chunk,sphere,distance:field.userData.detailDistance});}
         }
@@ -119,17 +157,20 @@ export function createKit(scene,{tablet=false}={}) {
     // repeated matrix composition, including the large architectural hierarchy.
     scene.traverse(o=>{if(!o.userData.dynamic){o.updateMatrix();o.matrixAutoUpdate=false;}});
     // The batch owns its buffers now. Discard unused construction geometry.
+    pruneGeometries();
+  }
+  function pruneGeometries(){
     const used=new Set();scene.traverse(o=>{if(o.geometry)used.add(o.geometry);});
     for(const g of geometries)if(!used.has(g)){g.dispose();geometries.delete(g);}
     geoCache.clear();
   }
-  function updateDetailVisibility(camera){for(const {chunk,sphere,distance} of detailChunks)chunk.visible=camera.position.distanceTo(sphere.center)<distance+sphere.radius;}
+  function updateDetailVisibility(camera){detailUpdaters.forEach(update=>update(camera));for(const {chunk,sphere,distance} of detailChunks)chunk.visible=camera.position.distanceTo(sphere.center)<distance+sphere.radius;}
   function dispose(){
     // Instance transforms/colors own GPU buffers separately from geometry.
-    scene.traverse(o=>{if(o.isInstancedMesh)o.dispose();});
+    scene.traverse(o=>{if(o.isInstancedMesh||o.isBatchedMesh)o.dispose();});
     geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());
     geometries.clear();materials.clear();textures.clear();geoCache.clear();
-    detailChunks.length=0;materialEffects.clear();vehicleLights.length=0;
+    textTiles.clear();atlases.length=0;materialCache.clear();detailUpdaters.length=0;detailChunks.length=0;materialEffects.clear();vehicleLights.length=0;
   }
-  return {m,scene,tablet,vehicleLights,addMaterialEffect,mesh,instances,trackTexture,trackObject,box,cyl,sphere,ring,rod,pipe,group,beam,frame,railing,platform,ladder,bolts,motor,cabinet,textPlate,material,optimize,updateDetailVisibility,dispose};
+  return {m,scene,tablet,windTime,trackMaterial:registerMaterial,onDetailUpdate,pruneGeometries,vehicleLights,addMaterialEffect,mesh,instances,trackGeometry,trackTexture,trackObject,box,cyl,sphere,ring,rod,pipe,group,beam,frame,railing,platform,ladder,bolts,motor,cabinet,textPlate,material,optimize,updateDetailVisibility,dispose};
 }

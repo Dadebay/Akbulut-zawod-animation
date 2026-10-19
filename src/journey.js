@@ -1,11 +1,15 @@
-import {quarryCycle} from './quarryCycle.js';
+import {quarryCycle,QUARRY_LOADING_SECONDS} from './quarryCycle.js';
 import {LOADING_DURATION,loadingCounts} from './industrial/forkliftMotion.js';
 import {quarryPoint} from './industrial/quarryLayout.js';
+import {HAUL_PROFILE} from './industrial/haulMotion.js';
+import {DISPATCH_PROFILE} from './industrial/trafficLayout.js';
+import {JOURNEY_STAGE} from './journeyStages.js';
+export {JOURNEY_STAGE} from './journeyStages.js';
 
 // One deterministic, compressed presentation cycle. Durations are not plant timings.
 const definitions=[
-  ['quarry','Kän','Kände ýüklemek','Ekskawator çig maly kamyona ýükleýär.',12,'CR',false,quarryPoint(-15,11,16),quarryPoint(-1,2,0)],
-  ['haul','Daşama','Çig mal ýolda','Ýükli kamyon köne zawodyň yzky kabul ediş meýdançasyna gelýär.',22,'CR',false,quarryPoint(13,9,15),quarryPoint(-2,2,0)],
+  ['quarry','Kän','Kände ýüklemek','Ekskawator kamyony 4 susguçda ýükleýär — her aýlaw 18 sekunt.',QUARRY_LOADING_SECONDS,'CR',false,quarryPoint(-15,11,16),quarryPoint(-1,2,0)],
+  ['haul','Daşama','Çig mal ýolda','Ýükli kamyon köne zawodyň yzky kabul ediş meýdançasyna gelýär.',HAUL_PROFILE.duration,'CR',false,quarryPoint(13,9,15),quarryPoint(-2,2,0)],
   ['receive','Üýşmek','Çig maly meýdança boşatmak','Kamyon çig maly daşky konweýeriň ýanynda boşadýar.',12,'CR',false,[172.5,18,-105],[152,2,-129]],
   ['scoop','Susguç','Çig maly susup almak','Ýükleýji sagdaky çig mal üýşmeginden iri daşlary alýar.',18,'CR',false,[88,12,31.5],[70,2,14.5]],
   ['carry','Bunkere','Ýükleýji bunkere barýar','Ýükleýji sagdaky üýşmekden alan daşlaryny döwüji binanyň sag derwezesine getirýär.',28,'CR',false,[104,24,48],[80,2,25]],
@@ -17,18 +21,24 @@ const definitions=[
   ['form','Gipsokarton','Gipsokarton önümçiligi','Suw bilen garyşdyrmak → şekil bermek → gatamak → kesmek → guratmak → gaplamak.',24,'GK',true,[49,65,-76],[8,2,-19]],
   ['pack','Gaplama','Palet taýýarlamak','Robot taýýar önümleri palete ýerleşdirýär.',14,'GP',true,[17,24,-61],[-7,2,-30]],
   ['load','Ýükleme','TIR we wagon ýüklemek','Forkliftler paletleri ammardan ulaglara geçirýär.',LOADING_DURATION,'GP',true,[101,54,-112],[31,1,-46]],
-  ['dispatch','Ugratmak','Ýükli ulaglar ugraýar','TIR derwezeden çykýar; otly demir ýol bilen gidýär.',40,'GP',false,[-244,133,146],[-93,0,-37]],
+  ['dispatch','Ugratmak','Ýükli ulaglar ugraýar','TIR derwezeden çykýar; otly demir ýol bilen gidýär.',DISPATCH_PROFILE.duration,'GP',false,[-244,133,146],[-93,0,-37]],
 ];
 let start=0;
 export const JOURNEY_STEPS=definitions.map(([id,short,title,caption,duration,zone,cutaway,position,target],index)=>{const step={id,short,title,caption,duration,zone,cutaway,position,target,index,start};start+=duration;return step;});
 export const JOURNEY_DURATION=start;
-export const JOURNEY_STAGE=Object.fromEntries(JOURNEY_STEPS.map(step=>[step.id,step.index]));
-export const clamp01=n=>Math.max(0,Math.min(1,n));
+// Hide the deterministic reset behind a short fade out / fade in at the tour boundary.
+export function journeyFade(time){const t=Math.min(time,JOURNEY_DURATION-time)/1.4,p=Math.max(0,Math.min(1,t));return 1-p*p*(3-2*p);}
+// The reset fade belongs only to the playing guided tour. An independently
+// running process clock must never blank the scene during manual inspection.
+export function journeyOpacity(time,{following=false,playing=false,loopStep=null}={}){
+  return following&&playing&&loopStep===null?1-journeyFade(time):1;
+}
+export const clamp01=n=>n<1e-12?0:n>1-1e-12?1:n;
 export function completedLoads(elapsed,period,count){return Math.min(count,Math.max(0,Math.floor(elapsed/period)+(elapsed%period>=period*.78?1:0)));}
 export function journeyAt(seconds){
   const time=((seconds%JOURNEY_DURATION)+JOURNEY_DURATION)%JOURNEY_DURATION;
   const step=JOURNEY_STEPS.find(s=>time<s.start+s.duration)||JOURNEY_STEPS.at(-1);
-  const elapsed=time-step.start,progress=elapsed/step.duration,index=step.index;
+  const elapsed=time-step.start,progress=clamp01(elapsed/step.duration),index=step.index;
   const loads=step.id==='load'?loadingCounts(elapsed):null;
   return {time,step,index,elapsed,progress,
     rawLoad:index===0?quarryCycle(progress).rawLoad:index===1?1:index===2?1-clamp01((progress-.2)/.5):0,

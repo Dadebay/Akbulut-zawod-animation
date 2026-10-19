@@ -1,6 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {JOURNEY_STEPS,JOURNEY_DURATION,JOURNEY_STAGE as S,journeyAt} from './journey.js';
+import {JOURNEY_STEPS,JOURNEY_DURATION,JOURNEY_STAGE as S,journeyAt,journeyFade,journeyOpacity} from './journey.js';
+test('tour reset is fully covered and fades continuously on both sides',()=>{
+  assert.equal(journeyFade(0),1);assert.equal(journeyFade(JOURNEY_DURATION),1);
+  assert.equal(journeyFade(2),0);assert.equal(journeyFade(JOURNEY_DURATION-2),0);
+  for(let t=0;t<1.4;t+=.01)assert.ok(Math.abs(journeyFade(t)-journeyFade(JOURNEY_DURATION-t))<1e-8);
+});
+test('manual, paused, blocked and single-step views stay visible at the tour boundary',()=>{
+  for(const time of [0,.01,.7,1.4,JOURNEY_DURATION-1.4,JOURNEY_DURATION-.01,JOURNEY_DURATION]){
+    assert.equal(journeyOpacity(time,{playing:true}),1,'manual view');
+    assert.equal(journeyOpacity(time,{following:true,playing:false}),1,'paused or blocked tour');
+    assert.equal(journeyOpacity(time,{following:true,playing:true,loopStep:0}),1,'single step');
+    assert.equal(journeyOpacity(time,{following:true,playing:true}),1-journeyFade(time),'guided tour');
+  }
+});
 import {FORKLIFT_JOBS,FORKLIFT_LAYOUT as F} from './industrial/forkliftMotion.js';
 
 test('the batch reaches processing and dispatch in order, then wraps to an empty loading cycle',()=>{

@@ -1,20 +1,18 @@
 import * as T from 'three';
-import {clamp01,JOURNEY_STAGE as S} from '../journey.js';
+import {JOURNEY_STAGE as S,JOURNEY_STEPS} from '../journey.js';
 import {FORKLIFT_JOBS,loadingCounts,sampleForklift} from './forkliftMotion.js';
-import {DISPATCH_ROUTE,dispatchPose} from './trafficLayout.js';
-import {INCOMING_HAUL as incoming,RETURN_HAUL as emptyReturn,RAW_STOP} from './siteLayout.js';
+import {dispatchMotion} from './trafficLayout.js';
+import {RAW_STOP} from './siteLayout.js';
 import {QUARRY} from './quarryLayout.js';
-
-const angleAt=(path,p)=>{const d=path.getTangentAt(clamp01(p));return -Math.atan2(d.z,d.x);};
-const mixAngle=(a,b,t)=>a+Math.atan2(Math.sin(b-a),Math.cos(b-a))*clamp01(t);
-function place(record,path,progress){const p=clamp01(progress);record.g.position.copy(path.getPointAt(p));record.g.rotation.y=angleAt(path,p);}
+import {steeringAngle} from './motionPath.js';
+import {HAUL_PROFILE,haulPose} from './haulMotion.js';
 
 export function createJourneyMotion(logistics,vehicleSurface){
   const {hauler,dispatchTruck,train,trainCargo,railWheels,truckFork,railForkA,railForkB,stock,loadingStock}=logistics;
   const forks=[truckFork,railForkA,railForkB];
   // Use the three actual axles and both wheel tracks, including the middle
   // rear axle. Sampling only the centreline missed the bank under one side.
-  const contacts=hauler.ws.map(w=>({x:w.position.x,z:w.position.z,height:0}));
+  const contacts=hauler.ws.map(w=>({x:w.userData.contact?.x??w.position.x,z:w.userData.contact?.z??w.position.z,height:0}));
   const meanX=contacts.reduce((sum,p)=>sum+p.x,0)/(contacts.length||1);
   const alongMoment=contacts.reduce((sum,p)=>sum+(p.x-meanX)**2,0);
   const acrossMoment=contacts.reduce((sum,p)=>sum+p.z*p.z,0);
@@ -63,26 +61,28 @@ export function createJourneyMotion(logistics,vehicleSurface){
     const {index,progress}=j;
     // The display stock occupies the same belt used by moving packing pallets.
     loadingStock?.forEach(pallet=>{pallet.visible=index!==S.pack;});
-    if(index===0){hauler.g.position.set(QUARRY.x,QUARRY.y,QUARRY.z);hauler.g.rotation.y=0;}
-    else if(index===1){place(hauler,incoming,progress);hauler.g.rotation.y=mixAngle(0,hauler.g.rotation.y,progress*10);}
-    else if(index===2){hauler.g.position.set(...RAW_STOP);hauler.g.rotation.y=Math.PI;}
-    else if(index===3)place(hauler,emptyReturn,progress);
+    const hauling=index===S.haul?haulPose(false,j.elapsed):index>=S.scoop?haulPose(true,j.time-JOURNEY_STEPS[S.scoop].start):null;
+    if(hauling){hauler.g.position.copy(hauling.position);hauler.g.rotation.y=hauling.yaw;}
+    else if(index===S.receive){hauler.g.position.set(...RAW_STOP);hauler.g.rotation.y=Math.PI;}
     else{hauler.g.position.set(QUARRY.x,QUARRY.y,QUARRY.z);hauler.g.rotation.y=0;}
     groundHauler();
-    hauler.cargo.visible=j.rawLoad>.001;hauler.cargo.scale.y=Math.max(.02,j.rawLoad);
+    hauler.steering?.forEach(p=>{p.rotation.y=steeringAngle(5.28,hauling?.curvature||0);});
+    hauler.cargo.visible=j.rawLoad>.001;hauler.cargo.scale.y=Math.max(.02,j.rawLoad);hauler.updateCargo?.(j.rawLoad,index===S.receive);
     hauler.bed.rotation.z=index===2?(progress<.2?progress/.2*.72:progress<.75?.72:(1-progress)/.25*.72):0;
     hauler.tailgate.rotation.z=-hauler.bed.rotation.z-Math.min(.2,hauler.bed.rotation.z*.5);
     hauler.updateHoist?.();
-    hauler.ws.forEach(w=>w.rotation.z=index===1||index===3?-j.elapsed*2:0);
+    const haulTravel=hauling?.travel??(index===S.receive?HAUL_PROFILE.length:0);
+    hauler.ws.forEach(w=>{w.rotation.z=-haulTravel/(w.userData.radius||.562);});
     dispatchTruck.cargo.forEach((p,i)=>p.visible=i<j.truckLoads);
     const railLoads=index===S.load?loadingCounts(j.elapsed).rail:index>S.load?[4,4]:[0,0];
     trainCargo.forEach((p,i)=>p.visible=i%4<railLoads[Math.floor(i/4)]);
     updateForks(j);
+    logistics.updateArrival?.(j.time);
     train.position.x=index===S.dispatch?-470*Math.pow(j.depart,1.5):0;
-    train.visible=index!==S.dispatch||j.depart<.98;
+    train.visible=true;
     railWheels.forEach(w=>w.rotation.z=-train.position.x/.4);
-    if(index===S.dispatch){const pose=dispatchPose(j.depart);dispatchTruck.g.position.set(pose.x,0,pose.z);dispatchTruck.g.rotation.y=pose.yaw;dispatchTruck.hinge.rotation.y=pose.trailerYaw-pose.yaw;dispatchTruck.ws.forEach(w=>w.rotation.z=-j.depart*DISPATCH_ROUTE.getLength()/.48);}
-    else{dispatchTruck.g.position.set(64,0,-43);dispatchTruck.g.rotation.y=Math.PI;dispatchTruck.hinge.rotation.y=0;}
-    dispatchTruck.g.visible=index!==S.dispatch||j.depart<.98;
+    if(index===S.dispatch){const pose=dispatchMotion(j.depart);dispatchTruck.updateLights?.(pose,j.time);dispatchTruck.g.position.set(pose.x,0,pose.z);dispatchTruck.g.rotation.y=pose.yaw;dispatchTruck.hinge.rotation.y=pose.trailerYaw-pose.yaw;dispatchTruck.ws.forEach(w=>{w.rotation.z=-pose.distance/(w.userData.radius||.51);});dispatchTruck.steering?.forEach(p=>{p.rotation.y=steeringAngle(3.4,pose.curvature);});}
+    else{dispatchTruck.updateLights?.(null,j.time);dispatchTruck.g.position.set(64,0,-43);dispatchTruck.g.rotation.y=Math.PI;dispatchTruck.hinge.rotation.y=0;dispatchTruck.steering?.forEach(p=>{p.rotation.y=0;});}
+    dispatchTruck.g.visible=true;
   };
 }

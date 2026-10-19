@@ -8,7 +8,6 @@ import {prepareTabletCab,tabletAsset} from './prepare-tablet.mjs';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const publicDir=join(root,'public');
 const assetModule=join(root,'src/assets.js');
-const mapModule=join(root,'src/FleetMap.jsx');
 const tablet=process.argv.includes('--tablet');
 const outputDir=join(root,tablet?'standalone-tablet':'standalone');
 const mimeTypes={'.webp':'image/webp','.png':'image/png','.jpg':'image/jpeg','.glb':'model/gltf-binary','.txt':'text/plain;charset=utf-8'};
@@ -35,7 +34,6 @@ const result=await build({
       if(!importer||!id.startsWith('.'))return;
       const target=resolve(dirname(importer),id);
       if(target===assetModule)return join(root,'src/standaloneAssets.js');
-      if(target===mapModule)return join(root,'src/StandaloneMap.jsx');
     },
   },react()],
   define:{
@@ -55,7 +53,7 @@ const outputs=Array.isArray(result)?result.flatMap(item=>item.output):result.out
 const chunks=outputs.filter(item=>item.type==='chunk');
 if(chunks.length!==1||chunks[0].imports.length||chunks[0].dynamicImports.length)throw new Error('Standalone build must have exactly one self-contained script.');
 const modules=Object.keys(chunks[0].modules);
-if(modules.includes(assetModule)||modules.includes(mapModule)||!modules.includes(join(root,'src/standaloneAssets.js'))||!modules.includes(join(root,'src/StandaloneMap.jsx')))throw new Error('Standalone asset/map substitutions were not applied.');
+if(modules.includes(assetModule)||!modules.includes(join(root,'src/standaloneAssets.js')))throw new Error('Standalone asset substitution was not applied.');
 const styles=outputs.filter(item=>item.type==='asset'&&item.fileName.endsWith('.css')).map(item=>item.source.toString()).join('\n');
 const extra=outputs.filter(item=>item.type==='asset'&&!item.fileName.endsWith('.css'));
 if(extra.length)throw new Error('Unembedded build assets: '+extra.map(item=>item.fileName).join(', '));

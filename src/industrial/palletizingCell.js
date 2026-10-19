@@ -61,9 +61,16 @@ export function buildPalletizingCell(k,{root,equipment,onPickupClear}){
   cyl(.045,.09,[.83,-.31,.36],vacuum,levelTool);
   k.cabinet([1.6,0,1.9],robot);
   // The shared robot/receiver enclosure has no fence through the transfer path.
-  equipment.fence(8,2.25,localPoint([4.6,.25,-30.5]),root,Math.PI/2);
-  equipment.fence(6.1,2.25,localPoint([1.55,.25,-26.4]),root);
-  equipment.fence(5.6,2.25,localPoint([1.8,.25,-34.6]),root);
+  const guards=group([0,0,0],root);guards.name='GP-receiver-guards';
+  // Recess the corner around the ceiling line's 2.4 m supply pallet. The
+  // robot retains its carrying aisle, while the pallet and vacuum feed stay
+  // completely outside the enclosure, clear of posts and their footplates.
+  const boundary=[[4.6,-34.6],[4.6,-28.05],[3.4,-28.05],[3.4,-26.4],[-1.5,-26.4]];
+  for(let i=1;i<boundary.length;i++){
+    const [ax,az]=boundary[i-1],[bx,bz]=boundary[i];
+    equipment.fence(Math.hypot(bx-ax,bz-az),2.25,localPoint([(ax+bx)/2,.25,(az+bz)/2]),guards,-Math.atan2(bz-az,bx-ax));
+  }
+  equipment.fence(5.6,2.25,localPoint([1.8,.25,-34.6]),guards);
 
   // Open roller receiver: photoelectric stop and low guides, no roof or fake
   // stack occupying the board's pickup volume.

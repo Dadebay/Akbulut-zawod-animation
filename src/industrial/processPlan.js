@@ -1,5 +1,5 @@
 import * as T from 'three';
-import {JOURNEY_STAGE as S} from '../journey.js';
+import {JOURNEY_STAGE as S} from '../journeyStages.js';
 
 // Traced from the user's annotated plan, photo_2026-10-17_13-33-10.jpg.
 // Heights and equipment spacing are illustrative; the image supplies the four
@@ -11,7 +11,10 @@ const points=(list,y)=>list.map(([x,z])=>planPoint(x,z,y));
 export const GYPSUM_INTAKE=[70,.85,34.8];
 export const GYPSUM_CRUSHER=[60,0,34.8];
 export const GYPSUM_CORNER_SILO=[-10,0,31];
-export const GYPSUM_LIFT=[[16,1.3,34.8],[-10,11.95,31]];
+// The head clears the silo deck; material drops through its central inlet.
+export const GYPSUM_LIFT=[[16,1.3,34.8],[-10,13.05,31]];
+const liftDirection=new T.Vector3(...GYPSUM_LIFT[1]).sub(new T.Vector3(...GYPSUM_LIFT[0])).setY(0).normalize();
+const gypsumDrop=new T.Vector3(...GYPSUM_LIFT[1]).addScaledVector(liftDirection,.35);
 export const CALCITE_INTAKE=planPoint(197,623,.85);
 export const BOARD_START=planPoint(376,346,1.18);
 export const BOARD_END=planPoint(607,246,1.18);
@@ -23,7 +26,7 @@ export const PALLET_ROBOT_BASE=[-.4,0,-31.1];
 export const BAG_PALLET_OUT=[-29.4,.27,-36];
 export const PROCESS_LINES=[
   {id:'gypsum',zone:'CR',name:'Gips daşyny döwüji enjamlar toplumy',short:'Gips daşy',color:'#3158f5',stages:[S.infeed,S.crush,S.calcine],step:S.crush,
-    points:[GYPSUM_INTAKE,[GYPSUM_INTAKE[0]-4.9,.85,GYPSUM_INTAKE[2]],[GYPSUM_CRUSHER[0],4.15,GYPSUM_CRUSHER[2]],[GYPSUM_CRUSHER[0],1.3,GYPSUM_CRUSHER[2]],[GYPSUM_CRUSHER[0]-3,1.3,GYPSUM_CRUSHER[2]],...GYPSUM_LIFT,[-10,10.9,31]],
+    points:[GYPSUM_INTAKE,[GYPSUM_INTAKE[0]-4.9,.85,GYPSUM_INTAKE[2]],[GYPSUM_CRUSHER[0],4.15,GYPSUM_CRUSHER[2]],[GYPSUM_CRUSHER[0],1.3,GYPSUM_CRUSHER[2]],[GYPSUM_CRUSHER[0]-3,1.3,GYPSUM_CRUSHER[2]],...GYPSUM_LIFT,[gypsumDrop.x,12.95,gypsumDrop.z],[gypsumDrop.x,10.9,gypsumDrop.z]],
     branches:[
       [[-10,1.3,31],[-14,1.3,31],[-14,1.3,27.5],[-29.6,1.3,27.5],[-29.6,11.5,27.5],[-27.15,11.5,30.2],[-27.15,10.13,30.2]],
       [[-29.6,11.5,27.5],[-23.15,11.5,27.5],[-23.15,11.5,30.2],[-23.15,10.13,30.2]],

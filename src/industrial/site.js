@@ -338,7 +338,7 @@ export function buildSite(k){
     k.pipe([[0,1.41,0],[dx*.35,1.52,dz*.35],[dx*.78,1.11,dz*.78],[dx*1.14,.48,dz*1.14]],.022,water,fountain);
   }
   plants.row(-133,38,92,38,5);plants.row(-135,-49,-36,-49,4.5);plants.row(88,-49,95,-49,4.5);plants.row(-151,-150,-151,36,5);
-  buildOldCampus(k,plants);
+  const oldCampus=buildOldCampus(k,plants);
   const pond=buildFishPond(k);
   buildPondApproach(k,plants);
   plants.row(-196.3,7,-196.3,38,3.7);
@@ -374,5 +374,5 @@ export function buildSite(k){
     // entire forklift aisle clear rather than driving through lamp posts.
     const z=originalZ===-47&&x>-26&&x<36?-56:originalZ;
     cyl(.055,5.2,[x,2.6,z],white);for(const dx of [-.6,.6]){rod([x,5,z],[x+dx,5.3,z],.035,white);box(.6,.08,.24,[x+dx,5.3,z],m.light);}}
-  plants.finish();return {roofs,structures,update:pond.update};
+  plants.finish();return {roofs,structures,oldShells:oldCampus.shells,update:pond.update};
 }

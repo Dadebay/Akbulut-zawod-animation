@@ -133,8 +133,10 @@ export function buildWheelLoader(k){
   for(let i=0;i<18;i++){
     const layer=Math.floor(i/12),row=Math.floor(i/3)%4;
     const rock=mesh(rubble.geometries[i%4],rubble.material,[.06+(i%3)*.42,.12+layer*.36,-1.13+row*.74+layer*.22],cargo);
+    rock.userData.dynamic=true;rock.userData.layer=layer;rock.userData.fillOrder=i/24;
     rock.rotation.set(i*.31,i*.73,i*.19);rock.scale.set(.31+(i%3)*.03,.27+(i%2)*.06,.34);
   }
+  const bucketRocks=[...cargo.children];
   const lip=group([1.25,-.3,0],bucket,true);
   function ram(parent,radius=.13){
     const body=cyl(radius,1,[0,0,0],paint,parent),shaft=cyl(radius*.5,1,[0,0,0],m.polished,parent);
@@ -148,11 +150,11 @@ export function buildWheelLoader(k){
   const a=new T.Vector3(),b=new T.Vector3(),axis=new T.Vector3(0,0,1);
   function pose(lift,tilt,fill,steer=0){
     front.rotation.y=steer;boom.rotation.z=lift;bucket.rotation.z=tilt-lift;
-    cargo.visible=fill>.01;cargo.scale.y=Math.max(.01,fill);
+    cargo.visible=fill>.01;cargo.scale.y=1;bucketRocks.forEach((rock,i)=>{rock.visible=fill>(i+.5)/bucketRocks.length;});
     for(const r of liftRams){a.set(.15,1.05,r.z);b.set(2.35,0,r.z).applyAxisAngle(axis,lift).add(boom.position);r.move(a,b);}
     a.set(2.6,.24,0);b.set(.04,.56,0).applyAxisAngle(axis,bucket.rotation.z).add(bucket.position);tiltRam(a,b);
   }
   const driver=createWorkerBuilder(k)({parent:g,position:[-.85,1.03,0],yaw:Math.PI/2,seated:true,seed:2});
-  pose(-.26,-.08,0);
+  pose(-.24,0,0);
   return {g,front,boom,bucket,cargo,lip,wheels,pose,driver};
 }

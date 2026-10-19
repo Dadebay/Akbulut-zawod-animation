@@ -149,10 +149,6 @@ export function buildNewFrontCourt(k,plants){
     for(const side of [-1,1])box(18*scale,.012,.09,[-6.3*scale,paintY,side*1.8],paint,bay).castShadow=false;
     box(.09,.012,3.6,[-15.3*scale,paintY,0],paint,bay).castShadow=false;
   }
-  // The long rounded hatch is painted, so it does not obstruct vehicle turns.
-  roundedSurface(2.1,26,1.05,-118.6,-28,.05,.012,paint).castShadow=false;
-  roundedSurface(1.85,25.75,.92,-118.6,-28,.069,.008,asphalt).castShadow=false;
-  for(let z=-39.3;z<-16.5;z+=.48){const stripe=flatBox(1.82,.065,-118.6,z,paint,.092);stripe.rotation.y=-.48;}
   // Triangular exclusion zones finish the two ends of the angled truck rows.
   hatchedApron([[-135.8,-43.6],[-123.2,-43.6],[-135.8,-40.0]]);
   hatchedApron([[-111.2,-12.9],[-102.7,-12.9],[-102.7,-16.7]]);

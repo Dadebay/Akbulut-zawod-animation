@@ -1,4 +1,5 @@
 import * as T from 'three';
+import {operatorGesture} from './campusLife.js';
 import {pedestrianMotion} from './pedestrianMotion.js';
 
 export function createWorkerBuilder(k){
@@ -10,7 +11,8 @@ export function createWorkerBuilder(k){
 
   // Local +Z is the direction the person faces. Driver and pedestrian models
   // share adult proportions; the driver's hip/knee/elbow positions are seated.
-  return function worker({parent=k.scene,position=[0,0,0],yaw=0,seated=false,seed=0,zone='GP',walk=null,hardHat=true}={}){
+  return function worker({parent=k.scene,position=[0,0,0],yaw=0,seated=false,seed=0,zone='GP',walk=null,work=null,hardHat=true}={}){
+    walk=work?.walk||walk;
     const g=group(position,parent,!!walk),skin=skins[seed%skins.length];g.rotation.y=yaw;
     const hipY=seated?1.10:.91,walkPose=walk?pedestrianMotion(walk):null,legs=[];
     const up=new T.Vector3(0,1,0),direction=new T.Vector3(),forward=new T.Vector3(),kneePoint=new T.Vector3();
@@ -102,8 +104,11 @@ export function createWorkerBuilder(k){
       torso.rotation.y=seated?lookBack*.22:gait?Math.sin(gait.phase)*.045*walkAmount:Math.sin(time*.13+seed*.8)*.045;
       head.rotation.y=seated?lookBack*1.04-steer*.18:Math.sin(time*.25+seed*2.1)*.14;
       head.rotation.x=seated?-.045:Math.sin(time*.19+seed)*.025;
+      const gesture=work&&gait?operatorGesture(time,seed,gait,work.panel):null;
+      if(gesture){head.rotation.y=gesture.look;torso.rotation.y=gesture.look*.35;}
       arms.forEach((arm,i)=>{
         arm.rotation.x=seated?-.02*steer:gait?Math.cos(gait.phase+i*Math.PI)*.32*walkAmount:Math.sin(time*.38+seed+i*.4)*.025;
+        if(gesture&&i===seed%2)arm.rotation.x+=gesture.hand;
         arm.rotation.z=seated?(i?1:-1)*steer*.035:(i?1:-1)*.035;
         // Keep the hands near the steering wheel while the torso looks behind.
         arm.rotation.y=seated?-torso.rotation.y*.8:0;

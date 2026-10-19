@@ -220,7 +220,7 @@ export function buildTerrain(k,curve){
     dummy.position.set(x,surfaceHeight(x,z)+scale*.06,z);dummy.rotation.set(hash(i,8)*.5,hash(i,9)*6,hash(i,11)*.5);dummy.scale.set(scale*1.4,scale*.55,scale);dummy.updateMatrix();rocks.setMatrixAt(i,dummy.matrix);
     rockColor.set(i%3?'#bcb3a1':'#d4cdbd').multiplyScalar(.9+hash(i,15)*.18);rocks.setColorAt(i,rockColor);
   }
-  rocks.instanceMatrix.needsUpdate=true;rocks.instanceColor.needsUpdate=true;
+  rocks.userData.detailDistance=200;rocks.instanceMatrix.needsUpdate=true;rocks.instanceColor.needsUpdate=true;
   // Sparse, low desert scrub visible in the satellite reference, separate from
   // the user's yolka planting inside the factory grounds.
   const scrubCount=k.tablet?600:2200;
@@ -230,7 +230,7 @@ export function buildTerrain(k,curve){
     const q=Math.hypot((x-QUARRY.x-13)/45,(z-QUARRY.z-1)/43),s=gap<roadBench+1||freightRailDistance(x,z)<4||q<1.6||inRawYard(x,z,3)?0:.12+hash(i,32)*.45;
     dummy.position.set(x,surfaceHeight(x,z)+s*.12,z);dummy.rotation.set(hash(i,36),i,hash(i,37));dummy.scale.set(s,s*.35,s*.8);dummy.updateMatrix();scrub.setMatrixAt(i,dummy.matrix);
   }
-  scrub.instanceMatrix.needsUpdate=true;
+  scrub.userData.detailDistance=160;scrub.instanceMatrix.needsUpdate=true;
   function vehicleSurface(x,z){
     const terrain=surfaceHeight(x,z);
     if(inRawYard(x,z))return Math.max(0,terrain);
