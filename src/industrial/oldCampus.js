@@ -114,7 +114,7 @@ export function buildOldCampus(k,plants){
   box(2.5,.1,3.1,[-15.35,-.01,-98.5],m.concrete);
   const sign=textPlate('AK BULUT',4.5,.65,[-13.91,5.26,-96.2],k.scene,'#234c67','#dfe2db');sign.rotation.y=-Math.PI/2;
   // The raised process block is broad, with a shallow green roof and a high window band.
-  const annex=group([54,0,-106]);box(16,10.8,12,[0,5.4,0],wall,annex);
+  const annex=group([54,0,-106]);shells.push(annex);box(16,10.8,12,[0,5.4,0],wall,annex);
   const capRise=1.15,capSlope=Math.atan2(capRise,6),capLength=Math.hypot(6,capRise)+.28;
   for(const side of [-1,1]){
     const cap=box(16.6,.12,capLength,[0,10.8+capRise/2,side*3],side>0?roof:roofShade,annex);cap.rotation.x=side*capSlope;

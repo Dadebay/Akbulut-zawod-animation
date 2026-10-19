@@ -80,4 +80,86 @@ Open `http://127.0.0.1:5178/?area=process&equipment=dosing` for the multi-level 
 
 Open `http://127.0.0.1:5178/?area=process&equipment=robot` to view the GP-001 receiver, articulated robot and filling pallet together.
 
-Verification in this change is limited to source/syntax review. The application test suite, browser runtime and visual comparison were not run, following the user's preference to test personally.
+## Physics and chemistry model — 20 October 2026
+
+`src/industrial/processPhysics.js` supplies the material calculations and motion
+parameters used by the visible equipment. Archive renders identify mechanisms,
+not manufacturer models or nameplate ratings. All operating values below are
+**illustrative assumptions**, not measured Akbulut settings.
+
+### Research basis
+
+- [Gypsum Association manufacturing sequence](https://gypsum.org/making-gypsum-board/):
+  calcination precedes water addition; hydration/setting precedes cutting; the
+  board dryer removes free moisture. This establishes the order of operations.
+- [Gypsum Association industry brochure, page 5](https://www.gypsum.org/wp-content/uploads/2011/11/Industry_Brochure_5-18-10_Final.pdf):
+  describes approximately 177 °C calcination and loss of three quarters of the
+  crystal water. It is a general description, not this plant's temperature rating.
+- [Grenzebach calcining systems](https://www.grenzebach.com/en/markets/building-materials/gypsum/plaster/calcining-systems-grenzebach/):
+  technology, residence time and operating conditions depend on raw material and
+  product; a downstream drum cooler controls stucco temperature. Consequently,
+  heater, cooler and board-dryer air temperatures are separate model variables.
+- [KWS conveyor engineering calculations](https://www.kwsmfg.com/engineering-guides/shaftless-screw-conveyor/calculations/):
+  screw throughput depends on diameter, pitch, loading, inclination and speed.
+  A picture alone cannot establish throughput or motor power; no inferred
+  nameplate capacity is displayed.
+
+### Assumed parameters
+
+| Quantity | Model setting | Interpretation |
+| --- | --- | --- |
+| Initial calciner / cooled stucco / dryer air | 160 / 55 / 160 °C | Warm operating plant, not a cold start |
+| Calcination lower gate | 140 °C | Simplified threshold, not a kinetic fit |
+| Calcination reaction heat | 450 kJ/kg raw gypsum | Assumed, excludes plant losses and sensible heating |
+| Board stucco / added water | 18 kg / 11.7 kg | Per-core parcel; paper/additives excluded |
+| Setting time / hydration heat | 240 s / 120 kJ/kg stucco | Assumed reaction duration and exotherm |
+| Evaporation energy | 2400 kJ/kg water | Approximate latent heat in the modeled temperature range |
+| Parcel heat capacity / heat transfer | 1.4 kJ/(kg·K) / 0.35 kW/K | Lumped parcel model |
+| Residual free water criterion | 0.5% of hydrated solids | Illustrative release gate, not a product specification |
+| Thermal time compression | 90 physical seconds per animation second | Applied to heating, setting and drying, not shaft RPM |
+| Main drum / ring-pinion teeth | 1 RPM / 80:18 | Pinion rotates oppositely at exactly 80/18 of drum rate |
+| Jaw eccentric / throw | 180 RPM / 18 mm | Moving jaw follows the same shaft phase as its flywheels |
+| Archive screws | 30 RPM | Illustrative low-speed powder conveying |
+| Main mixing pan | 18 RPM | Illustrative paddle-shaft speed |
+| Visible screen vibration | 12 Hz / 1.5 mm amplitude | Small supported vibration, not centimetre-scale jumps |
+| Board / ceiling / bag conveyor speed | 1.8 / 1.1 / 0.65 m/s | Existing presentation route rates; not claimed production capacity |
+| Filled bag | 25 kg | Separate dry mixture; no water addition/rehydration |
+
+### Enforced behavior
+
+- Calcination conserves dihydrate, remaining dihydrate, hemihydrate and released
+  steam. Zero feed or zero reaction energy cannot create stucco. The per-board
+  precursor is recorded as gypsum input and calcination vapour.
+- Hydration is limited by available mixing water. Chemically bound water and
+  free water are distinct; the dryer never subtracts bound water or gypsum.
+  Each parcel conserves incoming gypsum plus added water against remaining
+  product plus both steam streams. Drying spends supplied heat on warming and
+  evaporation, with a product-temperature limit separate from dryer air.
+- Set, damp boards enter the actual dryer span. A wet leading board stops the
+  common conveyor inside the exit mouth; drying continues while supported, and
+  transport resumes when the moisture gate passes. The robot rejects wet boards.
+- Equipment inspection begins with declared work in progress. Already-cut boards
+  have completed setting on the supported upstream web; preview parcels are
+  initialized from their position and prior dryer residence. New parcels retain
+  their own water and temperature state throughout travel and stops.
+- Heat failure cools equipment continuously and inhibits fresh wet/dry production.
+  The pause control freezes all calculations. Safety stops hold transported goods;
+  ordinary motor starts have bounded ramps and integrated, continuous shaft phase.
+- Drum supports use tangential contact and opposite surface speed. Belt drive
+  couplings use `omega = v/r`; straight-run drives share their product clock.
+  Gates and dampers move to a working position rather than perpetually oscillating.
+
+This remains a teaching/presentation model: no whole-plant silo inventory,
+pressure/air balance, calibrated reaction kinetics, motor torque, dust capture,
+structural calculation or control-system validation is implied. Calcite remains
+on the dry grinding/filler circuit; it is not converted into gypsum. The optional
+**Nusga fizika** readout distinguishes assumed temperatures and parcel water from
+live plant telemetry.
+
+### Verification
+
+`npm test` covers mass and water conservation, energy-limited dehydration,
+water-limited setting, bound-water preservation, frame-rate-independent motor
+ramps, heat loss/restart, supported wet-board holding/release and pause behavior,
+along with the existing geometry and logistics regressions. `npm run build:server`
+produces the existing `/zawod/` deployment bundle; deployment remains manual.

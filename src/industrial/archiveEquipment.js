@@ -1,5 +1,6 @@
 import * as T from 'three';
 import {machinePort} from './equipmentConnections.js';
+import {createDrive,PROCESS_PHYSICS as P,rpmToRadians,rollerAngularSpeed} from './processPhysics.js';
 
 // Modelled from the equipment renders in the user's Downloads/archive folder.
 // Dimensions are illustrative; every moving assembly stays separate for batching.
@@ -8,7 +9,7 @@ export function createArchiveEquipment(k,equipment){
   const {cylinder,flange,hollowHopper,gearmotor,bolt}=equipment;
   const steel=material('#929fa3',.65,.43),panel=material('#c3cbcc',.42,.45);
   const dark=material('#46535a',.62,.47),rubber=m.rubber,yellow=m.yellow;
-  const motions=[],clocks=new Map();
+  const motions=[],clocks=new Map(),drives=new Map();
   const port=(g,name,p,n,r,medium='solid',options={})=>machinePort(k,g,name,p,n,r,medium,options);
   function moving(object,zone,mode='rotate',axis='y',speed=1,amplitude=1,phase=0){
     object.userData.dynamic=true;
@@ -30,7 +31,7 @@ export function createArchiveEquipment(k,equipment){
     rod([x+w*.30,y-.12,z+.10],[x+w*.30,y+.12,z+.10],.025,dark,g);
   }
   function shaft(length,r,y,g,zone){
-    const rotor=moving(group([0,y,0],g),zone,'rotate','x',2.2);
+    const rotor=moving(group([0,y,0],g),zone,'rotate','x',rpmToRadians(P.screwRpm));
     cylinder(.075,length,[0,0,0],steel,rotor,'x');
     // A continuous screw flight remains visible through the open inspection trough.
     const vertices=[],indices=[],steps=Math.ceil(length/.06);
@@ -49,7 +50,7 @@ export function createArchiveEquipment(k,equipment){
       cylinder(.39,length,[0,1.25,0],yellowCover?yellow:steel,g,'x');
       for(const x of [-length/2,0,length/2])flangeX(.46,x,1.25,0,g);
       cyl(.22,.65,[-length*.32,1.85,0],steel,g);flange(.29,[-length*.32,2.18,0],g);
-      const coupling=moving(group([length/2+.14,1.25,0],g),zone,'rotate','x',2.2);
+      const coupling=moving(group([length/2+.14,1.25,0],g),zone,'rotate','x',rpmToRadians(P.screwRpm));
       for(let n=0;n<6;n++){const a=n*Math.PI/3;box(.22,.065,.065,[0,Math.sin(a)*.19,Math.cos(a)*.19],dark,coupling);}
     }else{
       box(length,.12,.88,[0,1,0],steel,g);
@@ -65,7 +66,7 @@ export function createArchiveEquipment(k,equipment){
     if(gate){
       for(const z of [-.46,.46])box(1.1,1.15,.10,[0,.65,z],steel,g);
       for(const y of [.12,1.2])box(1.25,.12,1.1,[0,y,0],panel,g);
-      const slide=moving(group([0,.65,0],g),zone,'stroke','x',.7,.4);
+      const slide=moving(group([0,.65,0],g),zone,'gate','x',.7,.4);
       box(.85,.84,.08,[0,0,0],dark,slide);rod([0,0,0],[1.1,0,0],.04,steel,slide);
       gearmotor([.95,.25,.2],g,.45);
     }else{
@@ -271,7 +272,7 @@ export function createArchiveEquipment(k,equipment){
     box(length,.08,width,[0,height,0],rubber,g);
     for(const z of [-width/2-.06,width/2+.06])box(length,.24,.12,[0,height-.10,z],steel,g);
     for(const x of [-length/2+.2,length/2-.2]){
-      const roller=moving(group([x,height-.12,0],g),zone,'rotate','z',2);
+      const roller=moving(group([x,height-.12,0],g),zone,'rotate','z',-rollerAngularSpeed(.65,.16));
       cylinder(.16,width,[0,0,0],dark,roller,'z');box(.2,.06,width,[0,.15,0],panel,roller);
     }
     for(let x=-length/2+.4;x<length/2;x+=.7){
@@ -337,7 +338,7 @@ export function createArchiveEquipment(k,equipment){
   function damper(g,zone){
     for(const x of [-.7,.7])box(.12,1.7,.45,[x,.85,0],steel,g);
     for(const y of [.06,1.64])box(1.5,.12,.45,[0,y,0],steel,g);
-    for(let y=.25;y<1.6;y+=.25){const vane=moving(group([0,y,0],g),zone,'swing','x',.45,.6);box(1.25,.24,.035,[0,0,0],panel,vane);}
+    for(let y=.25;y<1.6;y+=.25){const vane=moving(group([0,y,0],g),zone,'damper','x',.45,.6);box(1.25,.24,.035,[0,0,0],panel,vane);}
     gearmotor([1,.55,0],g,.45);
     port(g,'in',[0,.85,.3],[0,0,1],.35,'air',{nozzle:.35});
     port(g,'out',[0,.85,-.3],[0,0,-1],.35,'air',{nozzle:.35});
@@ -367,7 +368,7 @@ export function createArchiveEquipment(k,equipment){
     for(const x of [-1.5,-.6,1.5])flangeX(.58,x,1.2,0,g);
     cylinder(.33,.75,[1.7,1.2,0],dark,g,'x');gearmotor([-1.85,.65,0],g,.8);
     const flame=material('#dd923d',.05,.45,{emissive:'#ff7327',emissiveIntensity:.7});
-    const tip=moving(group([2,1.2,0],g),zone,'fill','y',4);
+    const tip=moving(group([2,1.2,0],g),zone,'flame','y',4);
     cylinder(.28,.08,[0,0,0],flame,tip,'x');
     for(const x of [-1.2,-.3,.6]){pipe([[x,.5,1],[x,.8,1],[x,1.2,.3]],.06,steel,g);ring(.14,.025,[x,.85,1],m.red,g);}
     rod([-1.5,.5,1],[1,.5,1],.09,steel,g);
@@ -410,12 +411,12 @@ export function createArchiveEquipment(k,equipment){
     }
     port(g,'in',[0,2.3,0],[0,1,0],.3);
     for(const side of [-1,1])port(g,side<0?'dry':'board',[side*(.5+Math.sin(.35)*.5),.5-Math.cos(.35)*.5,0],[side*Math.sin(.35),-Math.cos(.35),0],.28);
-    const selector=moving(group([0,1.2,.65],g),zone,'swing','z',.6,.38);
+    const selector=moving(group([0,1.2,.65],g),zone,'damper','z',.6,.38);
     rod([0,0,0],[.5,.4,0],.06,dark,selector);gearmotor([.8,.9,.6],g,.5);
   }
   function butterfly(g,zone){
     cylinder(.6,.65,[0,.8,0],steel,g,'x');for(const x of [-.35,.35])flangeX(.71,x,.8,0,g);
-    const disc=moving(group([0,.8,0],g),zone,'swing','y',.4,.75);
+    const disc=moving(group([0,.8,0],g),zone,'damper','y',.4,Math.PI/2);
     cylinder(.56,.04,[0,0,0],dark,disc,'x');rod([0,.1,0],[0,1.7,0],.06,steel,g);
     box(.65,.3,.4,[0,1.75,0],panel,g);box(.12,.12,.12,[.28,2,0],m.red,g);
     port(g,'in',[.35,.8,0],[1,0,0],.6,'air');
@@ -423,12 +424,22 @@ export function createArchiveEquipment(k,equipment){
   }
   const builders={screw,valve,fan,hopper,elevator,cyclone,filter,screen,mixer,vessel,mill,drum,belt,bagStation,table,tunnel,compressor,damper,palletizer,pump,burner,bagDump,telescopic,magneticTrap,diverter,butterfly};
   return {builders,materials:{steel,panel,dark},moving,update(dt,isRunning){
-    for(const zone of ['CR','TY','BS','GR','GK','GP'])if(isRunning(zone))clocks.set(zone,(clocks.get(zone)||0)+dt);
+    for(const zone of ['CR','TY','BS','GR','GK','GP']){
+      if(!drives.has(zone))drives.set(zone,createDrive(.6));
+      const drive=drives.get(zone);drive.update(dt,isRunning(zone)?1:0);clocks.set(zone,drive.position);
+    }
     for(const r of motions){
       const t=(clocks.get(r.zone)||0)*r.speed+r.phase;
       if(r.mode==='rotate')r.object.rotation[r.axis]=r.angle+t;
       else if(r.mode==='swing')r.object.rotation[r.axis]=r.angle+Math.sin(t)*r.amplitude;
-      else if(r.mode==='fill')r.object.scale.y=.7+.3*(.5+.5*Math.sin(t));
+      else if(r.mode==='fill')r.object.scale.y=.2+.8*Math.min(1,t/4);
+      else if(r.mode==='flame'){r.object.visible=isRunning(r.zone);r.object.scale.y=.92+.08*Math.sin(t);}
+      else if(r.mode==='gate'||r.mode==='damper'){
+        const target=(r.mode==='gate'?r.base:r.angle)+(isRunning(r.zone)?r.amplitude:0);
+        const vector=r.mode==='gate'?r.object.position:r.object.rotation;
+        const delta=target-vector[r.axis];vector[r.axis]+=Math.sign(delta)*Math.min(Math.abs(delta),dt*r.speed);
+      }
+      else if(r.mode==='vibrate')r.object.position[r.axis]=r.base+Math.sin((clocks.get(r.zone)||0)*Math.PI*24+r.phase)*.0015*drives.get(r.zone).speed;
       else if(r.mode==='belt')r.object.position[r.axis]=((r.base+t+r.amplitude/2)%r.amplitude+r.amplitude)%r.amplitude-r.amplitude/2;
       else r.object.position[r.axis]=r.base+Math.sin(t)*r.amplitude;
     }

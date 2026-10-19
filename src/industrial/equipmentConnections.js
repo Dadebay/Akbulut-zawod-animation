@@ -41,7 +41,7 @@ export function createEquipmentConnections(k,root,equipment,rotors){
     const q=k.ring(r+.045,.035,point.toArray(),k.m.steel,root);
     q.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),direction);
   }
-  function connect(from,to,{via=[],kind='duct',zone='BS',stages=[],material='powder',speed=1.2}={}){
+  function connect(from,to,{via=[],kind='duct',zone='BS',stages=[],material='powder',speed=1.2,shellMaterial=k.m.steel}={}){
     if(!from||!to)throw new Error('Missing equipment connection port');
     if(from.medium!==to.medium)throw new Error(`Incompatible equipment ports: ${from.name} → ${to.name}`);
     if(from.connected||to.connected)throw new Error(`Duplicate equipment connection: ${from.name} → ${to.name}`);
@@ -50,7 +50,7 @@ export function createEquipmentConnections(k,root,equipment,rotors){
       .filter((p,i,all)=>!i||p.distanceToSquared(all[i-1])>1e-8);
     if(kind==='gravity'&&points.some((p,i)=>i&&p.y>points[i-1].y+.001))throw new Error(`Uphill gravity chute: ${from.name} → ${to.name}`);
     const path=roundedConnection(points,kind==='mechanical'?.18:Math.max(.5,radius*2));
-    const shell=k.mesh(new T.TubeGeometry(path,Math.max(24,Math.ceil(path.getLength()*3)),radius,k.tablet?8:12,false),k.m.steel,[0,0,0],root);
+    const shell=k.mesh(new T.TubeGeometry(path,Math.max(24,Math.ceil(path.getLength()*3)),radius,k.tablet?8:12,false),shellMaterial,[0,0,0],root);
     shell.userData.connection={from:from.name,to:to.name,kind,material};
     // Reducers seal differing nozzle diameters instead of a small pipe ending
     // in a larger open mouth. Both end planes coincide with their machine port.
@@ -71,14 +71,17 @@ export function createEquipmentConnections(k,root,equipment,rotors){
           for(let y=start.y+.6;y<end.y;y+=1)k.box(.86,.055,.71,[mid.x,y,mid.z],k.m.steel,root);
           equipment.gearmotor([head.x+.55,head.y-.65,head.z],root,.6,Math.PI/2);
         }else if(Math.abs(d.y)<.05){
-          // Every horizontal powder leg is a driven screw, not a gravity pipe.
-          const mounting=k.group(end.toArray(),root);mounting.quaternion.setFromUnitVectors(up,d.clone().normalize());
-          const drive=k.group([0,0,0],mounting,true);
-          k.cyl(radius+.07,.16,[0,0,0],k.m.blue,drive);
-          k.box(.09,.18,radius*2,[0,.1,0],k.m.steel,drive);
-          rotors.push({object:drive,axis:'y',zone,speed:1.8});
-          const motor=k.group(start.clone().lerp(end,.85).toArray(),root);
-          motor.rotation.y=-Math.atan2(d.z,d.x);equipment.gearmotor([0,-.5,radius+.5],motor,.45);
+          // The pipe and its elbow are stationary. Only the external motor
+          // coupling rotates; the former end-mounted disc cut through the bend.
+          // Centre the coupling along the straight run, away from both elbows.
+          const motor=k.group(start.clone().lerp(end,.5).addScaledVector(d.clone().normalize(),1.08*.45).toArray(),root);
+          motor.rotation.y=-Math.atan2(d.z,d.x);
+          const housing=equipment.gearmotor([0,-.5,radius+.5],motor,.45);
+          const drive=k.group([-1.08,.48,0],housing,true);
+          drive.name='screw-drive-coupling';
+          equipment.cylinder(.17,.18,[0,0,0],k.m.blue,drive,'x');
+          k.box(.018,.045,.28,[-.095,0,0],k.m.steel,drive);
+          rotors.push({object:drive,axis:'x',zone,speed:1.8});
         }
       }
       if(!vertical&&Math.abs(d.y)<.05&&start.y>2){

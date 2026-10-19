@@ -40,18 +40,43 @@ test('old hangar stock stays within its walls and leaves the aisle and loading d
 
 test('old ceiling products remain supported and separated across repeated cutting/press cycles',()=>fixture(interior=>{
   const line=OLD_CEILING_LINE;let sawBlank=false,sawCut=false,sawHoles=false;
+  const beds=interior.supports.map(g=>new T.Box3().setFromObject(g));
+  const supported=(x,z)=>beds.some(b=>x>=b.min.x-.05&&x<=b.max.x+.05&&z>=b.min.z-.05&&z<=b.max.z+.05)||
+    [[64,-108.5],[64,-96]].some(([cx,cz])=>Math.hypot(x-cx,z-cz)<=1.44);
+  let sawReturn=false;
   for(let time=0;time<180;time+=.1){
     interior.update(time);
     const products=interior.products.filter(p=>p.object.visible).sort((a,b)=>a.object.position.x-b.object.position.x);
     for(let i=0;i<products.length;i++){
       const p=products[i],pos=p.object.position;
-      assert.ok(pos.x-.66>=line.west&&pos.x+.66<=line.east);
-      assert.equal(pos.y,line.top);assert.equal(pos.z,line.z);
-      if(i)assert.ok(pos.x-products[i-1].object.position.x>1.5,'sheets cannot overlap while tools dwell');
+      assert.equal(pos.y,line.top);
+      // Check all four sheet corners through both rotating transfers, not just
+      // its centre or an assumed straight path.
+      for(const x of [-.66,.66])for(const z of [-.66,.66]){
+        const a=p.object.rotation.y;
+        assert.ok(supported(pos.x+x*Math.cos(a)+z*Math.sin(a),pos.z-x*Math.sin(a)+z*Math.cos(a)),'sheet corner is supported');
+      }
+      for(let j=0;j<i;j++)assert.ok(pos.distanceTo(products[j].object.position)>1.5,'sheets cannot overlap while tools dwell');
+      sawReturn||=pos.z>-97&&pos.x<62;
       sawBlank||=p.blank.visible;sawCut||=p.cut.visible;sawHoles||=p.cut.visible&&p.holes.visible;
     }
   }
-  assert.ok(sawBlank&&sawCut&&sawHoles);
+  assert.ok(sawBlank&&sawCut&&sawHoles&&sawReturn);
+}));
+
+test('reference details fit the old hall and leave its loading entrance open',()=>fixture((interior,scene)=>{
+  scene.updateMatrixWorld(true);
+  let meshes=0;
+  interior.details.traverse(o=>{
+    if(!o.isMesh)return;meshes++;
+    const b=new T.Box3().setFromObject(o);
+    assert.ok(b.min.x>=-6&&b.max.x<=68&&b.min.z>=-116.5&&b.max.z<=-88,'old hall envelope');
+    if(b.max.y>6.2)assert.ok(b.min.x>=46&&b.max.x<=62&&b.min.z>=-112&&b.max.z<=-100,'tall parts fit raised annex');
+    if(b.min.y<5&&b.max.y>.25){
+      assert.equal(overlap(rectangle(b),[[37.8,-99],[50.2,-99],[50.2,-87],[37.8,-87]]),false,'loading entrance');
+    }
+  });
+  assert.ok(meshes>150,'photo-inspired detail is present');
 }));
 
 test('old hall pedestrian paths and forklift sweep clear the added machinery and stock',()=>fixture((interior,scene)=>{

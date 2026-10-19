@@ -3,14 +3,15 @@ import {machinePort} from './equipmentConnections.js';
 import {buildProcessTower} from './processTower.js';
 import {JOURNEY_STAGE as S} from '../journey.js';
 import {createArchiveEquipment} from './archiveEquipment.js';
+import {buildProcessBuildingEquipment} from './processBuildingEquipment.js';
 
 // The first leg takes a dry sheet off the supply pallet into the finishing magazine.
 export const CEILING_ROUTE=[[5,1.18,-25.6],[5,1.18,-23],[14,1.18,-23],[28,1.18,-23],[40,1.18,-23],[53,1.18,-23],[69,1.18,-23],[69,1.18,-33.5],[58,1.18,-33.5],[40,1.18,-33.5],[26,1.18,-33.5],[20,1.18,-33.5]];
 export const INTERIOR_VIEWS=[
   {id:'ceiling',name:'Potolok panelleri',zone:'GK',position:[-4,14,-39],target:[6,1.3,-27]},
-  {id:'dosing',name:'Köp gatly önümçilik binasy',zone:'BS',position:[-61,31,46],target:[-29,12,5]},
+  {id:'dosing',name:'Köp gatly önümçilik binasy',zone:'BS',position:[-73,40,58],target:[-23,11,7]},
   {id:'bagging',name:'Haltalama enjamlary',zone:'GR',position:[-47,17,-53],target:[-31,2.2,-31]},
-  {id:'utilities',name:'Howa we suw ulgamy',zone:'BS',position:[19,25,31],target:[-7,5,10]},
+  {id:'utilities',name:'Silo, süzgüç we sowadyş binasy',zone:'BS',position:[32,35,51],target:[-8,8,11]},
   {id:'finishing',name:'Gaplama we paletleme',zone:'GP',position:[57,20,-52],target:[43,2,-31]},
 ];
 
@@ -341,5 +342,6 @@ export function buildInteriorEquipment(k,{root,equipment,machines,network}){
   machinePort(k,units['pulse-filter'],'cleaningAir',[1.65,7.65,.7],[1,0,0],.09,'air',{nozzle:.15});
   join('air-receiver','out','pulse-filter','cleaningAir',[[-1.1,2.7,13],[-20,2.7,13],[-20,25.155,13],[-20,25.155,9.59]],'duct','air');
 
+  buildProcessBuildingEquipment(k,{root,models,equipment,units,inventory,network});
   return {inventory,units,update:models.update};
 }

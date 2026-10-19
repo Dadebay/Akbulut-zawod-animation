@@ -32,6 +32,7 @@ const PRESETS={
   site:{position:[-290,235,250],target:[22,0,-56]},
   dispatch:{position:[-105,30,-106],target:[-32,2.0,-53]},
   oldsite:{position:[-96,60,-192],target:[25,2,-111]},
+  oldInterior:{position:[-16,27,-145],target:[31,1.5,-106]},
   trucks:{position:[58,8,-65],target:[70,1.8,-43]},
   truckDetail:{position:[56.4,4.2,-49.5],target:[63.4,2,-43]},
   trainDetail:{position:[-90,6.5,-67],target:[-75,2.9,-53]},
@@ -47,9 +48,9 @@ const SITE_VIEWS=[
   {name:'ÇIG MAL',anchor:[45,5,14],position:[98,48,64],target:[48,1.5,14]},
   {name:'BALYK HOWUZY',anchor:[POND.x,2,POND.z],position:[POND.x-47,65,POND.z+49],target:[POND.x,0,POND.z]},
 ];
-export default function PlantScene({machines,selected,onSelect,view='perspective',area='site',equipmentFocus='BS',cameraRequest=0,roof=true,night=false,eco=false,paused=false,follow=false,speed=1,loopStep=null,journeyRequest,onJourney,onManualCamera}){
+export default function PlantScene({machines,selected,onSelect,view='perspective',area='site',equipmentFocus='BS',cameraRequest=0,roof=true,night=false,eco=false,paused=false,follow=false,speed=1,loopStep=null,journeyRequest,onJourney,onManualCamera,onProcess}){
   const host=useRef(),labels=useRef(),api=useRef(),state=useRef();
-  const [failed,setFailed]=useState(false);state.current={eco,machines,selected,paused,roof,night,area,follow,speed,loopStep,journeyRequest,onJourney,onManualCamera};
+  const [failed,setFailed]=useState(false);state.current={eco,machines,selected,paused,roof,night,area,follow,speed,loopStep,journeyRequest,onJourney,onManualCamera,onProcess};
   // Only an explicit view selection restores a preset. Leaving the tour retains the user's camera.
   useEffect(()=>{api.current?.setCamera(area,view,equipmentFocus);},[area,view,equipmentFocus,cameraRequest]);
   useEffect(()=>{
@@ -57,7 +58,7 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
     // Millimetre-separated roof seams and paving need stable depth at campus distances.
     try{renderer=new T.WebGLRenderer({antialias:false,alpha:true,powerPreference:'high-performance',logarithmicDepthBuffer:true});}catch{setFailed(true);return;}
     renderer.setPixelRatio(Math.min(devicePixelRatio,TABLET?1:1.25));renderer.shadowMap.enabled=true;renderer.shadowMap.autoUpdate=!TABLET;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=.93;container.appendChild(renderer.domElement);
-    let dirty=true,previousView='',lastSimulationTime=-1,lastLabelTime=0;
+    let dirty=true,previousView='',lastSimulationTime=-1,lastLabelTime=0,lastProcessNotify=0;
     const scene=new T.Scene();scene.background=new T.Color('#dce4eb');scene.fog=new T.Fog('#dce4eb',650,1900);
     const camera=new T.PerspectiveCamera(36,1,.5,2800);camera.position.set(...(PRESETS[state.current.area]||PRESETS.site).position);
     const pipeline=createRenderPipeline(renderer,scene,camera);
@@ -107,7 +108,7 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
     api.current={
       setCamera(a,v,focus){
         manualCamera=false;
-        const preset=(v==='detail'?(a==='trucks'?PRESETS.truckDetail:a==='dispatch'?PRESETS.trainDetail:a==='process'?EQUIPMENT_VIEWS[focus||'BS']:a==='lines'?PROCESS_LINES.find(line=>line.id===focus):null):null)||PRESETS[a]||PRESETS.site;
+        const preset=(v==='detail'?(a==='trucks'?PRESETS.truckDetail:a==='dispatch'?PRESETS.trainDetail:a==='oldsite'?PRESETS.oldInterior:a==='process'?EQUIPMENT_VIEWS[focus||'BS']:a==='lines'?PROCESS_LINES.find(line=>line.id===focus):null):null)||PRESETS[a]||PRESETS.site;
         moveCamera({target:preset.target,position:v==='top'?[preset.target[0],a==='site'?350:a==='lines'?245:115,preset.target[2]+(a==='site'?21:7)]:preset.position});
       },
       focusSite(preset,immediate){
@@ -193,6 +194,11 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
       if(!animateMotion&&!transition&&!cameraMoved&&!dirty&&!changed){resolutionBudget.reset();return;}
       if(cameraMoved||dirty||changed)k.updateDetailVisibility(camera);
       production.updateMotion(animateMotion?dt*s.speed:0,{preview:equipmentPreview,stage:journey.index,active,showInterior,showLines:s.area==='lines'&&showInterior});
+      if(showInterior&&(now-lastProcessNotify>500||changed)){
+        const boards=production.products.filter(p=>p.kind==='panel'&&p.object.visible&&p.batch);
+        const sample=boards.find(p=>p.object.userData.materialState==='set-damp-board')||boards[0];
+        s.onProcess?.({...production.physics.state,batch:sample?.batch?{...sample.batch}:null});lastProcessNotify=now;
+      }
       // Ambient life has its own continuous clock: seeking or wrapping the
       // production tour must not teleport pedestrians, fish or the service car.
       logistics.humans.forEach(h=>{if(h.walking||active.get(h.zone)?.status==='running')h.update(ambientClock);});

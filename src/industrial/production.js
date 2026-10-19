@@ -7,6 +7,7 @@ import {PROCESS_STATIONS,BOARD_ROUTE,BOARD_START,BOARD_END,BAG_ROUTE,BAG_PALLET_
 import {createEquipmentConnections,machinePort} from './equipmentConnections.js';
 import {conveyorMotion,transferTable} from './conveyorTransfer.js';
 import {buildPalletizingCell} from './palletizingCell.js';
+import {PROCESS_PHYSICS as P,createDrive,createProcessPhysics,createBoardBatch,advanceBoard,boardReady,rpmToRadians,rollerAngularSpeed} from './processPhysics.js';
 
 export const STATIONS=PROCESS_STATIONS.map(s=>({...s,pos:localPoint(s.world)}));
 
@@ -37,7 +38,7 @@ export function buildProduction(k){
       const drive=group([length/2-.8,.68,width/2+.72],g,true);
       equipment.cylinder(.18,.08,[0,0,0],m.dark,drive,'z');
       for(let i=0;i<4;i++){const a=i*Math.PI/2;rod([0,0,.05],[Math.cos(a)*.16,Math.sin(a)*.16,.05],.025,m.steel,drive);}
-      rotors.push({object:drive,axis:'z',zone,speed:2});
+      rotors.push({object:drive,axis:'z',zone,speed:-rollerAngularSpeed(zone==='GR'?P.bagSpeed:P.boardSpeed,.18)});
     }
     if(kind==='bags'||kind==='bag-track'||kind==='raw')box(length,.035,width-.15,[0,1.17,0],m.rubber,g,.015);
     for(let i=0;i<(['track','bag-track'].includes(kind)?0:Math.floor(length/3.4));i++){const p=group([0,1.2,0],g,true);
@@ -66,10 +67,10 @@ export function buildProduction(k){
   const jaw=group(localPoint(GYPSUM_CRUSHER),outdoor);plinth(6,5,jaw);frame(5,3.7,1.1,jaw);
   for(const z of [-1.45,1.45]){box(3.8,2.5,.25,[0,2.3,z],m.blue,jaw);for(let x=-1.6;x<1.8;x+=.55)box(.13,2.45,.1,[x,2.3,z*1.12],m.steel,jaw);}
   box(3.7,.18,3.2,[0,1.15,0],m.dark,jaw);box(.25,2.3,2.6,[-1.6,2.3,0],m.steel,jaw);
-  const plate=box(.3,2.35,2.6,[.8,2.3,0],m.steel,jaw);plate.rotation.z=-.28;
+  const plate=box(.3,2.35,2.6,[.8,2.3,0],m.steel,jaw);plate.rotation.z=-.28;plate.userData.dynamic=true;
   for(let z=-1.15;z<1.2;z+=.19)box(.13,2.15,.08,[-1.42,2.4,z],m.dark,jaw);
   box(3.7,.18,3.5,[0,3.6,0],m.dark,jaw);equipment.hollowHopper(3.5,3.2,2.7,2.4,1.0,[0,3.65,0],jaw);
-  for(const z of [-1.65,1.65]){const wheel=group([.5,2.4,z],jaw,true);const disk=cyl(1.15,.22,[0,0,0],m.steel,wheel);disk.rotation.x=Math.PI/2;k.ring(1.05,.1,[0,0,0],m.dark,wheel,'z');for(let n=0;n<8;n++){const a=n*Math.PI/4;rod([0,0,.14],[Math.cos(a)*.9,Math.sin(a)*.9,.14],.065,m.dark,wheel);}rotors.push({object:wheel,axis:'z',zone:'CR',speed:.5});}
+  for(const z of [-1.65,1.65]){const wheel=group([.5,2.4,z],jaw,true);const disk=cyl(1.15,.22,[0,0,0],m.steel,wheel);disk.rotation.x=Math.PI/2;k.ring(1.05,.1,[0,0,0],m.dark,wheel,'z');for(let n=0;n<8;n++){const a=n*Math.PI/4;rod([0,0,.14],[Math.cos(a)*.9,Math.sin(a)*.9,.14],.065,m.dark,wheel);}rotors.push({object:wheel,axis:'z',zone:'CR',speed:rpmToRadians(P.jawRpm)});}
   equipment.gearmotor([3,.4,0],jaw,1.55);for(const z of [-1.95,1.95])equipment.fence(3.3,2.8,[.5,.4,z],jaw);for(const x of [-1.6,1.6])for(const z of [-1.5,1.5])equipment.bolt([x,3.75,z],jaw);cabinet([-2.5,0,3],jaw);operators.push({pos:localPoint([GYPSUM_CRUSHER[0]-2,0,GYPSUM_CRUSHER[2]+4.6]),zone:'CR',angle:Math.PI});
   // Inspect the feeder from the aisle beside its supply pallet and robot fence.
   operators.push({pos:localPoint([2,0,-25]),zone:'GP',angle:Math.PI,walkAxis:'z'});
@@ -98,7 +99,7 @@ export function buildProduction(k){
   const streamGroups=[];
   function stream(points,kind,zone,interval,options){
     const motion=conveyorMotion(points.map(localPoint),options),count=Math.ceil((motion.duration+.6)/interval)+1;
-    const line={motion,kind,zone,interval,time:0,started:false,products:[],tables:[]};
+    const line={motion,kind,zone,interval,time:0,started:false,drive:createDrive(1.5),products:[],tables:[]};
     const size=kind==='bags'?1.7:3,productLength=kind==='bags'?.75:kind==='ceiling'?2:2.4;
     motion.turns.forEach(corner=>line.tables.push(transferTable(k,corner,{parent:root,size,top:kind==='bags'?1.1875:1.175,clearTime:(size/2+productLength/2)/options.speed+options.speed/(2*(options.acceleration||2.4))})));
     for(let i=0;i<count;i++){
@@ -131,14 +132,15 @@ export function buildProduction(k){
   for(const z of [-.60,.60])box(settingLength,.028,.025,localPoint([settingMid,1.23,BOARD_START[2]+z]),m.raw,root);
   // Support the complete sheet beyond its centre stop, including its leading edge.
   const boardDrives=routedTrack([...BOARD_ROUTE.slice(0,-1),[BOARD_END[0]+1.35,BOARD_END[1],BOARD_END[2]]],2.6,3,'track');
-  const boardLine=stream(boardProducts,'panel','GK',6,{speed:1.8,turnTime:1,startHold:.8});
+  const boardLine=stream(boardProducts,'panel','GK',6,{speed:P.boardSpeed,turnTime:1,startHold:.8});
   boardDrives.forEach(drive=>{drive.line=boardLine;});
   boardLine.nextDelivery=0;
   const palletizing=buildPalletizingCell(k,{root,equipment,onPickupClear:()=>{boardLine.nextDelivery++;}});
-  routedTrack(CEILING_ROUTE,2.6,3,'track');
+  const ceilingDrives=routedTrack(CEILING_ROUTE,2.6,3,'track');
   // Each sheet now starts above the supply pallet, runs into the magazine,
   // turns onto the finishing rollers, and reaches the tools in route order.
-  const ceilingLine=stream(CEILING_ROUTE,'ceiling','GK',7.5,{speed:1.1,turnTime:1,stops:{3:1.1,4:1.2,10:.8}});
+  const ceilingLine=stream(CEILING_ROUTE,'ceiling','GK',7.5,{speed:P.ceilingSpeed,turnTime:1,stops:{3:1.1,4:1.2,10:.8}});
+  ceilingDrives.forEach(drive=>{drive.line=ceilingLine;drive.speed=-rollerAngularSpeed(P.ceilingSpeed,.18);});
   // Leave the pallet-facing and line-facing sides open for the two feed legs.
   const magazine=group(localPoint([5,0,-23]),root);
   box(.12,.85,3.2,[-1.58,1.58,0],equipment.enamel,magazine);
@@ -168,7 +170,8 @@ export function buildProduction(k){
   machinePort(k,bg,'in',[-1.3,5.6,0],[0,1,0],.3,'solid');machines.bagging=bg;
   // Bags are filled directly below the spouts, then sealed and palletised.
   for(const x of [-1.3,1.3])cyl(.13,.30,[x,1.55,0],m.rubber,bg);
-  routedTrack(BAG_ROUTE,1.3,1.7,'bag-track');stream(BAG_ROUTE,'bags','GR',4.6,{speed:.65,turnTime:.6,startHold:1.1});
+  const bagDrives=routedTrack(BAG_ROUTE,1.3,1.7,'bag-track'),bagLine=stream(BAG_ROUTE,'bags','GR',4.6,{speed:P.bagSpeed,turnTime:.6,startHold:1.1});
+  bagDrives.forEach(drive=>{drive.line=bagLine;});
   const sealer=group(localPoint([-40.2,0,-32.5]),root);frame(1.6,1.6,1.8,sealer);box(1.6,.55,1.6,[0,1.8,0],equipment.enamel,sealer,.04);box(.7,.24,1.5,[0,1.47,0],m.blue,sealer);
   const bagReceiver=group(localPoint([-32,0,-36]),root);frame(3.2,2.6,3.2,bagReceiver);
   for(const z of [-1.3,1.3])box(3.2,2.2,.12,[0,2,z],equipment.enamel,bagReceiver);
@@ -186,7 +189,15 @@ export function buildProduction(k){
   for(const [x,z,walkAxis='x'] of [[-40.3,-9],[8,-9],[48,-9],[60,-19],[-20.25,-23,'z'],[-7.8,-34]])operators.push({pos:localPoint([x,0,z]),zone:x< -30?'GR':'GK',angle:Math.PI,walkAxis});
   const interior=buildInteriorEquipment(k,{root,equipment,machines,network});
   flows.push(...network.connections);network.capUnused();
-  const machineClocks=new Map();
+  const machineClocks=new Map(),machineDrives=new Map(),physics=createProcessPhysics();
+  // The dryer has real entry/exit coordinates. Stop the entire shared conveyor
+  // with the leading board still supported inside its mouth if it remains wet.
+  function firstLegTimeAtX(worldX){
+    let lo=0,hi=boardLine.motion.milestones[1].arrival;const p=new T.Vector3();
+    for(let i=0;i<40;i++){const mid=(lo+hi)/2;boardLine.motion.pose(mid,p);if(p.x+8<worldX)lo=mid;else hi=mid;}
+    return (lo+hi)/2;
+  }
+  const dryerEntry=firstLegTimeAtX(18.2),dryerExit=firstLegTimeAtX(34.4);
   const stageMap={CR:[S.infeed,S.crush,S.calcine],TY:[S.crush,S.calcine,S.mix],BS:[S.calcine,S.mix],GR:[S.mix,S.form,S.pack],GK:[S.mix,S.form,S.pack],GP:[S.form,S.pack]};
   const outdoorRotors=rotors.filter(r=>{
     for(let parent=r.object.parent;parent;parent=parent.parent)if(parent===outdoor)return true;
@@ -196,10 +207,18 @@ export function buildProduction(k){
     bagPallet.visible=stage!==S.pack;
     const scheduled=zone=>preview||stageMap[zone].includes(stage);
     const healthy=zone=>active.get(zone)?.status==='running';
+    physics.update(dt,healthy);
     // A blocked packing receiver stops its upstream board conveyors. Products
     // remain on the rollers, and resume from the same pose after a restart.
-    const running=zone=>scheduled(zone)&&healthy(zone)&&(zone!=='GK'||healthy('GP'));
-    for(const zone of Object.keys(stageMap))if(running(zone)&&(showInterior||zone==='CR'))machineClocks.set(zone,(machineClocks.get(zone)||0)+dt);
+    const running=zone=>scheduled(zone)&&healthy(zone)&&(!['GK','GR'].includes(zone)||physics.feedReady(healthy))&&(zone!=='GK'||healthy('GP'));
+    for(const zone of Object.keys(stageMap)){
+      if(!machineDrives.has(zone))machineDrives.set(zone,createDrive(.6));
+      const drive=machineDrives.get(zone);
+      if(!healthy(zone))drive.stop();
+      drive.update(dt,(showInterior||zone==='CR')&&running(zone)?1:0);
+      machineClocks.set(zone,drive.position);
+    }
+    plate.position.x=.8+P.jawThrowM*Math.cos((machineClocks.get('CR')||0)*rpmToRadians(P.jawRpm));
     // Hidden interior clocks already stop here. Avoid recalculating every
     // conveyor, tool and archive model at that unchanged time as well.
     if(!showInterior){
@@ -207,15 +226,25 @@ export function buildProduction(k){
       return;
     }
     interior.update(dt,running);
+    physics.state.waitingForDryer=false;
     for(const line of streamGroups){
       const allowed=showInterior&&(preview||(line.kind==='bags'?[S.mix,S.form,S.pack]:[S.form,S.pack]).includes(stage));
       if(allowed&&!line.started){line.started=true;line.time=preview?line.motion.duration:0;}
+      const previousTime=line.time;
       if(allowed&&running(line.zone)){
-        const next=line.time+dt;
+        let next=line.time+line.drive.update(dt,1);
+        if(line===boardLine)for(const p of line.products){
+          if(p.palletizing||!p.batch)continue;
+          const age=line.time-p.delay,cycle=Math.floor(age/p.period),exit=p.delay+cycle*p.period+dryerExit;
+          if(age>=0&&line.time<=exit+1e-8&&next>=exit&&!boardReady(p.batch)){
+            next=Math.min(next,exit);line.drive.stop();physics.state.waitingForDryer=true;
+          }
+        }
         // The terminal photoeye holds the conveyor until the current sheet is
         // lifted clear. Never skip a delivery when a frame or cycle takes longer.
         line.time=line===boardLine?Math.min(next,line.motion.duration+line.nextDelivery*line.interval):next;
-      }
+        if(line.time<next)line.drive.stop();
+      }else line.drive.stop();
       for(const table of line.tables)table.update(line.time,line.interval);
       for(const p of line.products){
         if(p.palletizing)continue; // The robot now owns this exact product.
@@ -225,14 +254,28 @@ export function buildProduction(k){
         p.object.rotation.y=p.motion.pose(phase,p.object.position);
         p.object.scale.y=p.fillTime?Math.min(1,.2+.8*phase/p.fillTime):1;
         if(p.kind==='panel'){
-          // The first leg runs through the dryer; subsequent return legs are dry.
-          const dry=phase>=p.motion.milestones[1].arrival||p.object.position.x+8>=35.8;
+          if(p.batchCycle!==cycle){
+            p.batchCycle=cycle;p.batch=createBoardBatch();
+            // Already set when cut from the continuously supported setting web.
+            advanceBoard(p.batch,P.settingSeconds,{setting:true});
+            if(phase>dryerEntry)advanceBoard(p.batch,Math.max(0,Math.min(phase,dryerExit)-dryerEntry)*P.thermalTimeScale,{drying:true,airC:P.dryerAirC});
+          }else if(dt>0){
+            const priorPhase=phase-(line.time-previousTime);
+            const fraction=line.time>previousTime?Math.max(0,Math.min(phase,dryerExit)-Math.max(priorPhase,dryerEntry))/(line.time-previousTime):phase>=dryerEntry&&phase<=dryerExit+1e-8?1:0;
+            advanceBoard(p.batch,dt*P.thermalTimeScale*fraction,{drying:healthy('GK')&&healthy('BS'),airC:physics.state.dryerAirC});
+            if(phase>dryerExit)advanceBoard(p.batch,dt*P.thermalTimeScale*(1-fraction));
+          }
+          const dry=boardReady(p.batch);
           p.variants.damp.visible=!dry;p.variants.dry.visible=dry;
           p.object.userData.materialState=dry?'dry-board':'set-damp-board';
+          p.object.userData.processBatch=p.batch;
         }else if(p.kind==='ceiling'){
           const cut=phase>=p.motion.milestones[3].departure,perforated=phase>=p.motion.milestones[4].departure;
           p.variants.blank.visible=!cut;p.variants.cut.visible=cut;p.variants.holes.visible=perforated;
           p.object.userData.materialState=perforated?'perforated-panel':cut?'cut-panel':'dry-board';
+        }else{
+          p.object.userData.filledKg=25*Math.min(1,phase/p.fillTime);
+          p.object.userData.materialState='dry-mixture';
         }
       }
     }
@@ -244,7 +287,7 @@ export function buildProduction(k){
       const delivery=boardLine.nextDelivery,arrival=boardLine.motion.duration+delivery*boardLine.interval;
       if(boardLine.started&&boardLine.time>=arrival-1e-8){
         const product=boardLine.products[delivery%boardLine.products.length],cycle=Math.floor(delivery/boardLine.products.length);
-        if(product.handledCycle!==cycle)palletizing.accept(product,cycle);
+        if(product.handledCycle!==cycle&&product.batch&&boardReady(product.batch))palletizing.accept(product,cycle);
       }
       palletizing.update(dt);
     }
@@ -260,11 +303,11 @@ export function buildProduction(k){
     for(const f of flows)f.dots.forEach((arrow,i)=>{
       // These are explanatory direction arrows, visible only in line view;
       // sealed pipes never display exposed rocks or liquid travelling outside.
-      arrow.visible=showLines&&scheduled(f.zone);
+      arrow.visible=showLines&&running(f.zone);
       if(!arrow.visible)return;
       const phase=((machineClocks.get(f.zone)||0)*f.speed/f.length+i/f.dots.length)%1;
       arrow.position.copy(f.path.getPointAt(phase));arrow.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),f.path.getTangentAt(phase));
     });
   }
-  return {root,outdoor,rotors,products,lamps,flows,operators,interiorInventory:interior.inventory,palletizing,updateMotion};
+  return {root,outdoor,rotors,products,lamps,flows,operators,interiorInventory:interior.inventory,palletizing,physics,updateMotion};
 }

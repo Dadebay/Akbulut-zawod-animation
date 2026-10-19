@@ -1,5 +1,6 @@
 import * as T from 'three';
 import {machinePort} from './equipmentConnections.js';
+import {PROCESS_PHYSICS as P,rpmToRadians} from './processPhysics.js';
 
 // Original geometry based on the user's equipment renders. All dimensions are metres.
 export function createEquipmentModels(k,rotors){
@@ -71,9 +72,13 @@ export function createEquipmentModels(k,rotors){
     base(12.5,3.5,g);const drum=group([0,2.65,0],g,true);cylinder(1.5,10.4,[0,0,0],zinc,drum,'x',1.5,80);
     for(let x=-4.8;x<5.1;x+=1.2)ring(1.503,.009,[x,0,0],seam,drum,'x');for(let n=0;n<4;n++){const a=n/4*Math.PI*2;rod([-5.1,Math.sin(a)*1.502,Math.cos(a)*1.502],[5.1,Math.sin(a)*1.502,Math.cos(a)*1.502],.009,seam,drum);}
     for(const x of [-3.45,3.45]){cylinder(1.6,.28,[x,0,0],cast,drum,'x',1.6,80);cylinder(1.64,.18,[x,0,0],m.polished,drum,'x',1.64,80);circleBolts(1.55,[x+.17,0,0],drum,'x',28);
-      for(const z of [-1.16,1.16]){box(1.4,.4,.75,[x,.73,z],cast,g,.045);cylinder(.43,.62,[x,1.12,z],zinc,g,'x');for(const dx of [-.47,.47]){box(.18,.52,.6,[x+dx,.91,z],cast,g,.09);bolt([x+dx,.68,z+.22],g);}cylinder(.12,1.25,[x,1.12,z],m.polished,g,'x');}}
-    cylinder(1.68,.26,[.7,0,0],cast,drum,'x',1.68,80);for(let n=0;n<80;n++){const a=n/80*Math.PI*2;const tooth=box(.28,.12,.10,[.7,Math.sin(a)*1.72,Math.cos(a)*1.72],zinc,drum);tooth.rotation.x=-a;}circleBolts(1.61,[.88,0,0],drum,'x',32);rotors.push({object:drum,axis:'x',zone:'BS',speed:.10});
-    gearmotor([1.3,.6,-2.05],g,1.4);const pinion=group([.7,1.18,-1.45],g,true);cylinder(.35,.3,[0,0,0],cast,pinion,'x');for(let n=0;n<18;n++){const a=n/18*Math.PI*2;const t=box(.3,.06,.08,[0,Math.sin(a)*.36,Math.cos(a)*.36],zinc,pinion);t.rotation.x=-a;}rotors.push({object:pinion,axis:'x',zone:'BS',speed:-.45});
+      const contactZ=Math.sqrt((1.64+.43)**2-(2.65-1.12)**2);
+      for(const z of [-contactZ,contactZ]){box(1.4,.4,.75,[x,.73,z],cast,g,.045);
+        const roller=group([x,1.12,z],g,true);cylinder(.43,.62,[0,0,0],zinc,roller,'x');box(.64,.04,.06,[0,.43,0],cast,roller);
+        rotors.push({object:roller,axis:'x',zone:'BS',speed:-rpmToRadians(P.drumRpm)*1.64/.43});
+        for(const dx of [-.47,.47]){box(.18,.52,.6,[x+dx,.91,z],cast,g,.09);bolt([x+dx,.68,z+.22],g);}cylinder(.12,1.25,[x,1.12,z],m.polished,g,'x');}}
+    cylinder(1.68,.26,[.7,0,0],cast,drum,'x',1.68,80);for(let n=0;n<80;n++){const a=n/80*Math.PI*2;const tooth=box(.28,.12,.10,[.7,Math.sin(a)*1.72,Math.cos(a)*1.72],zinc,drum);tooth.rotation.x=-a;}circleBolts(1.61,[.88,0,0],drum,'x',32);rotors.push({object:drum,axis:'x',zone:'BS',speed:rpmToRadians(P.drumRpm)});
+    gearmotor([1.3,.6,-2.05],g,1.4);const pinion=group([.7,1.18,-1.45],g,true);cylinder(.35,.3,[0,0,0],cast,pinion,'x');for(let n=0;n<18;n++){const a=n/18*Math.PI*2;const t=box(.3,.06,.08,[0,Math.sin(a)*.36,Math.cos(a)*.36],zinc,pinion);t.rotation.x=-a;}rotors.push({object:pinion,axis:'x',zone:'BS',speed:-rpmToRadians(P.drumRpm)*P.drumTeeth/P.pinionTeeth});
     for(const x of [-5.5,5.5]){cylinder(1.52,.55,[x,2.65,0],blue,g,'x');cylinder(1.57,.06,[x+(x>0?-.3:.3),2.65,0],zinc,g,'x');circleBolts(1.43,[x+(x>0?.31:-.31),2.65,0],g,'x',24);box(.7,1.4,1.1,[x,1,0],cast,g);}
     hollowHopper(1.4,1.1,.6,.6,1.2,[-5.65,3.7,0],g);pipe([[5.5,3.4,0],[5.5,4.7,0],[5.5,5.4,-.7],[5.5,5.4,-2]],.4,zinc,g);flange(.47,[5.5,4.55,0],g);
     hatch([-2,0,1.48],.28,drum);gauge([5.45,3.6,.9],g);pipe([[5.5,2.8,1.2],[5.5,1.7,1.5],[4.3,1.7,1.5]],.05,zinc,g);valve([4.7,1.7,1.5],g,'x');
@@ -86,7 +91,7 @@ export function createEquipmentModels(k,rotors){
   function GR(g){
     frame(5.7,4.6,2.7,g);deck(6.4,5.1,2.7,g);ladder(2.8,-3.35,2.45,g,true);
     mesh(new T.CylinderGeometry(1.85,1.85,1.45,72,1,true),interior,[0,3.7,0],g);cyl(1.84,.10,[0,3.02,0],zinc,g);for(const y of [3,4.43]){ring(1.87,.05,[0,y,0],zinc,g);circleBolts(1.87,[0,y+.045,0],g,'y',28);}cyl(1.73,.04,[0,3.2,0],m.raw,g);
-    const agitator=group([0,3.32,0],g,true);cyl(.13,.75,[0,.3,0],m.polished,agitator);for(let n=0;n<4;n++){const a=n*Math.PI/2;rod([0,.42,0],[Math.cos(a)*1.62,.14,Math.sin(a)*1.62],.06,zinc,agitator);const paddle=box(.34,.34,.55,[Math.cos(a)*1.55,.14,Math.sin(a)*1.55],cast,agitator,.025);paddle.rotation.y=-a;}rotors.push({object:agitator,axis:'y',zone:'GR',speed:.55});
+    const agitator=group([0,3.32,0],g,true);cyl(.13,.75,[0,.3,0],m.polished,agitator);for(let n=0;n<4;n++){const a=n*Math.PI/2;rod([0,.42,0],[Math.cos(a)*1.62,.14,Math.sin(a)*1.62],.06,zinc,agitator);const paddle=box(.34,.34,.55,[Math.cos(a)*1.55,.14,Math.sin(a)*1.55],cast,agitator,.025);paddle.rotation.y=-a;}rotors.push({object:agitator,axis:'y',zone:'GR',speed:rpmToRadians(P.mixerRpm)});
     gearmotor([-2.8,3,0],g,1.1,Math.PI);hatch([0,3.7,1.84],.34,g);gauge([.75,4.2,1.7],g);pipe([[0,2.8,0],[0,1.7,0],[0,1.7,2.5],[4.5,1.7,2.5]],.18,zinc,g);valve([0,2.3,0],g);flange(.23,[0,1.7,2.2],g,'z');
     // Separate weighing vessels and their supporting portal leave the mixing pan visible.
     for(const x of [-2.5,2.5]){for(const z of [-1.1,1.1])box(.1,3,.1,[x,4.2,z],cast,g);cyl(.64,1.1,[x,6.4,-.45],enamel,g);cyl(.13,.75,[x,5.48,-.45],zinc,g,.64);flange(.68,[x,6.95,-.45],g);pipe([[x,5.1,-.45],[x*.6,4.75,-.45],[x*.5,4.45,-.45]],.12,zinc,g);for(const z of [-1.1,1.1])box(.22,.12,.26,[x,6.3,z],blue,g);}
@@ -119,5 +124,5 @@ export function createEquipmentModels(k,rotors){
     for(const x of [-2.2,2.2])fence(1.55,2.4,[x,.25,2.4],g);
     textPlate('GP-01',1,.24,[0,4.32,1.89],g);
   }
-  return {CR,TY,BS,GR,GK,GP,hollowHopper,gearmotor,fence,panel,handle,bolt,flange,cylinder,zinc,blue,enamel,cast,wire};
+  return {CR,TY,BS,GR,GK,GP,hollowHopper,gearmotor,fence,panel,handle,bolt,flange,cylinder,gauge,zinc,blue,enamel,cast,wire};
 }
