@@ -1,3 +1,4 @@
+import {ALL_EXTENSIONS} from '@gltf-transform/extensions';
 import {NodeIO} from '@gltf-transform/core';
 import {compactPrimitive,prune,textureCompress} from '@gltf-transform/functions';
 import {MeshoptSimplifier} from 'meshoptimizer';
@@ -10,7 +11,7 @@ const root=fileURLToPath(new URL('../',import.meta.url));
 const triangles=doc=>doc.getRoot().listMeshes().reduce((sum,mesh)=>sum+mesh.listPrimitives().reduce((n,p)=>n+(p.getIndices()?.getCount()??p.getAttribute('POSITION').getCount())/3,0),0);
 
 export async function prepareTabletCab(){
-  const io=new NodeIO(),source=join(root,'public/models/man-tractor-cab.glb');
+  const io=new NodeIO().registerExtensions(ALL_EXTENSIONS),source=join(root,'public/models/man-tractor-cab.glb');
   const document=await io.read(source),before=triangles(document);
   await MeshoptSimplifier.ready;
   const sourceNode=document.getRoot().listNodes()[0],sourceMesh=sourceNode.getMesh();
@@ -29,7 +30,7 @@ export async function prepareTabletCab(){
     scene.addChild(document.createNode(name).setMesh(result));
   }
   scene.removeChild(sourceNode);sourceNode.dispose();
-  await document.transform(prune(),textureCompress({encoder:sharp,targetFormat:'jpeg',resize:[2048,2048],quality:85}));
+  await document.transform(prune(),textureCompress({encoder:sharp,targetFormat:'jpeg',resize:[1024,1024],quality:85}));
   // Plain glTF buffers: no runtime decompressor or network request required.
   const binary=await io.writeBinary(document);
   await writeFile(join(root,'public/models/man-tractor-cab-tablet.glb'),binary);
@@ -44,7 +45,7 @@ export async function tabletAsset(path,mime){
     const compact=await sharp(bytes).rotate().resize(edge,edge,{fit:'inside',withoutEnlargement:true}).webp({quality:84}).toBuffer();
     if(compact.length<original.length){bytes=compact;mime='image/webp';}
   }
-  if(path==='models/ATTRIBUTION.txt')bytes=Buffer.concat([bytes,Buffer.from('\nTablet version: mesh simplified into near/far distance levels and texture resized to 2048 pixels. Original attribution and license apply.\n')]);
+  if(path==='models/ATTRIBUTION.txt')bytes=Buffer.concat([bytes,Buffer.from('\nTablet version: mesh simplified into near/far distance levels and texture resized to 1024 pixels. Original attribution and license apply.\n')]);
   return {bytes,mime};
 }
 

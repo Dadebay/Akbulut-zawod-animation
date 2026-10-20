@@ -1,0 +1,178 @@
+[
+  {
+    "profile": "desktop",
+    "camera": 1,
+    "draws": "490",
+    "fps": "32",
+    "meter": "DESKTOP · 32 FPS · 8.07M triangles · 490 draws · CPU 0.9+22.6 ms · 1.00× · 364 MiB tex (est.) · 1372 MB JS",
+    "readyCamera": "1",
+    "textureMiB": "364.4",
+    "textures": "125",
+    "triangles": "8074005"
+  },
+  {
+    "profile": "desktop",
+    "camera": 2,
+    "draws": "187",
+    "fps": "57",
+    "meter": "DESKTOP · 57 FPS · 6.23M triangles · 187 draws · CPU 1.0+12.0 ms · 1.00× · 364 MiB tex (est.) · 1394 MB JS",
+    "readyCamera": "2",
+    "textureMiB": "364.4",
+    "textures": "125",
+    "triangles": "6227490"
+  },
+  {
+    "profile": "desktop",
+    "camera": 3,
+    "draws": "198",
+    "fps": "54",
+    "meter": "DESKTOP · 54 FPS · 6.77M triangles · 198 draws · CPU 0.8+14.1 ms · 1.00× · 364 MiB tex (est.) · 1388 MB JS",
+    "readyCamera": "3",
+    "textureMiB": "364.4",
+    "textures": "125",
+    "triangles": "6765442"
+  },
+  {
+    "profile": "desktop",
+    "camera": 4,
+    "draws": "192",
+    "fps": "61",
+    "meter": "DESKTOP · 61 FPS · 3.87M triangles · 192 draws · CPU 1.1+11.8 ms · 1.00× · 364 MiB tex (est.) · 1401 MB JS",
+    "readyCamera": "4",
+    "textureMiB": "364.4",
+    "textures": "125",
+    "triangles": "3872169"
+  },
+  {
+    "profile": "desktop",
+    "camera": 5,
+    "draws": "114",
+    "fps": "56",
+    "meter": "DESKTOP · 56 FPS · 1.16M triangles · 114 draws · CPU 1.0+8.7 ms · 1.00× · 364 MiB tex (est.) · 1398 MB JS",
+    "readyCamera": "5",
+    "textureMiB": "364.4",
+    "textures": "125",
+    "triangles": "1160830"
+  },
+  {
+    "profile": "desktop",
+    "camera": 6,
+    "draws": "218",
+    "fps": "48",
+    "meter": "DESKTOP · 48 FPS · 7.96M triangles · 218 draws · CPU 0.9+17.4 ms · 1.00× · 364 MiB tex (est.) · 1399 MB JS",
+    "readyCamera": "6",
+    "textureMiB": "364.4",
+    "textures": "125",
+    "triangles": "7964025"
+  },
+  {
+    "profile": "desktop",
+    "camera": 7,
+    "draws": "233",
+    "fps": "39",
+    "meter": "DESKTOP · 39 FPS · 8.91M triangles · 233 draws · CPU 0.9+20.4 ms · 1.00× · 364 MiB tex (est.) · 1400 MB JS",
+    "readyCamera": "7",
+    "textureMiB": "364.4",
+    "textures": "125",
+    "triangles": "8908456"
+  },
+  {
+    "profile": "desktop",
+    "camera": 8,
+    "draws": "152",
+    "fps": "59",
+    "meter": "DESKTOP · 59 FPS · 4.45M triangles · 152 draws · CPU 0.9+10.5 ms · 1.00× · 364 MiB tex (est.) · 1408 MB JS",
+    "readyCamera": "8",
+    "textureMiB": "364.4",
+    "textures": "125",
+    "triangles": "4451211"
+  },
+  {
+    "profile": "tablet",
+    "camera": 1,
+    "draws": "242",
+    "fps": "60",
+    "meter": "TABLET · 60 FPS · 1.82M triangles · 242 draws · CPU 0.9+5.7 ms · 1.00× · 257 MiB tex (est.) · 830 MB JS",
+    "readyCamera": "1",
+    "textureMiB": "257.0",
+    "textures": "144",
+    "triangles": "1819912"
+  },
+  {
+    "profile": "tablet",
+    "camera": 2,
+    "draws": "80",
+    "fps": "61",
+    "meter": "TABLET · 61 FPS · 0.56M triangles · 80 draws · CPU 0.9+3.7 ms · 1.00× · 257 MiB tex (est.) · 846 MB JS",
+    "readyCamera": "2",
+    "textureMiB": "257.0",
+    "textures": "144",
+    "triangles": "564779"
+  },
+  {
+    "profile": "tablet",
+    "camera": 3,
+    "draws": "96",
+    "fps": "61",
+    "meter": "TABLET · 61 FPS · 0.81M triangles · 96 draws · CPU 0.9+3.5 ms · 1.00× · 257 MiB tex (est.) · 828 MB JS",
+    "readyCamera": "3",
+    "textureMiB": "257.0",
+    "textures": "144",
+    "triangles": "813661"
+  },
+  {
+    "profile": "tablet",
+    "camera": 4,
+    "draws": "84",
+    "fps": "61",
+    "meter": "TABLET · 61 FPS · 0.42M triangles · 84 draws · CPU 0.9+3.4 ms · 1.00× · 257 MiB tex (est.) · 831 MB JS",
+    "readyCamera": "4",
+    "textureMiB": "257.0",
+    "textures": "144",
+    "triangles": "415826"
+  },
+  {
+    "profile": "tablet",
+    "camera": 5,
+    "draws": "25",
+    "fps": "61",
+    "meter": "TABLET · 61 FPS · 0.16M triangles · 25 draws · CPU 0.9+3.0 ms · 1.00× · 257 MiB tex (est.) · 847 MB JS",
+    "readyCamera": "5",
+    "textureMiB": "257.0",
+    "textures": "144",
+    "triangles": "162141"
+  },
+  {
+    "profile": "tablet",
+    "camera": 6,
+    "draws": "51",
+    "fps": "61",
+    "meter": "TABLET · 61 FPS · 0.54M triangles · 51 draws · CPU 1.1+4.5 ms · 1.00× · 257 MiB tex (est.) · 857 MB JS",
+    "readyCamera": "6",
+    "textureMiB": "257.0",
+    "textures": "144",
+    "triangles": "538768"
+  },
+  {
+    "profile": "tablet",
+    "camera": 7,
+    "draws": "107",
+    "fps": "61",
+    "meter": "TABLET · 61 FPS · 1.41M triangles · 107 draws · CPU 1.0+6.7 ms · 1.00× · 257 MiB tex (est.) · 854 MB JS",
+    "readyCamera": "7",
+    "textureMiB": "257.0",
+    "textures": "144",
+    "triangles": "1405055"
+  },
+  {
+    "profile": "tablet",
+    "camera": 8,
+    "draws": "57",
+    "fps": "61",
+    "meter": "TABLET · 61 FPS · 0.46M triangles · 57 draws · CPU 0.9+2.9 ms · 1.00× · 257 MiB tex (est.) · 846 MB JS",
+    "readyCamera": "8",
+    "textureMiB": "257.0",
+    "textures": "144",
+    "triangles": "464974"
+  }
+]

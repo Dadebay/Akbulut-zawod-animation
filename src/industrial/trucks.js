@@ -167,9 +167,23 @@ export function createTruckBuilder(k,pallet){
         if(k.tablet){
           cab=new T.LOD();cab.addLevel(asset.scene.getObjectByName('CabNear').clone(true),0);cab.addLevel(asset.scene.getObjectByName('CabFar').clone(true),45,.15);
         }else cab=asset.scene.clone(true);
-        record.cabMount.add(cab);
+        record.cabMount.add(cab);record.loadedCab=cab;
         cab.traverse(o=>{if(o.isMesh){o.castShadow=!k.tablet;o.receiveShadow=true;}if(!o.isLOD){o.updateMatrix();o.matrixAutoUpdate=false;}});
       }
+      // Reuse the already licensed tablet LODs for distant desktop vehicles.
+      // Keep the full scan at inspection distance and every existing rig hook.
+      if(!k.tablet)new GLTFLoader().load(assetUrl('models/man-tractor-cab-tablet.glb'),low=>{
+        let shared;asset.scene.traverse(o=>{if(o.isMesh)shared=o.material;});
+        const discarded=new Set();low.scene.traverse(o=>{if(o.isMesh){discarded.add(o.material);o.material=shared;}});
+        discarded.forEach(mat=>{Object.values(mat).forEach(v=>{if(v?.isTexture)v.dispose();});mat.dispose();});
+        if(cancelled){low.scene.traverse(o=>{if(o.isMesh)o.geometry.dispose();});return;}
+        k.trackObject(low.scene);
+        for(const record of records){
+          const lod=new T.LOD();lod.addLevel(record.loadedCab,0);lod.addLevel(low.scene.getObjectByName('CabNear').clone(true),35,.15);lod.addLevel(low.scene.getObjectByName('CabFar').clone(true),75,.15);
+          lod.autoUpdate=false;k.onDetailUpdate(camera=>{lod.updateWorldMatrix(true,false);lod.update(camera);});record.cabMount.add(lod);lod.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+        }
+        onLoaded?.();
+      },undefined,()=>{});
       onLoaded?.();
     },undefined,error=>console.error('TIR model could not be loaded',error));
     return()=>{cancelled=true;};

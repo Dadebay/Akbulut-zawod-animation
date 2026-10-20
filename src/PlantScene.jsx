@@ -1,3 +1,7 @@
+import {estimateSceneTextureBytes} from './industrial/renderMetrics.js';
+import {fitSunShadow} from './industrial/lighting.js';
+import {bakeStaticAO} from './industrial/staticAO.js';
+import {createReviewControls} from './industrial/reviewCameras.js';
 import {createRenderPipeline} from './industrial/renderPipeline.js';
 import {loadSkyEnvironment,applyPhotographicSurfaces} from './industrial/realism.js';
 import {useEffect,useRef,useState} from 'react';
@@ -67,16 +71,16 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
     try{renderer=new T.WebGLRenderer({antialias:false,alpha:true,powerPreference:'high-performance',logarithmicDepthBuffer:true});}catch{setFailed(true);return;}
     renderer.setPixelRatio(Math.min(devicePixelRatio,TABLET?1:1.25));renderer.shadowMap.enabled=true;renderer.shadowMap.autoUpdate=!TABLET;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=.93;container.appendChild(renderer.domElement);
     let dirty=true,previousView='',lastSimulationTime=-1,lastLabelTime=0,lastProcessNotify=0;
-    const scene=new T.Scene();scene.background=new T.Color('#dce4eb');scene.fog=new T.Fog('#dce4eb',650,1900);
+    const scene=new T.Scene();scene.background=new T.Color('#dce4eb');scene.fog=new T.FogExp2('#dce4eb',.00075);
     const camera=new T.PerspectiveCamera(36,1,.5,2800);camera.position.set(...(PRESETS[state.current.area]||PRESETS.site).position);
     const pipeline=createRenderPipeline(renderer,scene,camera,{ambientOcclusion:!TABLET});
     const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(...(PRESETS[state.current.area]||PRESETS.site).target);controls.enableDamping=true;controls.dampingFactor=.08;controls.minDistance=8;controls.maxDistance=1150;controls.maxPolarAngle=Math.PI/2.08;controls.minPolarAngle=.05;controls.enablePan=true;controls.zoomToCursor=true;
     const room=new RoomEnvironment(),pmrem=new T.PMREMGenerator(renderer),environment=pmrem.fromScene(room,.025);scene.environment=environment.texture;scene.environmentIntensity=.4;room.dispose();pmrem.dispose();
     // A real sky photograph lights and reflects the scene once it has loaded.
-    let skyBackground=null;
-    loadSkyEnvironment(renderer,scene,hdr=>{skyBackground=hdr;if(hdr&&!lastNight){scene.background=hdr;scene.backgroundIntensity=.9;}dirty=true;});
+    let skyBackground=null,sunDirection=new T.Vector3(-.44,.82,.36).normalize();
+    const stopSky=loadSkyEnvironment(renderer,scene,(hdr,direction)=>{skyBackground=hdr;if(direction)sunDirection.copy(direction);renderer.shadowMap.needsUpdate=true;if(hdr&&!lastNight){scene.background=hdr;scene.backgroundIntensity=.9;}dirty=true;});
     const hemisphere=new T.HemisphereLight('#e9f2ff','#777467',.7);scene.add(hemisphere);
-    const sun=new T.DirectionalLight('#fff3df',2.0);sun.position.set(-110,170,65);sun.castShadow=true;sun.shadow.mapSize.set(TABLET?1024:4096,TABLET?1024:4096);sun.shadow.normalBias=.04;Object.assign(sun.shadow.camera,{left:-160,right:160,top:160,bottom:-160,near:1,far:500});sun.shadow.normalBias=.08;sun.shadow.bias=-.0001;sun.shadow.radius=2;sun.target.position.set(-30,0,-35);scene.add(sun,sun.target);
+    const sun=new T.DirectionalLight('#fff5e9',2.4);sun.castShadow=true;sun.shadow.mapSize.set(TABLET?2048:4096,TABLET?2048:4096);scene.add(sun,sun.target);
     const fill=new T.DirectionalLight('#b7d4f1',.45);fill.position.set(30,30,-30);scene.add(fill);
     const k=createKit(scene,{tablet:TABLET});const production=buildProduction(k);production.root.position.set(8,0,-25);const logistics=buildLogistics(k,production.operators.map(o=>({...o,pos:[o.pos[0]+8,o.pos[1],o.pos[2]-25]})));const site=buildSite(k);const landscape=buildLandscape(k);const materialFlow=buildMaterialFlow(k,logistics),moveLogistics=createJourneyMotion(logistics,landscape.vehicleSurface);
     const oldInterior=buildOldCampusInterior(k,logistics.pallet);
@@ -87,12 +91,13 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
       roofs:[k.material('#8795a5',.22,.7),k.material('#6f8092',.25,.65),k.material('#699780',.27,.58)],
       paving:[k.material('#7a838c',0,.95)],
     });
+    if(TABLET)bakeStaticAO(k);
     poolSurfaces(k);k.optimize({preserveRepeated:true});let updateBatches;
     let lastNight;
     function setTimeOfDay(night){
       scene.background=night||!skyBackground?new T.Color(night?'#101c30':'#dce4eb'):skyBackground;scene.fog.color.set(night?'#101c30':'#dce4eb');
       hemisphere.color.set(night?'#7e9dcb':'#e9f2ff');hemisphere.groundColor.set(night?'#2d3540':'#777467');hemisphere.intensity=night?.32:.3;
-      sun.color.set(night?'#91b1da':'#fff3df');sun.intensity=night?.16:2.4;
+      sun.color.set(night?'#91b1da':'#fff5e9');sun.intensity=night?.16:2.4;
       fill.intensity=night?.12:.45;scene.environmentIntensity=night?.12:.45;renderer.toneMappingExposure=night?1.08:.86;
       lighting.setNight(night);container.dataset.timeOfDay=night?'night':'day';lastNight=night;dirty=true;
     }
@@ -134,17 +139,19 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
     };
     const stopTransition=()=>{transition=false;manualCamera=true;state.current.onManualCamera?.({cutaway:production.root.visible});};controls.addEventListener('start',stopTransition);
     api.current.setCamera(state.current.area,view,equipmentFocus);
+    const review=createReviewControls(container,preset=>{manualCamera=true;moveCamera(preset,true);});review?.select();
     let frame,clock=0,ambientClock=0,lastRequest=-1,lastStep=-1,wasFollowing=false,lastNotify=0,lastInterior;
     let width=1,height=1,lastMachines,active=new Map();
     let lastEco=state.current.eco,renderClock=createRenderClock(lastEco?30:60),resolutionBudget=createResolutionBudget(lastEco?30:60);
     const resetClock=()=>{renderClock.reset();resolutionBudget.reset();dirty=true;};document.addEventListener('visibilitychange',resetClock);
     const meter=new URLSearchParams(location.search).has('perf')?document.createElement('output'):null;
+    let textureMiB=0,measuredCamera=-1;
     let measuredAt=performance.now(),renderedFrames=0,workMs=0,drawMs=0;
     if(meter){meter.style.cssText='position:absolute;left:18px;top:110px;z-index:20;background:#fff;color:#16416b;padding:10px;font:12px monospace;pointer-events:none';container.appendChild(meter);}
     function resize(){dirty=true;({width,height}=container.getBoundingClientRect());pipeline.resize(width,height);camera.aspect=width/Math.max(height,1);camera.fov=width<600?61:36;camera.updateProjectionMatrix();}
     const observer=new ResizeObserver(resize);observer.observe(container);resize();
     const tmp=new T.Vector3(),haulCameraOffset=new T.Vector3();
-    function animate(now){frame=requestAnimationFrame(animate);if(document.hidden)return;if(lastEco!==state.current.eco){lastEco=state.current.eco;renderClock=createRenderClock(lastEco?30:60);resolutionBudget=createResolutionBudget(lastEco?30:60);dirty=true;}const dt=renderClock.next(now);if(dt===null)return;const workStart=performance.now();const s=state.current,animateMotion=!s.paused&&!reduced.matches;
+    function animate(now){frame=requestAnimationFrame(animate);if(document.hidden)return;if(lastEco!==state.current.eco){lastEco=state.current.eco;renderClock=createRenderClock(lastEco?30:60);resolutionBudget=createResolutionBudget(lastEco?30:60);dirty=true;}const dt=renderClock.next(now);if(dt===null)return;const workStart=performance.now();const s=state.current,animateMotion=!review&&!s.paused&&!reduced.matches;
       if(s.machines!==lastMachines){dirty=true;lastMachines=s.machines;active=new Map(ZONES.map(z=>[z.id,s.machines.find(m=>m.id===`AKB-${z.id}-001`)]));}
       const viewKey=`${s.area}:${s.roof}:${s.selected}:${s.paused}:${s.follow}:${s.night}:${s.loopStep}`;if(viewKey!==previousView){dirty=true;previousView=viewKey;}
       if(lastNight!==s.night)setTimeOfDay(s.night);
@@ -161,7 +168,7 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
           if(loopRestarted)changed=true;
         }else clock+=dt*s.speed;
       }
-      const journey=journeyAt(clock),following=s.follow&&!manualCamera,showInterior=s.follow?(manualCamera?production.root.visible:journey.step.cutaway):!s.roof;
+      const journey=journeyAt(clock),following=s.follow&&!manualCamera,showInterior=review?review.interior:s.follow?(manualCamera?production.root.visible:journey.step.cutaway):!s.roof;
       const opacity=journeyOpacity(journey.time,{following,playing:animateMotion&&!blocked,loopStep:s.loopStep});
       renderer.domElement.style.opacity=opacity;labels.current.style.opacity=opacity;
       container.style.background=s.night?'#101c30':'#dce4eb';
@@ -211,8 +218,8 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
       // Facade ventilation runs at a steady speed even when the tour is paused.
       const ventilationMoving=!showInterior&&!reduced.matches;
       if(ventilationMoving)site.updateVentilation(dt);
-      if(!animateMotion&&!ventilationMoving&&!transition&&!cameraMoved&&!dirty&&!changed){resolutionBudget.reset();return;}
-      if(cameraMoved||dirty||changed)k.updateDetailVisibility(camera);
+      if(!review&&!animateMotion&&!ventilationMoving&&!transition&&!cameraMoved&&!dirty&&!changed){resolutionBudget.reset();return;}
+      if(cameraMoved||dirty||changed||animateMotion)k.updateDetailVisibility(camera);
       production.updateMotion(animateMotion?dt*s.speed:0,{preview:equipmentPreview,stage:journey.index,active,showInterior,showLines:s.area==='lines'&&showInterior});
       if(showInterior&&(now-lastProcessNotify>500||changed)){
         const boards=production.products.filter(p=>p.kind==='panel'&&p.object.visible&&p.batch);
@@ -230,11 +237,15 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
       container.dataset.journeyStep=journey.step.id;container.dataset.truckLoads=journey.truckLoads;container.dataset.trainLoads=journey.trainLoads;
       if(cameraMoved||dirty||changed||now-lastLabelTime>100){lastLabelTime=now;camera.updateMatrixWorld();anchors.forEach(({label,point,zone,site:siteLabel,line:lineLabel})=>{tmp.copy(point).project(camera);label.style.transform=`translate(-50%,-100%) translate(${(tmp.x*.5+.5)*width}px,${(-tmp.y*.5+.5)*height}px)`;label.style.visibility=tmp.z>1||tmp.x< -1||tmp.x>1||tmp.y< -1||tmp.y>1||(siteLabel&&(['process','lines'].includes(s.area)||s.follow))||(lineLabel&&(s.area!=='lines'||!showInterior))||(!siteLabel&&!lineLabel&&(!showInterior||s.area==='lines'))?'hidden':'visible';if(zone){label.style.setProperty('--status',STATUSES[active.get(zone)?.status||'offline'].color);label.classList.toggle('is-selected',s.selected===`AKB-${zone}-001`);}});}
       if(TABLET&&(animateMotion||ventilationMoving||transition||cameraMoved)){const scale=resolutionBudget.sample(dt);if(scale!==null)pipeline.resize(width,height,Math.min(devicePixelRatio,scale));}
-      updateBatches();const drawStart=performance.now();pipeline.render();const drawEnd=performance.now();dirty=false;
-      if(meter){workMs+=drawStart-workStart;drawMs+=drawEnd-drawStart;renderedFrames++;if(now-measuredAt>=1000){meter.textContent=`${TABLET?'TABLET':'DESKTOP'} · ${Math.round(renderedFrames*1000/(now-measuredAt))} FPS · ${(renderer.info.render.triangles/1e6).toFixed(2)}M triangles · ${renderer.info.render.calls} draws · CPU ${(workMs/renderedFrames).toFixed(1)}+${(drawMs/renderedFrames).toFixed(1)} ms · ${renderer.getPixelRatio().toFixed(2)}× · ${performance.memory?Math.round(performance.memory.usedJSHeapSize/1048576)+' MB JS':'JS n/a'}`;renderedFrames=0;workMs=0;drawMs=0;measuredAt=now;}}
+      updateBatches();camera.updateMatrixWorld();
+      fitSunShadow(sun,camera,controls.target,sunDirection,{mapSize:TABLET?2048:4096});
+      if(TABLET&&(cameraMoved||dirty||changed))renderer.shadowMap.needsUpdate=true;
+      pipeline.update(camera.position.distanceTo(controls.target),s.night);const drawStart=performance.now();pipeline.render();const drawEnd=performance.now();dirty=false;
+      if(review)container.dataset.reviewCamera=String(review.index+1);
+      if(meter){if(review&&measuredCamera!==review.index){measuredCamera=review.index;measuredAt=now;renderedFrames=0;workMs=0;drawMs=0;delete meter.dataset.readyCamera;}meter.dataset.draws=String(renderer.info.render.calls);meter.dataset.triangles=String(renderer.info.render.triangles);meter.dataset.textures=String(renderer.info.memory.textures);workMs+=drawStart-workStart;drawMs+=drawEnd-drawStart;renderedFrames++;if(now-measuredAt>=1000){if(review)meter.dataset.readyCamera=String(review.index+1);textureMiB=estimateSceneTextureBytes(scene,k,pipeline)/1048576;meter.dataset.textureMiB=textureMiB.toFixed(1);meter.dataset.fps=String(Math.round(renderedFrames*1000/(now-measuredAt)));meter.textContent=`${TABLET?'TABLET':'DESKTOP'} · ${Math.round(renderedFrames*1000/(now-measuredAt))} FPS · ${(renderer.info.render.triangles/1e6).toFixed(2)}M triangles · ${renderer.info.render.calls} draws · CPU ${(workMs/renderedFrames).toFixed(1)}+${(drawMs/renderedFrames).toFixed(1)} ms · ${renderer.getPixelRatio().toFixed(2)}× · ${textureMiB.toFixed(0)} MiB tex (est.) · ${performance.memory?Math.round(performance.memory.usedJSHeapSize/1048576)+' MB JS':'JS n/a'}`;renderedFrames=0;workMs=0;drawMs=0;measuredAt=now;}}
     }
     frame=requestAnimationFrame(animate);
-    return()=>{stopTruckLoad();cancelAnimationFrame(frame);document.removeEventListener('visibilitychange',resetClock);meter?.remove();observer.disconnect();controls.removeEventListener('start',stopTransition);controls.dispose();k.dispose();environment.dispose();sun.shadow.dispose();pipeline.dispose();renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();anchors.forEach(a=>a.label.remove());api.current=null;};
+    return()=>{review?.dispose();stopSky();stopTruckLoad();cancelAnimationFrame(frame);document.removeEventListener('visibilitychange',resetClock);meter?.remove();observer.disconnect();controls.removeEventListener('start',stopTransition);controls.dispose();k.dispose();environment.dispose();sun.shadow.dispose();pipeline.dispose();renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();anchors.forEach(a=>a.label.remove());api.current=null;};
   },[]);
   return <div className="plant-scene" ref={host}><div className="scene-labels" ref={labels}/>{failed&&<div className="scene-fallback"><span>3D görnüş bu brauzerde elýeterli däl.</span><div>{ZONES.map(z=><button key={z.id} onClick={()=>onSelect(`AKB-${z.id}-001`)}>{z.name}<strong>120 enjam</strong></button>)}</div></div>}</div>;
 }

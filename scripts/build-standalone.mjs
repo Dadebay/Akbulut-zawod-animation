@@ -10,7 +10,7 @@ const publicDir=join(root,'public');
 const assetModule=join(root,'src/assets.js');
 const tablet=process.argv.includes('--tablet');
 const outputDir=join(root,tablet?'standalone-tablet':'standalone');
-const mimeTypes={'.webp':'image/webp','.png':'image/png','.jpg':'image/jpeg','.glb':'model/gltf-binary','.txt':'text/plain;charset=utf-8'};
+const mimeTypes={'.webp':'image/webp','.png':'image/png','.jpg':'image/jpeg','.glb':'model/gltf-binary','.txt':'text/plain;charset=utf-8','.md':'text/markdown;charset=utf-8','.hdr':'application/octet-stream'};
 
 async function filesIn(directory,prefix=''){
   const entries=await readdir(directory,{withFileTypes:true});

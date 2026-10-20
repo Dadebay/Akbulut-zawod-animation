@@ -154,7 +154,17 @@ export function createVegetation(k){
       }
       const trunk=mergeGeometries(trunkParts);trunkParts.forEach(g=>g.dispose());
       const crown=new T.BufferGeometry();crown.setAttribute('position',new T.Float32BufferAttribute(leaves,3));crown.setAttribute('color',new T.Float32BufferAttribute(colors,3));crown.computeVertexNormals();
+      // The filled inner crown preserves silhouette at distance; needle sprays
+      // only need their full geometry close to the camera.
+      function crownLOD(stride){
+        const indices=[];
+        for(let tri=0;tri<leaves.length/9;tri++)if(tri<rings*sides*2||Math.floor((tri-rings*sides*2)/4)%stride===0)indices.push(tri*3,tri*3+1,tri*3+2);
+        const geo=crown.clone();geo.setIndex(indices);return geo;
+      }
       const woody=k.instances(trunk,bark,trees.length),leafy=k.instances(crown,foliage,trees.length),o=new T.Object3D();
+      leafy.userData.lodGeometries=[{geometry:crownLOD(k.tablet?4:3),distance:k.tablet?35:50},{geometry:crownLOD(10000),distance:k.tablet?65:100}];
+      const simpleTrunk=new T.CylinderGeometry(.045,.13,7.35,5).translate(0,3.675,0);
+      woody.userData.lodGeometries=[{geometry:simpleTrunk,distance:50}];
       woody.customDepthMaterial=bark.userData.treeDepth;leafy.customDepthMaterial=foliage.userData.treeDepth;
       trees.forEach((tree,i)=>{
         const {x,z,sx,sy,sz,yaw,leanX,leanZ,tint}=tree;

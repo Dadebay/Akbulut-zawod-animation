@@ -1,10 +1,11 @@
 import * as T from 'three';
+import {assetUrl} from '../assets.js';
+import {brightestSkyDirection} from './lighting.js';
 import {HDRLoader} from 'three/addons/loaders/HDRLoader.js';
 
 // Photographic lighting and surfaces (CC0 assets from Poly Haven, see
 // public/textures/pbr and public/env). Everything degrades to the original flat
 // look if a file fails to load.
-const BASE=import.meta.env?.BASE_URL??'/';
 const PBR_SETS={
   // The plant is new: fresh pit-lane tarmac and clean concrete, no cracks or stains.
   asphalt:'asphalt_pit_lane',concrete:'rough_concrete',metal:'corrugated_iron_02',grass:'aerial_grass_rock',
@@ -18,19 +19,20 @@ const PHOTO_MEAN={
 // Sky image for reflections and ambient light. Returns the equirectangular
 // texture for use as a background, or null when it cannot be loaded.
 export function loadSkyEnvironment(renderer,scene,onReady){
-  new HDRLoader().load(`${BASE}env/sky_2k.hdr`,hdr=>{
-    hdr.mapping=T.EquirectangularReflectionMapping;
+  let disposed=false,sky=null,target=null;
+  new HDRLoader().load(assetUrl('env/sky_2k.hdr'),hdr=>{
+    if(disposed){hdr.dispose();return;}
+    sky=hdr;hdr.mapping=T.EquirectangularReflectionMapping;
     const pmrem=new T.PMREMGenerator(renderer);
-    const previous=scene.environment;
-    scene.environment=pmrem.fromEquirectangular(hdr).texture;pmrem.dispose();
-    previous?.dispose?.();
-    onReady?.(hdr);
-  },undefined,()=>onReady?.(null));
+    target=pmrem.fromEquirectangular(hdr);pmrem.dispose();scene.environment=target.texture;
+    onReady?.(hdr,brightestSkyDirection(hdr.image,hdr.type));
+  },undefined,()=>{if(!disposed)onReady?.(null);});
+  return ()=>{disposed=true;sky?.dispose();target?.dispose();};
 }
 
 function loadSet(loader,name,tablet){
   const load=(suffix,srgb)=>{
-    const t=loader.load(`${BASE}textures/pbr/${name}_${suffix}.jpg`);
+    const t=loader.load(assetUrl(`textures/pbr/${name}_${suffix}.jpg`));
     t.wrapS=t.wrapT=T.RepeatWrapping;t.anisotropy=tablet?2:8;
     if(srgb)t.colorSpace=T.SRGBColorSpace;
     return t;
@@ -43,8 +45,10 @@ function loadSet(loader,name,tablet){
 // from world X/Z instead: one tile covers `size` metres on every surface.
 function projectFromAbove(material,set,{size,mean,detail=.6}){
   // The material keeps its own colour; the photo only adds detail around it.
-  Object.assign(material,set);
-  material.onBeforeCompile=shader=>{
+  Object.assign(material,set,{bumpMap:null});
+  const previous=material.onBeforeCompile,cacheKey=material.customProgramCacheKey();
+  material.onBeforeCompile=(shader,renderer)=>{
+    previous.call(material,shader,renderer);
     shader.uniforms.worldTile={value:1/size};shader.uniforms.detail={value:detail};shader.uniforms.photoMean={value:new T.Vector3(...mean)};
     shader.vertexShader=shader.vertexShader
       .replace('#include <common>','#include <common>\nvarying vec2 vWorldXZ;')
@@ -62,7 +66,7 @@ function projectFromAbove(material,set,{size,mean,detail=.6}){
       .replace('#include <map_fragment>','vec2 worldUv=vWorldXZ*worldTile;\nvec3 photo=texture2D(map,worldUv).rgb;\ndiffuseColor.rgb*=mix(vec3(1.0),photo/photoMean,detail);')
       .replace('#include <roughnessmap_fragment>','float roughnessFactor=clamp(roughness*(.85+.3*texture2D(roughnessMap,worldUv).g),.6,1.0);');
   };
-  material.customProgramCacheKey=()=>`world-projected-${size}-${detail}`;
+  material.customProgramCacheKey=()=>`${cacheKey}:world-projected-${size}-${detail}`;
   material.needsUpdate=true;
 }
 
@@ -70,7 +74,7 @@ function projectFromAbove(material,set,{size,mean,detail=.6}){
 // given roof materials with real asphalt, concrete, grass and corrugated metal.
 export function applyPhotographicSurfaces(k,{roofs=[],paving=[]}={}){
   const loader=new T.TextureLoader(),tablet=!!k.tablet,sets={};
-  for(const [key,name] of Object.entries(PBR_SETS))sets[key]=loadSet(loader,name,tablet);
+  for(const [key,name] of Object.entries(PBR_SETS)){sets[key]=loadSet(loader,name,tablet);Object.values(sets[key]).forEach(k.trackTexture);}
   const M=PHOTO_MEAN;
   k.m.road.color.set('#575d61');
   projectFromAbove(k.m.road,sets.asphalt,{size:4,mean:M.asphalt,detail:.5});

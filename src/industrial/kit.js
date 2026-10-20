@@ -19,11 +19,11 @@ export function createKit(scene,{tablet=false}={}) {
     textures.add(t);return t;
   }
   const grain=texture('steel'),concrete=texture('concrete'),grassGrain=texture('grass'),asphaltGrain=texture('asphalt');
-  function material(color,metalness=0,roughness=.7,{unique=false,...more}={}){
+  function material(color,metalness=0,roughness=.7,{unique=false,physical=false,...more}={}){
     const params={color,metalness,roughness,...more};
-    const key=JSON.stringify(Object.keys(params).sort().map(key=>[key,params[key]?.uuid??params[key]]));
+    const key=physical+JSON.stringify(Object.keys(params).sort().map(key=>[key,params[key]?.uuid??params[key]]));
     if(!unique&&materialCache.has(key))return materialCache.get(key);
-    const mat=new T.MeshStandardMaterial(params);mat.userData.independent=unique;registerMaterial(mat);
+    const mat=physical?new T.MeshPhysicalMaterial(params):new T.MeshStandardMaterial(params);mat.userData.independent=unique;registerMaterial(mat);
     if(!unique)materialCache.set(key,mat);return mat;
   }
   function onDetailUpdate(update){detailUpdaters.push(update);}
@@ -35,7 +35,7 @@ export function createKit(scene,{tablet=false}={}) {
     concrete:material('#a8aca9',0,.95,{bumpMap:concrete,bumpScale:.035}),road:material('#656c70',0,.98,{map:asphaltGrain,bumpMap:asphaltGrain,bumpScale:.013}),
     sand:material('#c8bd9f',0,1),grass:material('#667c49',0,1,{map:grassGrain}),yellow:material('#e6bc39',.15,.6),orange:material('#d88824',.1,.6),
     wood:material('#91795a',0,.95),paper:material('#ebe8de',0,.9),skin:material('#c2a18b',0,.8),
-    glass:material('#3b5667',.65,.18,{transparent:true,opacity:.72}),light:material('#f1ebc9',0,.3,{emissive:'#fff0bf',emissiveIntensity:.4}),
+    glass:material('#a5bbc6',0,.14,{physical:true,transmission:0,ior:1.5,transparent:true,opacity:.72}),light:material('#f1ebc9',0,.3,{emissive:'#fff0bf',emissiveIntensity:.4}),
     red:material('#ab3b39',.2,.5),raw:material('#c4bfac',0,1)
   };
   // Road ribbons, junction patches and courtyard slabs use the same grain
@@ -135,7 +135,7 @@ export function createKit(scene,{tablet=false}={}) {
         parts.forEach(p=>p.dispose());
       }
     }
-    if(tablet){
+    {
       // Independent bounds let the GPU skip groves and stone fields outside the
       // camera. One instance batch for the entire site defeats that culling.
       const fields=[];scene.traverse(o=>{if(o.isInstancedMesh&&o.count>500&&!o.userData.preserveInstances)fields.push(o);});
@@ -148,6 +148,16 @@ export function createKit(scene,{tablet=false}={}) {
           chunk.castShadow=field.castShadow;chunk.receiveShadow=field.receiveShadow;
           chunk.customDepthMaterial=field.customDepthMaterial;
           matrices.forEach(({matrix,color},i)=>{chunk.setMatrixAt(i,matrix);if(color)chunk.setColorAt(i,color);});chunk.instanceMatrix.needsUpdate=true;if(chunk.instanceColor)chunk.instanceColor.needsUpdate=true;chunk.computeBoundingSphere();
+          if(field.userData.lodGeometries){
+            const lod=new T.LOD();lod.autoUpdate=false;field.parent.add(lod);lod.addLevel(chunk,0);
+            // LOD distance is measured from this cell's world-space centre.
+            chunk.computeBoundingSphere();const centre=chunk.boundingSphere.center.clone();lod.position.copy(centre);chunk.position.sub(centre);
+            for(const {geometry,distance} of field.userData.lodGeometries){
+              const level=instances(geometry,chunk.material,chunk.count,lod);level.instanceMatrix=chunk.instanceMatrix;level.instanceColor=chunk.instanceColor;
+              level.position.copy(chunk.position);level.quaternion.copy(chunk.quaternion);level.scale.copy(chunk.scale);level.castShadow=chunk.castShadow;level.receiveShadow=chunk.receiveShadow;level.customDepthMaterial=chunk.customDepthMaterial;level.computeBoundingSphere();lod.addLevel(level,distance);
+            }
+            detailUpdaters.push(camera=>lod.update(camera));
+          }
           if(field.userData.detailDistance){chunk.updateWorldMatrix(true,false);const sphere=chunk.boundingSphere.clone().applyMatrix4(chunk.matrixWorld);detailChunks.push({chunk,sphere,distance:field.userData.detailDistance});}
         }
         field.removeFromParent();field.dispose();
@@ -172,5 +182,6 @@ export function createKit(scene,{tablet=false}={}) {
     geometries.clear();materials.clear();textures.clear();geoCache.clear();
     textTiles.clear();atlases.length=0;materialCache.clear();detailUpdaters.length=0;detailChunks.length=0;materialEffects.clear();vehicleLights.length=0;
   }
-  return {m,scene,tablet,windTime,trackMaterial:registerMaterial,onDetailUpdate,pruneGeometries,vehicleLights,addMaterialEffect,mesh,instances,trackGeometry,trackTexture,trackObject,box,cyl,sphere,ring,rod,pipe,group,beam,frame,railing,platform,ladder,bolts,motor,cabinet,textPlate,material,optimize,updateDetailVisibility,dispose};
+  function getTextures(){const all=new Set(textures);materials.forEach(mat=>Object.values(mat).forEach(v=>{if(v?.isTexture)all.add(v);}));return all;}
+  return {m,scene,tablet,windTime,getTextures,trackMaterial:registerMaterial,onDetailUpdate,pruneGeometries,vehicleLights,addMaterialEffect,mesh,instances,trackGeometry,trackTexture,trackObject,box,cyl,sphere,ring,rod,pipe,group,beam,frame,railing,platform,ladder,bolts,motor,cabinet,textPlate,material,optimize,updateDetailVisibility,dispose};
 }
