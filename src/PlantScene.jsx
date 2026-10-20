@@ -1,4 +1,5 @@
 import {createRenderPipeline} from './industrial/renderPipeline.js';
+import {loadSkyEnvironment,applyPhotographicSurfaces} from './industrial/realism.js';
 import {useEffect,useRef,useState} from 'react';
 import * as T from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
@@ -68,23 +69,31 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
     let dirty=true,previousView='',lastSimulationTime=-1,lastLabelTime=0,lastProcessNotify=0;
     const scene=new T.Scene();scene.background=new T.Color('#dce4eb');scene.fog=new T.Fog('#dce4eb',650,1900);
     const camera=new T.PerspectiveCamera(36,1,.5,2800);camera.position.set(...(PRESETS[state.current.area]||PRESETS.site).position);
-    const pipeline=createRenderPipeline(renderer,scene,camera);
+    const pipeline=createRenderPipeline(renderer,scene,camera,{ambientOcclusion:!TABLET});
     const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(...(PRESETS[state.current.area]||PRESETS.site).target);controls.enableDamping=true;controls.dampingFactor=.08;controls.minDistance=8;controls.maxDistance=1150;controls.maxPolarAngle=Math.PI/2.08;controls.minPolarAngle=.05;controls.enablePan=true;controls.zoomToCursor=true;
     const room=new RoomEnvironment(),pmrem=new T.PMREMGenerator(renderer),environment=pmrem.fromScene(room,.025);scene.environment=environment.texture;scene.environmentIntensity=.4;room.dispose();pmrem.dispose();
+    // A real sky photograph lights and reflects the scene once it has loaded.
+    let skyBackground=null;
+    loadSkyEnvironment(renderer,scene,hdr=>{skyBackground=hdr;if(hdr&&!lastNight){scene.background=hdr;scene.backgroundIntensity=.9;}dirty=true;});
     const hemisphere=new T.HemisphereLight('#e9f2ff','#777467',.7);scene.add(hemisphere);
-    const sun=new T.DirectionalLight('#fff3df',2.0);sun.position.set(-110,170,65);sun.castShadow=true;sun.shadow.mapSize.set(TABLET?1024:2048,TABLET?1024:2048);Object.assign(sun.shadow.camera,{left:-160,right:160,top:160,bottom:-160,near:1,far:500});sun.shadow.normalBias=.08;sun.shadow.bias=-.0001;sun.shadow.radius=2;sun.target.position.set(-30,0,-35);scene.add(sun,sun.target);
+    const sun=new T.DirectionalLight('#fff3df',2.0);sun.position.set(-110,170,65);sun.castShadow=true;sun.shadow.mapSize.set(TABLET?1024:4096,TABLET?1024:4096);sun.shadow.normalBias=.04;Object.assign(sun.shadow.camera,{left:-160,right:160,top:160,bottom:-160,near:1,far:500});sun.shadow.normalBias=.08;sun.shadow.bias=-.0001;sun.shadow.radius=2;sun.target.position.set(-30,0,-35);scene.add(sun,sun.target);
     const fill=new T.DirectionalLight('#b7d4f1',.45);fill.position.set(30,30,-30);scene.add(fill);
     const k=createKit(scene,{tablet:TABLET});const production=buildProduction(k);production.root.position.set(8,0,-25);const logistics=buildLogistics(k,production.operators.map(o=>({...o,pos:[o.pos[0]+8,o.pos[1],o.pos[2]-25]})));const site=buildSite(k);const landscape=buildLandscape(k);const materialFlow=buildMaterialFlow(k,logistics),moveLogistics=createJourneyMotion(logistics,landscape.vehicleSurface);
     const oldInterior=buildOldCampusInterior(k,logistics.pallet);
     const birds=buildBirds(k),services=buildFactoryServices(k,production);
     const lighting=buildCampusLighting(k,{logistics,loader:materialFlow.loader,production,excavator:landscape});
+    // Real asphalt, concrete, grass and corrugated roof sheets, sized in metres.
+    applyPhotographicSurfaces(k,{
+      roofs:[k.material('#8795a5',.22,.7),k.material('#6f8092',.25,.65),k.material('#699780',.27,.58)],
+      paving:[k.material('#7a838c',0,.95)],
+    });
     poolSurfaces(k);k.optimize({preserveRepeated:true});let updateBatches;
     let lastNight;
     function setTimeOfDay(night){
-      scene.background.set(night?'#101c30':'#dce4eb');scene.fog.color.copy(scene.background);
-      hemisphere.color.set(night?'#7e9dcb':'#e9f2ff');hemisphere.groundColor.set(night?'#2d3540':'#777467');hemisphere.intensity=night?.32:.7;
-      sun.color.set(night?'#91b1da':'#fff3df');sun.intensity=night?.16:2;
-      fill.intensity=night?.12:.45;scene.environmentIntensity=night?.12:.4;renderer.toneMappingExposure=night?1.08:.93;
+      scene.background=night||!skyBackground?new T.Color(night?'#101c30':'#dce4eb'):skyBackground;scene.fog.color.set(night?'#101c30':'#dce4eb');
+      hemisphere.color.set(night?'#7e9dcb':'#e9f2ff');hemisphere.groundColor.set(night?'#2d3540':'#777467');hemisphere.intensity=night?.32:.3;
+      sun.color.set(night?'#91b1da':'#fff3df');sun.intensity=night?.16:2.4;
+      fill.intensity=night?.12:.45;scene.environmentIntensity=night?.12:.45;renderer.toneMappingExposure=night?1.08:.86;
       lighting.setNight(night);container.dataset.timeOfDay=night?'night':'day';lastNight=night;dirty=true;
     }
     if(TABLET){

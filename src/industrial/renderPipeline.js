@@ -4,6 +4,7 @@ import {ShaderPass} from 'three/addons/postprocessing/ShaderPass.js';
 import {OutputPass} from 'three/addons/postprocessing/OutputPass.js';
 import {FXAAShader} from 'three/addons/shaders/FXAAShader.js';
 import {antialiasMode} from '../renderBudget.js';
+import {N8AOPass} from 'n8ao';
 
 // Resizing WebGL clears its drawing buffer. Queue size/quality changes and
 // apply them immediately before drawing, so the browser never presents that
@@ -29,8 +30,15 @@ export function createFramePresenter(renderer,configure,draw){
   };
 }
 
-export function createRenderPipeline(renderer,scene,camera){
-  const composer=new EffectComposer(renderer),render=new RenderPass(scene,camera),fxaa=new ShaderPass(FXAAShader),output=new OutputPass();
+export function createRenderPipeline(renderer,scene,camera,{ambientOcclusion=false}={}){
+  const composer=new EffectComposer(renderer),fxaa=new ShaderPass(FXAAShader),output=new OutputPass();
+  // Ambient occlusion grounds objects in their contact shadows. It replaces the
+  // plain scene pass; the output pass after it handles tone mapping and sRGB.
+  let render;
+  if(ambientOcclusion){
+    render=new N8AOPass(scene,camera,1,1);render.autosetGamma=false;
+    Object.assign(render.configuration,{aoRadius:3.5,distanceFalloff:1,intensity:3.5,gammaCorrection:false,aoSamples:16,denoiseSamples:8});
+  }else render=new RenderPass(scene,camera);
   // FXAA detects contrast in display space, after tone mapping and output conversion.
   composer.addPass(render);composer.addPass(output);composer.addPass(fxaa);
   renderer.info.autoReset=false;

@@ -21,6 +21,7 @@
     "@capacitor/splash-screen": "^8.0.2",
     "@capacitor/status-bar": "^8.0.4",
     "lucide-react": "^0.468.0",
+    "n8ao": "^2.0.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "three": "^0.181.0"
