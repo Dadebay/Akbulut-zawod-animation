@@ -3,19 +3,6 @@ import {assetUrl} from '../assets.js';
 import {brightestSkyDirection} from './lighting.js';
 import {HDRLoader} from 'three/addons/loaders/HDRLoader.js';
 
-// Photographic lighting and surfaces (CC0 assets from Poly Haven, see
-// public/textures/pbr and public/env). Everything degrades to the original flat
-// look if a file fails to load.
-const PBR_SETS={
-  // The plant is new: fresh pit-lane tarmac and clean concrete, no cracks or stains.
-  asphalt:'asphalt_pit_lane',concrete:'rough_concrete',metal:'corrugated_iron_02',grass:'aerial_grass_rock',
-};
-// Average linear colour of each photo. Dividing by it leaves only the detail,
-// so every surface keeps its own colour and brightness.
-const PHOTO_MEAN={
-  asphalt:[.055,.045,.036],concrete:[.483,.464,.336],metal:[.099,.098,.083],grass:[.169,.121,.025],
-};
-
 // Sky image for reflections and ambient light. Returns the equirectangular
 // texture for use as a background, or null when it cannot be loaded.
 export function loadSkyEnvironment(renderer,scene,onReady){
@@ -30,57 +17,47 @@ export function loadSkyEnvironment(renderer,scene,onReady){
   return ()=>{disposed=true;sky?.dispose();target?.dispose();};
 }
 
-function loadSet(loader,name,tablet){
-  const load=(suffix,srgb)=>{
-    const t=loader.load(assetUrl(`textures/pbr/${name}_${suffix}.jpg`));
-    t.wrapS=t.wrapT=T.RepeatWrapping;t.anisotropy=tablet?2:8;
-    if(srgb)t.colorSpace=T.SRGBColorSpace;
-    return t;
-  };
-  // Normal maps are left out: from aerial cameras they only brightened the surfaces.
-  return {map:load('diff',true),roughnessMap:load('rough',false)};
-}
-
-// Ground slabs and roofs are huge boxes with 0..1 UVs, so sample the textures
-// from world X/Z instead: one tile covers `size` metres on every surface.
-function projectFromAbove(material,set,{size,mean,detail=.6}){
-  // The material keeps its own colour; the photo only adds detail around it.
-  Object.assign(material,set,{bumpMap:null});
+// World-space box projection uses the transformed normal, including nonuniform
+// instance scales and BatchedMesh transforms. No tangent-space normal map is
+// sampled with an unrelated mesh UV/TBN. Detail only modulates the mean colour.
+export function applyTriplanar(material,set,{size=1,mean=[1,1,1],detail=.6}={}){
+  Object.assign(material,{map:set.map,roughnessMap:set.roughnessMap,bumpMap:null});
   const previous=material.onBeforeCompile,cacheKey=material.customProgramCacheKey();
-  material.onBeforeCompile=(shader,renderer)=>{
-    previous.call(material,shader,renderer);
-    shader.uniforms.worldTile={value:1/size};shader.uniforms.detail={value:detail};shader.uniforms.photoMean={value:new T.Vector3(...mean)};
+  material.onBeforeCompile=function(shader,renderer){
+    previous.call(this,shader,renderer);
+    Object.assign(shader.uniforms,{worldTile:{value:1/size},surfaceDetail:{value:detail},photoMean:{value:new T.Vector3(...mean)}});
     shader.vertexShader=shader.vertexShader
-      .replace('#include <common>','#include <common>\nvarying vec2 vWorldXZ;')
-      .replace('#include <worldpos_vertex>',`#include <worldpos_vertex>
-      vec4 projectedWorld=modelMatrix*vec4(transformed,1.0);
-      #ifdef USE_INSTANCING
-        projectedWorld=modelMatrix*instanceMatrix*vec4(transformed,1.0);
-      #endif
-      #ifdef USE_BATCHING
-        projectedWorld=modelMatrix*batchingMatrix*vec4(transformed,1.0);
-      #endif
-      vWorldXZ=projectedWorld.xz;`);
+      .replace('#include <common>','#include <common>\nvarying vec3 vSurfaceWorld; varying vec3 vSurfaceNormal;')
+      .replace('#include <project_vertex>',`#include <project_vertex>
+        vec4 surfacePosition=vec4(transformed,1.0);
+        #ifdef USE_BATCHING
+          surfacePosition=batchingMatrix*surfacePosition;
+        #endif
+        #ifdef USE_INSTANCING
+          surfacePosition=instanceMatrix*surfacePosition;
+        #endif
+        vSurfaceWorld=(modelMatrix*surfacePosition).xyz;
+        vSurfaceNormal=inverseTransformDirection(transformedNormal,viewMatrix);`);
     shader.fragmentShader=shader.fragmentShader
-      .replace('#include <common>','#include <common>\nuniform float worldTile;\nuniform float detail;\nuniform vec3 photoMean;\nvarying vec2 vWorldXZ;')
-      .replace('#include <map_fragment>','vec2 worldUv=vWorldXZ*worldTile;\nvec3 photo=texture2D(map,worldUv).rgb;\ndiffuseColor.rgb*=mix(vec3(1.0),photo/photoMean,detail);')
-      .replace('#include <roughnessmap_fragment>','float roughnessFactor=clamp(roughness*(.85+.3*texture2D(roughnessMap,worldUv).g),.6,1.0);');
+      .replace('#include <common>',`#include <common>
+        uniform float worldTile; uniform float surfaceDetail; uniform vec3 photoMean;
+        varying vec3 vSurfaceWorld; varying vec3 vSurfaceNormal;
+        vec4 surfaceSample(sampler2D tex,vec3 p,vec3 weights){
+          vec3 dx=dFdx(p),dy=dFdy(p);
+          // Flat walls/roofs need one sample; retain blended box mapping on edges.
+          // Explicit derivatives keep mip selection correct across branch edges.
+          if(weights.x>.999)return textureGrad(tex,p.zy,dx.zy,dy.zy);
+          if(weights.y>.999)return textureGrad(tex,p.xz,dx.xz,dy.xz);
+          if(weights.z>.999)return textureGrad(tex,p.xy,dx.xy,dy.xy);
+          return textureGrad(tex,p.zy,dx.zy,dy.zy)*weights.x+textureGrad(tex,p.xz,dx.xz,dy.xz)*weights.y+textureGrad(tex,p.xy,dx.xy,dy.xy)*weights.z;
+        }`)
+      .replace('#include <map_fragment>',`vec3 surfaceWeights=pow(abs(normalize(vSurfaceNormal)),vec3(4.0));
+        surfaceWeights/=max(dot(surfaceWeights,vec3(1.0)),0.00001);
+        vec3 surfaceUv=vSurfaceWorld*worldTile;
+        vec4 sampledDiffuseColor=surfaceSample(map,surfaceUv,surfaceWeights);
+        diffuseColor.rgb*=mix(vec3(1.0),sampledDiffuseColor.rgb/photoMean,surfaceDetail);`)
+      .replace('#include <roughnessmap_fragment>',`float roughnessFactor=clamp(roughness*(.75+.5*surfaceSample(roughnessMap,surfaceUv,surfaceWeights).g),.04,1.0);`);
   };
-  material.customProgramCacheKey=()=>`${cacheKey}:world-projected-${size}-${detail}`;
+  material.customProgramCacheKey=()=>`${cacheKey}:triplanar-v1:${size}:${detail}:${mean.join(',')}`;
   material.needsUpdate=true;
-}
-
-// Replace the procedural grain on the kit's shared ground materials and on the
-// given roof materials with real asphalt, concrete, grass and corrugated metal.
-export function applyPhotographicSurfaces(k,{roofs=[],paving=[]}={}){
-  const loader=new T.TextureLoader(),tablet=!!k.tablet,sets={};
-  for(const [key,name] of Object.entries(PBR_SETS)){sets[key]=loadSet(loader,name,tablet);Object.values(sets[key]).forEach(k.trackTexture);}
-  const M=PHOTO_MEAN;
-  k.m.road.color.set('#575d61');
-  projectFromAbove(k.m.road,sets.asphalt,{size:4,mean:M.asphalt,detail:.5});
-  projectFromAbove(k.m.concrete,sets.concrete,{size:7,mean:M.concrete,detail:.45});
-  projectFromAbove(k.m.grass,sets.grass,{size:12,mean:M.grass,detail:.35});
-  for(const mat of paving)projectFromAbove(mat,sets.concrete,{size:7,mean:M.concrete,detail:.45});
-  for(const mat of roofs)projectFromAbove(mat,sets.metal,{size:2.4,mean:M.metal,detail:.4});
-  return sets;
 }

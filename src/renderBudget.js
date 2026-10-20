@@ -33,3 +33,10 @@ export function createResolutionBudget(targetFPS=60){
 
 // Retain a final contrast filter for subpixel roof ribs and road markings even at 1×.
 export const antialiasMode=pixelRatio=>({samples:pixelRatio<1?0:4,useFXAA:true});
+
+// Bound postprocessing attachments on high-DPI/tablet displays as well as fill
+// rate. Quality adaptation is relative to this cap, never the uncapped DPR.
+export function profilePixelRatio(width,height,deviceRatio,tablet,quality=1){
+  const pixelLimit=tablet?900000:3700000;
+  return Math.min(deviceRatio,tablet?1:1.25,Math.sqrt(pixelLimit/Math.max(1,width*height)))*quality;
+}

@@ -18,7 +18,9 @@ export function brightestSkyDirection({data,width,height},type=T.HalfFloatType){
 export function fitSunShadow(sun,camera,target,direction,{mapSize=4096}={}){
   const distance=camera.position.distanceTo(target);
   const halfView=distance*Math.tan(T.MathUtils.degToRad(camera.fov/2))*Math.max(1,camera.aspect);
-  const extent=Math.max(48,Math.ceil((halfView*1.5+24)/16)*16);
+  const required=halfView*1.5+24,previous=sun.userData.fittedShadowExtent;
+  const extent=!previous||required>previous+.01||required<previous-16.01?Math.max(48,Math.ceil((required+.01)/16)*16):previous;
+  sun.userData.fittedShadowExtent=extent;
   const basis=new T.Matrix4().lookAt(direction,new T.Vector3(),new T.Vector3(0,1,0));
   const inverse=basis.clone().invert(),centre=target.clone().applyMatrix4(inverse),texel=extent*2/mapSize;
   centre.x=Math.round(centre.x/texel)*texel;centre.y=Math.round(centre.y/texel)*texel;

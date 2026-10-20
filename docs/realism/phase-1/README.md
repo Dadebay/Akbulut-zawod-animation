@@ -2,7 +2,9 @@
 
 Implemented: HDR-derived sun direction; texel-snapped camera-fitted shadows; five-ray static vertex AO on tablet; SMAA on desktop and MSAA + FXAA on tablet; neutral generated LUT; night-only high-threshold bloom; exponential aerial haze; reflective shared physical glass; environment/texture disposal; offline HDR and attribution embedding.
 
-Existing tree and truck geometry now has distance detail levels; desktop scan texture capped at 2K WebP and tablet at 1K. No site, traffic, rail, deck, or vehicle footprint constants changed.
+At this phase checkpoint, tree and truck geometry had distance detail levels; desktop scan texture capped at 2K WebP and tablet at 1K. No site, traffic, rail, deck, or vehicle footprint constants changed.
+
+The tree simplification was subsequently rejected by the user and removed in [phase 2](../phase-2/README.md); the screenshots and measurements here remain the historical phase-1 checkpoint.
 
 ## Checks
 

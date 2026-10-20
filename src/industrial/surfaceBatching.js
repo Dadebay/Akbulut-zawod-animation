@@ -8,7 +8,7 @@ export function poolSurfaces(k){
   k.scene.traverse(o=>{
     if(!o.isMesh||o.isInstancedMesh||o.isBatchedMesh||Array.isArray(o.material))return;
     const mat=o.material;
-    if(!mat.isMeshStandardMaterial||mat.userData.independent||mat.transparent||mat.vertexColors||mat.emissive.getHex()!==0||Object.values(mat).some(v=>v?.isTexture)||mat.onBeforeCompile.toString().includes('terrainBlend'))return;
+    if(!mat.isMeshStandardMaterial||mat.isMeshPhysicalMaterial||mat.userData.independent||mat.transparent||mat.vertexColors||mat.emissive.getHex()!==0||Object.values(mat).some(v=>v?.isTexture)||mat.onBeforeCompile.toString().includes('terrainBlend'))return;
     const key=[mat.side,mat.flatShading,mat.depthTest,mat.depthWrite,mat.polygonOffset,mat.polygonOffsetFactor,mat.polygonOffsetUnits].join(':');
     if(!families.has(key)){
       const shared=k.material('#ffffff',1,1,{unique:true,vertexColors:true,side:mat.side,flatShading:mat.flatShading,depthTest:mat.depthTest,depthWrite:mat.depthWrite,polygonOffset:mat.polygonOffset,polygonOffsetFactor:mat.polygonOffsetFactor,polygonOffsetUnits:mat.polygonOffsetUnits});

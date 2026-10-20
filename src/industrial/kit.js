@@ -1,4 +1,5 @@
 import * as T from 'three';
+import {createMaterialLibrary,createPalette} from './materials.js';
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
 import {mergeGeometries,mergeVertices} from 'three/addons/utils/BufferGeometryUtils.js';
 
@@ -7,59 +8,17 @@ export function createKit(scene,{tablet=false}={}) {
   const geometries=new Set(), textures=new Set(), materials=new Set(),detailChunks=[],materialEffects=new Set(),vehicleLights=[],detailUpdaters=[],materialCache=new Map(),windTime={value:0};
   function registerMaterial(mat){if(!materials.has(mat)){materials.add(mat);materialEffects.forEach(effect=>effect(mat));}}
   function addMaterialEffect(effect){materialEffects.add(effect);materials.forEach(effect);}
-  function texture(kind){
-    const canvas=document.createElement('canvas');canvas.width=canvas.height=256;
-    const c=canvas.getContext('2d'), img=c.createImageData(256,256);let seed=42;
-    for(let i=0;i<img.data.length;i+=4){seed=(1664525*seed+1013904223)>>>0;const n=seed/4294967296;const v=kind==='grass'?242+n*13:kind==='steel'||kind==='asphalt'?190+n*35:180+n*35;img.data[i]=img.data[i+1]=img.data[i+2]=v;img.data[i+3]=255;}
-    c.putImageData(img,0,0);
-    if(kind==='steel'){c.strokeStyle='#ffffff1a';for(let y=0;y<256;y+=2){c.beginPath();c.moveTo(0,y);c.lineTo(256,y);c.stroke();}}
-    const t=new T.CanvasTexture(canvas);t.wrapS=t.wrapT=T.RepeatWrapping;
-    const repeat=kind==='asphalt'?[1,1]:kind==='grass'?[4,4]:kind==='steel'?[2,4]:[12,12];t.repeat.set(...repeat);
-    if(kind==='grass'||kind==='asphalt')t.colorSpace=T.SRGBColorSpace;
-    textures.add(t);return t;
-  }
-  const grain=texture('steel'),concrete=texture('concrete'),grassGrain=texture('grass'),asphaltGrain=texture('asphalt');
+  const library=createMaterialLibrary({tablet,trackTexture:t=>{textures.add(t);return t;}});
   function material(color,metalness=0,roughness=.7,{unique=false,physical=false,...more}={}){
-    const params={color,metalness,roughness,...more};
-    const key=physical+JSON.stringify(Object.keys(params).sort().map(key=>[key,params[key]?.uuid??params[key]]));
+    const resolved=library.resolve(color,metalness,roughness,{physical,...more}),params=resolved.params;
+    const key=resolved.physical+String(resolved.name)+JSON.stringify(Object.keys(params).sort().map(key=>[key,params[key]?.uuid??params[key]]));
     if(!unique&&materialCache.has(key))return materialCache.get(key);
-    const mat=physical?new T.MeshPhysicalMaterial(params):new T.MeshStandardMaterial(params);mat.userData.independent=unique;registerMaterial(mat);
+    const mat=library.create(resolved);mat.userData.independent=unique;registerMaterial(mat);
     if(!unique)materialCache.set(key,mat);return mat;
   }
   function onDetailUpdate(update){detailUpdaters.push(update);}
 
-  const m={
-    blue:material('#18569c',.5,.34),blueLight:material('#427fb5',.45,.36),white:material('#dce2e5',.25,.42),
-    steel:material('#a9b4bb',.86,.3,{roughnessMap:grain}),polished:material('#c0c9cf',.92,.21),dark:material('#33424c',.7,.42),
-    black:material('#17212a',.3,.58),rubber:material('#1c2226',0,.95),floor:material('#bbc2c7',.06,.88,{map:concrete}),
-    concrete:material('#a8aca9',0,.95,{bumpMap:concrete,bumpScale:.035}),road:material('#656c70',0,.98,{map:asphaltGrain,bumpMap:asphaltGrain,bumpScale:.013}),
-    sand:material('#c8bd9f',0,1),grass:material('#667c49',0,1,{map:grassGrain}),yellow:material('#e6bc39',.15,.6),orange:material('#d88824',.1,.6),
-    wood:material('#91795a',0,.95),paper:material('#ebe8de',0,.9),skin:material('#c2a18b',0,.8),
-    glass:material('#a5bbc6',0,.14,{physical:true,transmission:0,ior:1.5,transparent:true,opacity:.72}),light:material('#f1ebc9',0,.3,{emissive:'#fff0bf',emissiveIntensity:.4}),
-    red:material('#ab3b39',.2,.5),raw:material('#c4bfac',0,1)
-  };
-  // Road ribbons, junction patches and courtyard slabs use the same grain
-  // at the same world scale, including after their geometry is batched.
-  m.road.onBeforeCompile=shader=>{
-    shader.vertexShader=shader.vertexShader.replace('#include <uv_vertex>',`#include <uv_vertex>
-      vec2 asphaltUv = (modelMatrix * vec4(position, 1.0)).xz / 3.0;
-      #ifdef USE_MAP
-        vMapUv = asphaltUv;
-      #endif
-      #ifdef USE_BUMPMAP
-        vBumpMapUv = asphaltUv;
-      #endif`);
-  };
-  m.road.customProgramCacheKey=()=> 'site-asphalt-world-uv-v1';
-  // Lawn patches share the same texture scale and phase, including shaped
-  // beds whose default UVs differ from neighbouring boxes.
-  m.grass.onBeforeCompile=shader=>{
-    shader.vertexShader=shader.vertexShader.replace('#include <uv_vertex>',`#include <uv_vertex>
-      #ifdef USE_MAP
-        vMapUv = (modelMatrix * vec4(position, 1.0)).xz / 6.0;
-      #endif`);
-  };
-  m.grass.customProgramCacheKey=()=> 'site-grass-world-uv-v1';
+  const m=createPalette(material);
   const geoCache=new Map();
   function cached(key,fn){if(!geoCache.has(key)){const g=fn();geometries.add(g);geoCache.set(key,g);}return geoCache.get(key);}
   // Asphalt receives building/tree shadows; overlapping ground slabs must
@@ -69,10 +28,16 @@ export function createKit(scene,{tablet=false}={}) {
   function trackGeometry(g){geometries.add(g);return g;}
   function trackTexture(t){textures.add(t);return t;}
   function trackObject(root){root.traverse(o=>{if(!o.isMesh)return;geometries.add(o.geometry);for(const mat of Array.isArray(o.material)?o.material:[o.material]){registerMaterial(mat);for(const value of Object.values(mat))if(value?.isTexture)textures.add(value);}});return root;}
-  function box(w,h,d,pos,mat=m.white,parent=scene,bevel=0){const geo=cached(`b${w},${h},${d},${bevel}`,()=>bevel?mergeVertices(new RoundedBoxGeometry(w,h,d,tablet?1:2,Math.min(bevel,w/4,h/4,d/4))):new T.BoxGeometry(w,h,d));return mesh(geo,mat,pos,parent);}
-  function cyl(r,h,pos,mat=m.steel,parent=scene,rt=r,segments=32){segments=tablet?Math.min(segments,r<.15?8:16):segments;return mesh(cached(`c${r},${h},${rt},${segments}`,()=>new T.CylinderGeometry(rt,r,h,segments)),mat,pos,parent);}
+  function box(w,h,d,pos,mat=m.white,parent=scene,bevel){
+    bevel=bevel??(Math.min(w,h,d)>=.25&&Math.max(w,h,d)<=8?mat.userData.edgeRadius||0:0);
+    const segments=1;
+    const geo=cached(`b${w},${h},${d},${bevel},${segments}`,()=>bevel?mergeVertices(new RoundedBoxGeometry(w,h,d,segments,Math.min(bevel,w/4,h/4,d/4))):new T.BoxGeometry(w,h,d));return mesh(geo,mat,pos,parent);
+  }
+  // Subpixel fasteners/rim beads receive light/AO but do not need their own
+  // shadow-map draw. Structural posts and tyre silhouettes still cast shadows.
+  function cyl(r,h,pos,mat=m.steel,parent=scene,rt=r,segments=32){segments=Math.min(segments,r<.15?(tablet?8:12):(tablet?12:24));const o=mesh(cached(`c${r},${h},${rt},${segments}`,()=>new T.CylinderGeometry(rt,r,h,segments)),mat,pos,parent);o.castShadow&&=Math.max(r,rt)>=.08;return o;}
   function sphere(r,pos,mat=m.steel,parent=scene){return mesh(cached(`s${r}`,()=>new T.SphereGeometry(r,tablet?10:16,tablet?6:10)),mat,pos,parent);}
-  function ring(r,t,pos,mat=m.steel,parent=scene,axis='y'){const o=mesh(cached(`t${r},${t}`,()=>new T.TorusGeometry(r,t,tablet?4:8,tablet?(r<.16?12:20):48)),mat,pos,parent);if(axis==='y')o.rotation.x=Math.PI/2;if(axis==='x')o.rotation.y=Math.PI/2;return o;}
+  function ring(r,t,pos,mat=m.steel,parent=scene,axis='y'){const o=mesh(cached(`t${r},${t}`,()=>new T.TorusGeometry(r,t,tablet?4:8,tablet?(r<.16?12:16):(r<.16?16:32))),mat,pos,parent);if(axis==='y')o.rotation.x=Math.PI/2;if(axis==='x')o.rotation.y=Math.PI/2;o.castShadow&&=t>=.05;return o;}
   function rod(a,b,r=.04,mat=m.steel,parent=scene){const start=new T.Vector3(...a),end=new T.Vector3(...b),dir=end.clone().sub(start);const o=cyl(r,dir.length(),start.clone().add(end).multiplyScalar(.5).toArray(),mat,parent);o.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),dir.normalize());return o;}
   function pipe(points,r=.15,mat=m.steel,parent=scene){return mesh(new T.TubeGeometry(new T.CatmullRomCurve3(points.map(p=>new T.Vector3(...p))),tablet?24:40,r,tablet?8:12,false),mat,[0,0,0],parent);}
   function group(pos=[0,0,0],parent=scene,dynamic=false){const g=new T.Group();g.position.set(...pos);g.userData.dynamic=dynamic;parent.add(g);return g;}
@@ -148,16 +113,6 @@ export function createKit(scene,{tablet=false}={}) {
           chunk.castShadow=field.castShadow;chunk.receiveShadow=field.receiveShadow;
           chunk.customDepthMaterial=field.customDepthMaterial;
           matrices.forEach(({matrix,color},i)=>{chunk.setMatrixAt(i,matrix);if(color)chunk.setColorAt(i,color);});chunk.instanceMatrix.needsUpdate=true;if(chunk.instanceColor)chunk.instanceColor.needsUpdate=true;chunk.computeBoundingSphere();
-          if(field.userData.lodGeometries){
-            const lod=new T.LOD();lod.autoUpdate=false;field.parent.add(lod);lod.addLevel(chunk,0);
-            // LOD distance is measured from this cell's world-space centre.
-            chunk.computeBoundingSphere();const centre=chunk.boundingSphere.center.clone();lod.position.copy(centre);chunk.position.sub(centre);
-            for(const {geometry,distance} of field.userData.lodGeometries){
-              const level=instances(geometry,chunk.material,chunk.count,lod);level.instanceMatrix=chunk.instanceMatrix;level.instanceColor=chunk.instanceColor;
-              level.position.copy(chunk.position);level.quaternion.copy(chunk.quaternion);level.scale.copy(chunk.scale);level.castShadow=chunk.castShadow;level.receiveShadow=chunk.receiveShadow;level.customDepthMaterial=chunk.customDepthMaterial;level.computeBoundingSphere();lod.addLevel(level,distance);
-            }
-            detailUpdaters.push(camera=>lod.update(camera));
-          }
           if(field.userData.detailDistance){chunk.updateWorldMatrix(true,false);const sphere=chunk.boundingSphere.clone().applyMatrix4(chunk.matrixWorld);detailChunks.push({chunk,sphere,distance:field.userData.detailDistance});}
         }
         field.removeFromParent();field.dispose();

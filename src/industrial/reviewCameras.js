@@ -14,11 +14,12 @@ export function createReviewControls(container,onCamera){
   if(!import.meta.env?.DEV||!new URLSearchParams(location.search).has('review'))return null;
   const panel=document.createElement('nav');panel.setAttribute('aria-label','Review cameras');
   panel.style.cssText='position:absolute;right:16px;top:120px;z-index:30;display:flex;gap:4px;background:#fff;padding:6px;border-radius:6px';
-  const state={index:0,interior:false};
+  const state={index:0,interior:false,orbit:false};
   REVIEW_CAMERAS.forEach((preset,index)=>{
     const button=document.createElement('button');button.textContent=String(index+1);button.title=preset.name;button.setAttribute('aria-label',`Review ${index+1}: ${preset.name}`);
-    button.onclick=()=>{state.index=index;state.interior=!!preset.interior;panel.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));onCamera(preset);};panel.appendChild(button);
+    button.onclick=()=>{state.orbit=false;state.index=index;state.interior=!!preset.interior;panel.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));onCamera(preset);};panel.appendChild(button);
   });
+  const orbit=document.createElement('button');orbit.textContent='Orbit';orbit.setAttribute('aria-label','Review orbit');orbit.setAttribute('aria-pressed','false');orbit.onclick=()=>{state.orbit=!state.orbit;orbit.setAttribute('aria-pressed',String(state.orbit));};panel.appendChild(orbit);
   container.appendChild(panel);container.dataset.review='true';
-  return {...state,get index(){return state.index;},get interior(){return state.interior;},select(index=0){panel.children[index].click();},dispose(){panel.remove();delete container.dataset.review;}};
+  return {...state,get orbit(){return state.orbit;},get index(){return state.index;},get interior(){return state.interior;},select(index=0){panel.children[index].click();},dispose(){panel.remove();delete container.dataset.review;}};
 }
