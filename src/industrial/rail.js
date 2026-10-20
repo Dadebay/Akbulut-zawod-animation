@@ -175,7 +175,7 @@ export function buildRail(k,pallet){
     box(.22,.20,.17,[x+direction*.47,1.08,.13],frame,parent,.025);
     for(const z of [-.38,.38]){const hose=mesh(new T.TubeGeometry(new T.CatmullRomCurve3([new T.Vector3(x,1.08,z),new T.Vector3(x+direction*.17,.62,z),new T.Vector3(x+direction*.37,.91,z)]),12,.025,6,false),rubber,[0,0,0],parent);}
   }
-  const train=group([0,0,0],k.scene,true);
+  const train=group([RAIL_LAYOUT.offsetX,0,0],k.scene,true);
   for(const [n,cx] of RAIL_LAYOUT.wagonCentres.entries()){
     const g=group([cx,0,RAIL_LAYOUT.z],train);bogie(g,-4.65);bogie(g,4.65);
     for(const z of [-.72,.72]){box(13.4,.28,.13,[0,1.23,z],frame,g);box(13.4,.06,.28,[0,1.35,z],frame,g);}

@@ -78,21 +78,24 @@ test('loading canopy guards and low panel bundles leave forklift routes clear',(
   }
 });
 
-test('forklifts work on the raised deck, which reaches the wagons',()=>{
-  const {platform}=LOADING;
-  const inside=([x,z])=>[platform,...LOADING.deckExtensions].some(d=>x>=d.west&&x<=d.east&&z>=d.north&&z<=d.south);
+test('rail forklifts work on the raised deck; the truck forklift stays off it',()=>{
+  const {platform,ramps}=LOADING;
+  const box=d=>rectangle((d.west+d.east)/2,(d.north+d.south)/2,d.east-d.west,d.south-d.north);
+  const raised=[platform,...ramps].map(box);
+  const inside=([x,z])=>x>=platform.west&&x<=platform.east&&z>=platform.north&&z<=platform.south;
   // The deck edge sits just clear of the 3.2 m locomotive and the wagons.
   assert.ok(platform.north>-53-1.6&&platform.north<-53+1.6);
   for(const [index,job] of FORKLIFT_JOBS.entries()){
-    assert.equal(job.base,platform.height);
+    const onDeck=index>0;
+    assert.equal(job.base,onDeck?platform.height:0);
     for(let t=0;t<=job.duration;t+=.05){
       const pose=sampleForklift(job,t);
-      assert.equal(pose.y,platform.height);
       const body=rectangle(-.25,0,2.4,1.6).map(([along,side])=>[
         pose.x+along*Math.cos(pose.yaw)+side*Math.sin(pose.yaw),
         pose.z-along*Math.sin(pose.yaw)+side*Math.cos(pose.yaw),
       ]);
-      for(const corner of body)assert.ok(inside(corner),`chassis leaves the deck: ${index} at ${t}`);
+      if(onDeck)for(const corner of body)assert.ok(inside(corner),`chassis leaves the deck: ${index} at ${t}`);
+      else for(const r of raised)assert.equal(overlaps(body,r),false,`ground forklift hits the deck: ${index} at ${t}`);
     }
   }
 });

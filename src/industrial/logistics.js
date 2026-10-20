@@ -40,7 +40,7 @@ export function buildLogistics(k,operators){
   // The old hall's covered side entrance accepts an articulated truck.
   // The truck drives in through the open left and right ends of the shed, whose front is closed.
   truck([OLD_SIDE_LOADING.x-6.2,0,OLD_SIDE_LOADING.wallZ+OLD_SIDE_LOADING.depth/2],Math.PI);
-  truck([64,LOADING.platform.height,-43],Math.PI,false,true);
+  truck([64,0,-43],Math.PI,false,true);
 
   const forklift=createForkliftBuilder(k,pallet,worker);
   const [truckFork,railForkA,railForkB]=FORKLIFT_JOBS.map((_,i)=>forklift(i));

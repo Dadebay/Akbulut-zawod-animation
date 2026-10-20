@@ -77,7 +77,7 @@ test('incoming raw-material train brakes on the second track without overlapping
   for(let t=0;t<ARRIVAL_PROFILE.duration+10;t+=.2){
     const poses=ARRIVAL_CAR_OFFSETS.map(offset=>arrivalTrainPose(t,offset));
     assert.ok(poses[0].speed<=3.001);
-    for(let i=1;i<poses.length;i++)assert.ok(poses[i].position.distanceTo(poses[i-1].position)>14.5*.8); // 20% shorter cars
+    for(let i=1;i<poses.length;i++)assert.ok(poses[i].position.distanceTo(poses[i-1].position)>14.5*.72); // 28% shorter cars
   }
   const stopped=arrivalTrainPose(ARRIVAL_PROFILE.duration+5);assert.equal(stopped.speed,0);assert.equal(stopped.position.z,SECOND_TRACK_Z);assert.equal(stopped.switch,0);
 });

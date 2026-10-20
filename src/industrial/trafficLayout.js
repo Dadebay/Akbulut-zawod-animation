@@ -24,10 +24,10 @@ const path=new T.CurvePath();
 const line=(a,b)=>path.add(new T.LineCurve3(v(...a),v(...b)));
 const bend=(a,b,c,d)=>path.add(new T.CubicBezierCurve3(v(...a),v(...b),v(...c),v(...d)));
 // Leave the loading berth before passing the dock columns and pallet stock.
-bend([64,-43],[57,-43],[57,-47.7],[48,-47.7]);
+bend([64,-43],[60,-43],[60,-47.7],[56,-47.7]);
 // Run west along the top of the court, down the fence side and out through the gate
 // onto the gate road that leads to the outer road.
-line([48,-47.7],[-106.6,-47.7]);
+line([56,-47.7],[-106.6,-47.7]);
 bend([-106.6,-47.7],[-113.23,-47.7],[-120.2,-42.33],[-120.2,-35.7]);
 line([-120.2,-35.7],[-120.2,-16]);
 bend([-120.2,-16],[-120.2,-8.27],[-124.87,-2],[-132.6,-2]);

@@ -7,6 +7,7 @@ import {QUARRY} from './quarryLayout.js';
 import {steeringAngle} from './motionPath.js';
 import {HAUL_PROFILE,haulPose} from './haulMotion.js';
 import {TRUCK_SCALE} from './trucks.js';
+import {RAIL_LAYOUT} from './railLayout.js';
 
 // Ride the truck over the loading deck and its ramps, pitched along the slope.
 function placeOnDeck(g,x,z,yaw){
@@ -83,9 +84,10 @@ export function createJourneyMotion(logistics,vehicleSurface){
     trainCargo.forEach((p,i)=>p.visible=i%4<railLoads[Math.floor(i/4)]);
     updateForks(j);
     logistics.updateArrival?.(j.time);
-    train.position.x=index===S.dispatch?-470*Math.pow(j.depart,1.5):0;
+    const trainRun=index===S.dispatch?-470*Math.pow(j.depart,1.5):0;
+    train.position.x=RAIL_LAYOUT.offsetX+trainRun;
     train.visible=true;
-    railWheels.forEach(w=>w.rotation.z=-train.position.x/.4);
+    railWheels.forEach(w=>w.rotation.z=-trainRun/.4);
     if(index===S.dispatch){const pose=dispatchMotion(j.depart);dispatchTruck.updateLights?.(pose,j.time);dispatchTruck.g.position.set(pose.x,0,pose.z);dispatchTruck.g.rotation.y=pose.yaw;placeOnDeck(dispatchTruck.g,pose.x,pose.z,pose.yaw);dispatchTruck.hinge.rotation.y=pose.trailerYaw-pose.yaw;dispatchTruck.ws.forEach(w=>{w.rotation.z=-pose.distance/((w.userData.radius||.51)*TRUCK_SCALE);});dispatchTruck.steering?.forEach(p=>{p.rotation.y=steeringAngle(3.4*TRUCK_SCALE,pose.curvature);});}
     else{dispatchTruck.updateLights?.(null,j.time);dispatchTruck.g.position.set(64,0,-43);dispatchTruck.g.rotation.y=Math.PI;placeOnDeck(dispatchTruck.g,64,-43,Math.PI);dispatchTruck.hinge.rotation.y=0;dispatchTruck.steering?.forEach(p=>{p.rotation.y=0;});}
     dispatchTruck.g.visible=true;

@@ -5,8 +5,8 @@ export const SECOND_TRACK_Z=-57.6;
 // The dormitory-side siding ends before the road crossing.
 export const SECOND_TRACK_END_X=84.5;
 // The detailed locomotive is longer than either of its two raw-stone wagons.
-// Car spacing follows the 20% shorter rolling stock.
-export const ARRIVAL_CAR_OFFSETS=[0,17.4,32.2].map(offset=>offset*.8);
+// Car spacing follows the 28% shorter rolling stock.
+export const ARRIVAL_CAR_OFFSETS=[0,17.4,32.2].map(offset=>offset*.72);
 const P=(x,z)=>new T.Vector3(x,0,z);
 export function secondTrackPath(){
   const track=new T.CurvePath();

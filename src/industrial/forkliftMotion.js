@@ -99,20 +99,20 @@ function job(source,laneZ,targets,options={}){
   const trips=targets.map((target,i)=>{const trip=makeTrip(source,target,laneZ,{...options,park:i===targets.length-1?options.park:undefined});trip.start=time;time+=trip.duration;return trip;});
   return {source,trips,duration:time,base:options.base||0};
 }
-// Every forklift and the waiting truck stand on the raised loading deck.
+// The rail forklifts work on the raised deck; the truck is loaded on the ground.
 const DECK=LOADING.platform.height;
 const truckTargets=TRUCK_LAYOUT.cargoXs.map((x,i)=>({
-  x:64-TRUCK_SCALE*(TRUCK_LAYOUT.kingpinX+TRUCK_LAYOUT.trailerOffsetX+x),y:DECK+TRUCK_SCALE*TRUCK_LAYOUT.deckHeight,
+  x:64-TRUCK_SCALE*(TRUCK_LAYOUT.kingpinX+TRUCK_LAYOUT.trailerOffsetX+x),y:TRUCK_SCALE*TRUCK_LAYOUT.deckHeight,
   z:-43-TRUCK_SCALE*TRUCK_LAYOUT.cargoZ,kind:i<3?'panel':'bags',index:i,rail:false,
 }));
 const railTargets=RAIL_LAYOUT.wagonCentres.flatMap((x,n)=>RAIL_LAYOUT.cargoXs.map((offset,i)=>({
-  x:(x+offset)*RAIL_LAYOUT.scale,y:RAIL_LAYOUT.deckHeight*RAIL_LAYOUT.scale,z:RAIL_LAYOUT.z+RAIL_LAYOUT.cargoZ,
+  x:RAIL_LAYOUT.offsetX+(x+offset)*RAIL_LAYOUT.scale,y:RAIL_LAYOUT.deckHeight*RAIL_LAYOUT.scale,z:RAIL_LAYOUT.z+RAIL_LAYOUT.cargoZ,
   kind:n%2?'bags':'panel',index:n*2+i,rail:true,
 })));
 export const FORKLIFT_JOBS=[
-  job([51,DECK+.06,-43],-48.4,truckTargets,{park:[49,-43.2],base:DECK}),
-  job([-24,DECK+.06,-41.7],-46.7,railTargets.slice(0,4),{park:[-27.5,-43.2],base:DECK}),
-  job([11.5,DECK+.06,-44.7],-48.3,railTargets.slice(4),{park:[-13,-43.2],base:DECK}),
+  job([61.2,.06,-43],-48.4,truckTargets,{park:[78,-43.2]}),
+  job([-1.1,DECK+.06,-41.7],-46.7,railTargets.slice(0,4),{park:[1.6,-41.2],base:DECK}),
+  job([11.5,DECK+.06,-44.7],-48.3,railTargets.slice(4),{park:[47.4,-41.2],base:DECK}),
 ];
 export function forkliftFootprint({x,z,yaw},padding=0){
   return [[-1.45-padding,-.8-padding],[2.85+padding,-.8-padding],[2.85+padding,.8+padding],[-1.45-padding,.8+padding]]

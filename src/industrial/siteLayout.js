@@ -53,17 +53,16 @@ export const OLD_SIDE_LOADING={
 };
 // Rail-side canopy stock and column guards share the vehicle-clear layout.
 // One raised deck runs from the hall right up to the wagons, so forklifts drive
-// straight onto the train edge. The dispatch truck climbs the east ramp, is
-// loaded on the deck and leaves down the west ramp onto the freight lane.
+// straight onto the train edge. The truck is loaded just east of the deck, then
+// climbs the short east ramp, crosses the deck and leaves down the west ramp.
 export const RAIL_SIDE_LOADING={
-  // The deck meets the wagons only in the fence opening (x -33..65); beyond it
-  // the deck and both ramps stay inside the rail-side boundary fence at z=-50.
-  platform:{west:-33,east:65,north:-51.45,south:-39.55,height:.70},
-  deckExtensions:[{west:65,east:82,north:-49.98,south:-39.55}],
+  // The deck covers only the wagons and the panel stock, inside the rail-side
+  // fence opening (x -33..65). Short truck ramps sit on the truck lane.
+  platform:{west:-5,east:50,north:-51.45,south:-39.55,height:.70},
+  deckExtensions:[],
   ramps:[
-    // Both truck ramps are half their first width, centred on the truck lane.
-    {west:-47,east:-33,north:-49.1,south:-46.3,high:'east'},
-    {west:82,east:94,north:-49.98,south:-44.78,high:'west'},
+    {west:-11,east:-5,north:-49.1,south:-46.3,high:'east'},
+    {west:50,east:57,north:-49.1,south:-46.3,high:'west'},
   ],
   columnXs:[5.3,14,21.5,28,36,44],columnZ:-45.15,guardWidth:.62,
   panelBays:[{x:8,width:4.4},{x:15,width:4.4},{x:22,width:4.2},{x:29,width:4.4},{x:36,width:4.4},{x:42,width:3.8}],

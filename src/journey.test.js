@@ -48,8 +48,6 @@ import * as T from 'three';
 import {createJourneyMotion} from './industrial/journeyMotion.js';
 import {TRUCK_LAYOUT,TRUCK_SCALE} from './industrial/trucks.js';
 import {RAIL_LAYOUT} from './industrial/rail.js';
-import {RAIL_SIDE_LOADING} from './industrial/siteLayout.js';
-const LOADING_DECK=RAIL_SIDE_LOADING.platform.height;
 test('forklift loads meet the truck and rail decks without a vertical or lateral jump',()=>{
   const fork=()=>{
     const g=new T.Group(),mast=new T.Group(),lift=new T.Group(),cargo=new T.Group(),bagCargo=new T.Group();
@@ -67,11 +65,11 @@ test('forklift loads meet the truck and rail decks without a vertical or lateral
   const move=createJourneyMotion(logistics),start=JOURNEY_STEPS[S.load].start;
   move(journeyAt(start+FORKLIFT_JOBS[0].trips[0].depositAt-.001));
   const truckPoint=truckFork.cargo.getWorldPosition(new T.Vector3());
-  const truckDeck=new T.Vector3(64-TRUCK_SCALE*(TRUCK_LAYOUT.kingpinX+TRUCK_LAYOUT.trailerOffsetX+TRUCK_LAYOUT.cargoXs[0]),LOADING_DECK+TRUCK_SCALE*TRUCK_LAYOUT.deckHeight,-43-TRUCK_SCALE*TRUCK_LAYOUT.cargoZ);
+  const truckDeck=new T.Vector3(64-TRUCK_SCALE*(TRUCK_LAYOUT.kingpinX+TRUCK_LAYOUT.trailerOffsetX+TRUCK_LAYOUT.cargoXs[0]),TRUCK_SCALE*TRUCK_LAYOUT.deckHeight,-43-TRUCK_SCALE*TRUCK_LAYOUT.cargoZ);
   assert.ok(truckPoint.distanceTo(truckDeck)<.01);assert.equal(truckFork.cargo.visible,true);
   move(journeyAt(start+FORKLIFT_JOBS[1].trips[0].depositAt-.001));
   const railPoint=railForkA.cargo.getWorldPosition(new T.Vector3());
-  const railDeck=new T.Vector3((RAIL_LAYOUT.wagonCentres[0]+RAIL_LAYOUT.cargoXs[0])*RAIL_LAYOUT.scale,RAIL_LAYOUT.deckHeight*RAIL_LAYOUT.scale,RAIL_LAYOUT.z+RAIL_LAYOUT.cargoZ);
+  const railDeck=new T.Vector3(RAIL_LAYOUT.offsetX+(RAIL_LAYOUT.wagonCentres[0]+RAIL_LAYOUT.cargoXs[0])*RAIL_LAYOUT.scale,RAIL_LAYOUT.deckHeight*RAIL_LAYOUT.scale,RAIL_LAYOUT.z+RAIL_LAYOUT.cargoZ);
   assert.ok(railPoint.distanceTo(railDeck)<.01);assert.equal(railForkA.cargo.visible,true);
   for(const [i,job] of FORKLIFT_JOBS.entries())for(const trip of job.trips){
     const activeFork=[truckFork,railForkA,railForkB][i];

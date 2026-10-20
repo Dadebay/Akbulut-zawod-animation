@@ -13,7 +13,7 @@ export function createWorkerBuilder(k){
   // share adult proportions; the driver's hip/knee/elbow positions are seated.
   return function worker({parent=k.scene,position=[0,0,0],yaw=0,seated=false,seed=0,zone='GP',walk=null,work=null,hardHat=true}={}){
     walk=work?.walk||walk;
-    const g=group(position,parent,!!walk),skin=skins[seed%skins.length];g.rotation.y=yaw;g.scale.setScalar(.9);
+    const g=group(position,parent,!!walk),skin=skins[seed%skins.length];g.rotation.y=yaw;g.scale.setScalar(.81); // 10% smaller than the earlier .9
     const hipY=seated?1.10:.91,walkPose=walk?pedestrianMotion(walk):null,legs=[];
     const up=new T.Vector3(0,1,0),direction=new T.Vector3(),forward=new T.Vector3(),kneePoint=new T.Vector3();
     box(.31,.19,.23,[0,hipY,0],trousers,g,.055);
