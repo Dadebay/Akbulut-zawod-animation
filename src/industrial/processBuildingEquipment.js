@@ -17,7 +17,7 @@ export function buildProcessBuildingEquipment(k,{root,models,equipment,units,inv
   function install(id,kind,building,position,options={},reference='mixing',yaw=0,scale=1){
     const g=group(localPoint(position),root);
     g.name=`interior-${id}`;g.rotation.y=yaw;g.scale.setScalar(scale);
-    const entry={id,kind,zone:'BS',building,position,scale,sourceFiles:[PROCESS_EQUIPMENT_REFERENCES[reference]]};
+    const entry={id,kind,zone:'BS',building,position,scale,sourceFiles:reference?[PROCESS_EQUIPMENT_REFERENCES[reference]]:[],illustrative:!reference};
     g.userData.equipment=entry;inventory.push(entry);units[id]=g;
     (kind==='process-silo'?silo:models.builders[kind])(g,'BS',options);
     return g;
@@ -29,10 +29,10 @@ export function buildProcessBuildingEquipment(k,{root,models,equipment,units,inv
     const from=units[a].userData.ports[out],to=units[b].userData.ports[input];
     network.connect(from,to,{via:via.map(localPoint),kind,material,shellMaterial,zone:'BS',stages:[S.calcine,S.mix]});
   }
-  function support(x,z,w,d,y){
+  function support(x,z,w,d,y,base=0){
     const g=group(localPoint([x,0,z]),root);
     for(const xx of [-w/2,w/2])for(const zz of [-d/2,d/2]){
-      box(.18,y,.18,[xx,y/2,zz],frame,g);box(.48,.1,.48,[xx,.05,zz],steel,g);
+      box(.18,y-base,.18,[xx,(y+base)/2,zz],frame,g);box(.48,.1,.48,[xx,base+.05,zz],steel,g);
     }
     for(const zz of [-d/2,d/2])box(w,.24,.18,[0,y-.12,zz],frame,g);
     for(const xx of [-w/2,w/2])box(.18,.24,d,[xx,y-.12,0],frame,g);
@@ -281,5 +281,87 @@ export function buildProcessBuildingEquipment(k,{root,models,equipment,units,inv
     ],'mechanical','stucco');
     const controls=group(localPoint([x-1.8,6.75,11.65]),root);
     const cabinet=k.cabinet([0,0,0],controls);cabinet.scale.setScalar(.65);
+  }
+
+  // Additional illustrative process trains fill the open bays. They reuse the
+  // existing drives and flange network; no building or original machine moves.
+  install('infill-centre-bin','process-silo','main',[-29,12.15,3.6],{height:11.6,radius:1.22},null);
+  install('infill-centre-weigh','hopper','main',[-29,6.15,3.6],{width:2.6,depth:2.4,height:4.5,weigh:true},null);
+  support(-29,3.6,2.8,2.7,12.15,6);
+  port('tower-elevator','centre-bin',[1.2,25,1.1],[1,0,0]);
+  join('tower-elevator','centre-bin','infill-centre-bin','in',[[-29,25.55,-1],[-29,25.55,3.6]],'mechanical');
+  join('infill-centre-bin','out','infill-centre-weigh','in');
+  port('tower-buffer-screw','centre-weigh',[0,2.18,0],[0,1,0]);
+  join('infill-centre-weigh','out','tower-buffer-screw','centre-weigh');
+
+  // Two tall dosing stacks behind the southern service gallery, with open
+  // mixers on the lower floor and powered return legs to the transfer screw.
+  for(const [i,x] of [-33.6,-29.5].entries()){
+    const id=`infill-dose-${i+1}`,z=11.95;
+    install(`${id}-bin`,'process-silo','main',[x,18.15,z],{height:5.6,radius:.92},null);
+    install(`${id}-weigh`,'hopper','main',[x,15.15,z],{height:2.4,width:1.8,depth:1.8,weigh:true},null);
+    install(`${id}-valve`,'valve','main',[x,14.4,z],{},null,0,.45);
+    install(`${id}-mixer`,'mixer','main',[x,6.15,z],{},null,0,.65);
+    const mount=support(x,z,2.5,2.1,18.15,6);
+    for(const y of [6.15,15.15])for(const zz of [-1.05,1.05])box(2.5,.18,.25,[0,y-.09,zz],frame,mount);
+    port('tower-elevator',`dose-${i}`,[1.2,25,1.3+i*.2],[1,0,0]);
+    join('tower-elevator',`dose-${i}`,`${id}-bin`,'in',[
+      [-35.6,25.9,-1+i*.4],[-35.6,25.9,z],[x,25.9,z]
+    ],'mechanical');
+    join(`${id}-bin`,'out',`${id}-weigh`,'in');
+    join(`${id}-weigh`,'out',`${id}-valve`,'in');
+    join(`${id}-valve`,'out',`${id}-mixer`,'in');
+    port('thermal-screw',`dose-return-${i}`,[x+29,2.18,0],[0,1,0],.18);
+    join(`${id}-mixer`,'out','thermal-screw',`dose-return-${i}`,[
+      [x,6.4,z],[x,6.4,14.95],[x,15.2+i*.35,14.95],[x,15.2+i*.35,14]
+    ],'mechanical','stucco');
+    const control=group(localPoint([x+1.1,6.15,12.9]),root);
+    k.cabinet([0,0,0],control).scale.setScalar(.6);
+  }
+
+  // Water-service skids sit above the cooling line. Tanks, circulating pumps
+  // and a supported supply header make the middle of the rear rack continuous.
+  const water=k.material('#2d829e',.42,.45);
+  for(const [i,x] of [-16,-10.6,-5.2,.2].entries()){
+    const id=`infill-water-${i+1}`,z=13.85,pumpX=x+(i===1?.7:0);
+    install(`${id}-tank`,'vessel','rear',[x,8.8,z],{horizontal:true},null);
+    install(`${id}-pump`,'pump','rear',[pumpX,6.65,z],{},null);
+    const seat=group(localPoint([x,6.5,z]),root);
+    for(const xx of [-1.75,1.75])for(const zz of [-.9,.9])box(.14,2.3,.14,[xx,1.15,zz],frame,seat);
+    for(const zz of [-.9,.9])box(3.8,.18,.24,[0,2.21,zz],frame,seat);
+    for(const xx of [-1.75,1.75])box(.22,.18,2,[xx,2.21,0],frame,seat);
+    port(`${id}-tank`,'return',[1,3.03,0],[0,1,0],.15,'water');
+    port('water-buffer',`skid-${i}`,[-.6+i*.4,2.6,0],[0,1,0],.12,'water');
+    const supplyX=-7.6+i*.4;
+    join('water-buffer',`skid-${i}`,`${id}-tank`,'fill',[
+      [supplyX,4.7,17],[supplyX,4.7,15.1],[supplyX,12.8+i*.18,15.1],
+      [x-1,12.8+i*.18,15.1],[x-1,12.8+i*.18,z]
+    ],'duct','water',water);
+    join(`${id}-tank`,'out',`${id}-pump`,'in',[
+      [x-2.65,10.45,z],[x-2.65,10.45,15.25],[x-2.65,7.45,15.25],[pumpX-1.5,7.45,15.25],[pumpX-1.5,7.45,z]
+    ],'duct','water',water);
+    join(`${id}-pump`,'out',`${id}-tank`,'return',[
+      [pumpX-.15,8.55,z],[pumpX-.15,8.55,15.1],[pumpX-.15,12.3,15.1],[x+1,12.3,15.1],[x+1,12.3,z]
+    ],'duct','water',water);
+    equipment.gauge(localPoint([x+1.2,8.5,15.1]),root);
+  }
+
+  // A bank of extraction fans bridges the large gap above the rear filters.
+  // Each has its own inlet branch and a sealed connection into the stack.
+  for(const [i,x] of [-15,-10,-5,0].entries()){
+    const id=`infill-extract-${i+1}`,filter=`rear-filter-${i<2?1:2}`;
+    install(id,'fan','rear',[x,14.85,7.2],{},null);
+    const seat=group(localPoint([x,11.15,7.2]),root);
+    for(const xx of [-1.2,1.2])for(const zz of [-.75,.75])box(.12,3.7,.12,[xx,1.85,zz],frame,seat);
+    for(const zz of [-.75,.75])box(2.7,.18,.2,[0,3.61,zz],frame,seat);
+    port(filter,`upper-fan-${i}`,[-.8+(i%2)*1.6,6.5,1.15],[0,0,1],.25,'air');
+    const sourceX=(i<2?-10:-5)-.8+(i%2)*1.6;
+    join(filter,`upper-fan-${i}`,id,'in',[
+      [sourceX,14.35,6.1],[x-.4,14.35,6.1],[x-.4,14.35,8.35],[x-.4,15.95,8.35]
+    ],'duct','air');
+    port('rear-filter-stack',`upper-fan-${i}`,[.3,17-i*.35,0],[1,0,0],.25,'air');
+    join(id,'out','rear-filter-stack',`upper-fan-${i}`,[
+      [x+.25,18.15,7.2],[x+.25,18.15,8.6],[-14.8,18.15,8.6],[-14.8,17-i*.35,10.5]
+    ],'duct','air');
   }
 }

@@ -14,15 +14,18 @@ test('reference equipment fits both buildings, clears service aisles and has con
     scene.updateMatrixWorld(true);
     const entries=production.interiorInventory.filter(e=>e.building),bounds=[];
     assert.ok(entries.some(e=>e.building==='main')&&entries.some(e=>e.building==='rear'));
-    const added=entries.filter(e=>/^(tower-recovery|rear-blend)-/.test(e.id));
-    assert.equal(added.length,18,'two recovery and two blending trains add eighteen machines');
+    const added=entries.filter(e=>/^(tower-recovery|rear-blend|infill)-/.test(e.id));
+    assert.equal(added.length,40,'recovery/blending trains plus twenty-two connected infill machines');
+    const infill=entries.filter(e=>e.id.startsWith('infill-'));
+    assert.equal(infill.length,22);
+    assert.ok(infill.every(e=>e.illustrative&&e.sourceFiles.length===0),'new layouts are illustrative, not attributed to reference CAD');
     const machinery=[];
     production.root.traverse(object=>{
       if(object.name.startsWith('interior-')||object.name.startsWith('machine-')){
         machinery.push([object.name,new T.Box3().setFromObject(object)]);
       }
     });
-    const existing=machinery.filter(([name])=>!/^interior-(tower-recovery|rear-blend)-/.test(name));
+    const existing=machinery.filter(([name])=>!/^interior-(tower-recovery|rear-blend|infill)-/.test(name));
     for(const entry of entries){
       const object=production.root.getObjectByName(`interior-${entry.id}`);
       const b=new T.Box3().setFromObject(object),shell=PROCESS_BUILDINGS[entry.building];
@@ -41,7 +44,8 @@ test('reference equipment fits both buildings, clears service aisles and has con
       const ports=object.userData.ports;
       if(added.includes(entry)){
         for(const [name,c] of existing)assert.equal(b.intersectsBox(c),false,`${entry.id} overlaps existing ${name}`);
-        assert.ok(ports.in.connected&&ports.out.connected,`${entry.id}: complete circuit`);
+        assert.ok((ports.in||ports.fill).connected&&ports.out.connected,`${entry.id}: complete circuit`);
+        if(entry.kind==='vessel')assert.ok(ports.return.connected,`${entry.id}: circulation return`);
         if(entry.kind==='cyclone')assert.ok(ports.air.connected,`${entry.id}: extraction`);
         if(entry.building==='main'){
           const northWalk=new T.Box3(new T.Vector3(-35.9,0,-8.025),new T.Vector3(-22.1,26,-6.975));
@@ -58,7 +62,7 @@ test('reference equipment fits both buildings, clears service aisles and has con
     // the body envelope of another machine. Full-turn tests cover moving parts.
     production.root.traverse(object=>{
       const connection=object.userData.connection;
-      if(!connection||!/tower-recovery|rear-blend-/.test(connection.fromMachine+connection.toMachine))return;
+      if(!connection||!/tower-recovery|rear-blend-|infill-/.test(connection.fromMachine+connection.toMachine))return;
       const path=object.geometry.parameters.path;
       const points=path.getSpacedPoints(Math.ceil(path.getLength()/.15)).map(p=>p.applyMatrix4(object.matrixWorld));
       for(const [name,b] of machinery){
