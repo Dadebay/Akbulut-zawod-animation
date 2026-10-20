@@ -1,5 +1,7 @@
 # Phase 2 — material library and restored trees
 
+Subsequent user correction: automatic resolution reduction and visible diagnostic controls were removed. See [stable-resolution fix](../quality-fix/README.md); the measurements below remain the historical phase-2 checkpoint.
+
 The shared material factory now provides 22 clean PBR recipes, metre-scale triplanar mapping on horizontal and vertical faces, shared albedo/roughness textures, reflective physical glass, and small rounded edges on eligible machine/vehicle/trim boxes. `?materials=1` previews every recipe on a sphere and a one-metre box. Uniform metalness uses scalar parameters; projected normal maps remain disabled until a correct TBN is implemented. No cracks, rust or stains are introduced.
 
 The user's visual correction takes priority over tree LOD optimization: `vegetation.js` is restored exactly to variant A (`c8c4cad`). The full irregular branches and needle sprays remain at every distance in each profile. Cone substitutes and their LOD switching are removed. Spatial instancing remains; tree positions and clearance rules are unchanged. The existing truck scan still has distance detail levels.

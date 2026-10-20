@@ -1,4 +1,4 @@
-// Deliberately local to the scene: no window/debug API in shipped builds.
+// Reference poses for the saved realism comparisons; no on-screen debug controls.
 export const REVIEW_CAMERAS=[
   {name:'Site',position:[-170,90,90],target:[-60,0,-20]},
   {name:'Loading deck',position:[2,22,-68],target:[20,2,-46]},
@@ -9,17 +9,3 @@ export const REVIEW_CAMERAS=[
   {name:'Process tower',position:[-40,8,0],target:[-29,4,-12],interior:true},
   {name:'Old campus',position:[-50,25,-100],target:[-29,1,-124.5]},
 ];
-
-export function createReviewControls(container,onCamera){
-  if(!import.meta.env?.DEV||!new URLSearchParams(location.search).has('review'))return null;
-  const panel=document.createElement('nav');panel.setAttribute('aria-label','Review cameras');
-  panel.style.cssText='position:absolute;right:16px;top:120px;z-index:30;display:flex;gap:4px;background:#fff;padding:6px;border-radius:6px';
-  const state={index:0,interior:false,orbit:false};
-  REVIEW_CAMERAS.forEach((preset,index)=>{
-    const button=document.createElement('button');button.textContent=String(index+1);button.title=preset.name;button.setAttribute('aria-label',`Review ${index+1}: ${preset.name}`);
-    button.onclick=()=>{state.orbit=false;state.index=index;state.interior=!!preset.interior;panel.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));onCamera(preset);};panel.appendChild(button);
-  });
-  const orbit=document.createElement('button');orbit.textContent='Orbit';orbit.setAttribute('aria-label','Review orbit');orbit.setAttribute('aria-pressed','false');orbit.onclick=()=>{state.orbit=!state.orbit;orbit.setAttribute('aria-pressed',String(state.orbit));};panel.appendChild(orbit);
-  container.appendChild(panel);container.dataset.review='true';
-  return {...state,get orbit(){return state.orbit;},get index(){return state.index;},get interior(){return state.interior;},select(index=0){panel.children[index].click();},dispose(){panel.remove();delete container.dataset.review;}};
-}

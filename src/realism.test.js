@@ -10,11 +10,12 @@ import {createSurfaceMaps,MATERIALS} from './industrial/materials.js';
 import {poolSurfaces} from './industrial/surfaceBatching.js';
 import {profilePixelRatio} from './renderBudget.js';
 
-test('large tablet and desktop displays keep postprocessing allocations bounded',()=>{
-  for(const [w,h,tablet,limit] of [[2360,1640,true,900000],[3840,2160,false,3700000],[1280,720,true,900000]]){
-    const ratio=profilePixelRatio(w,h,2,tablet);assert.ok(w*h*ratio*ratio<=limit+1);
-    assert.equal(profilePixelRatio(w,h,2,tablet,.7),ratio*.7);
-  }
+test('scene resolution preserves display density with a fixed high-DPI ceiling',()=>{
+  assert.equal(profilePixelRatio(1),1);
+  assert.equal(profilePixelRatio(1.5),1.5);
+  assert.equal(profilePixelRatio(2),2);
+  assert.equal(profilePixelRatio(3),2);
+  assert.equal(profilePixelRatio(.75),1);
 });
 
 test('HDR sun matches the upper-hemisphere equirectangular texel',()=>{

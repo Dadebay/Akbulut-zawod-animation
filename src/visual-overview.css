@@ -151,5 +151,3 @@
 .is-night .model-credit a { color:#e0ecfa; }
 .lighting-switch button { white-space:nowrap; }
 @media(max-width:700px){.factory-toolbar .factory-controls .lighting-switch button{padding:8px}.lighting-switch{flex-shrink:0}}
-
-.plant-scene[data-review="true"] .scene-labels { display: none; }
