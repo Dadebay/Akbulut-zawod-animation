@@ -1,6 +1,6 @@
 import * as T from 'three';
 import {assetUrl} from '../assets.js';
-import {brightestSkyDirection} from './lighting.js';
+import {brightestSkyDirection,orientSkyToFront} from './lighting.js';
 import {HDRLoader} from 'three/addons/loaders/HDRLoader.js';
 
 // Sky image for reflections and ambient light. Returns the equirectangular
@@ -12,7 +12,7 @@ export function loadSkyEnvironment(renderer,scene,onReady){
     sky=hdr;hdr.mapping=T.EquirectangularReflectionMapping;
     const pmrem=new T.PMREMGenerator(renderer);
     target=pmrem.fromEquirectangular(hdr);pmrem.dispose();scene.environment=target.texture;
-    onReady?.(hdr,brightestSkyDirection(hdr.image,hdr.type));
+    onReady?.(hdr,orientSkyToFront(scene,brightestSkyDirection(hdr.image,hdr.type)));
   },undefined,()=>{if(!disposed)onReady?.(null);});
   return ()=>{disposed=true;sky?.dispose();target?.dispose();};
 }

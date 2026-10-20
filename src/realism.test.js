@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import * as T from 'three';
-import {brightestSkyDirection,fitSunShadow} from './industrial/lighting.js';
+import {brightestSkyDirection,orientSkyToFront,fitSunShadow} from './industrial/lighting.js';
 import {estimateTextureBytes} from './industrial/renderMetrics.js';
 import {bakeStaticAO} from './industrial/staticAO.js';
 import {createKit} from './industrial/kit.js';
@@ -24,6 +24,18 @@ test('HDR sun matches the upper-hemisphere equirectangular texel',()=>{
   assert.ok(Math.abs(direction.length()-1)<1e-8);assert.ok(direction.y>0);
   assert.ok(Math.abs(Math.atan2(direction.z,direction.x)/(2*Math.PI)+.5-4.5/8)<1e-8);
   assert.ok(Math.abs(.5-Math.asin(direction.y)/Math.PI-1.5/4)<1e-8);
+});
+
+test('sky and reflections illuminate the front facade without changing sun elevation',()=>{
+  const scene=new T.Scene(),source=new T.Vector3(.55,.74,.38).normalize(),original=source.clone();
+  const sun=orientSkyToFront(scene,source);
+  assert.ok(sun.x<0&&sun.z>0,'light must reach the -X facade and +Z entrances');
+  assert.ok(Math.abs(sun.z/-sun.x-.55)<1e-8);
+  assert.ok(Math.abs(sun.y-source.y)<1e-8);
+  assert.ok(Math.abs(sun.length()-1)<1e-8);
+  assert.deepEqual(source,original);
+  assert.deepEqual(scene.environmentRotation,scene.backgroundRotation);
+  assert.ok(source.clone().applyEuler(scene.environmentRotation).distanceTo(sun)<1e-8);
 });
 
 test('close-view shadows meet the texel budget and sub-texel motion stays snapped',()=>{

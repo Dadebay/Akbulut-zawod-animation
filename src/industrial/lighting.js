@@ -13,6 +13,15 @@ export function brightestSkyDirection({data,width,height},type=T.HalfFloatType){
   return new T.Vector3(Math.cos(elevation)*Math.cos(azimuth),Math.sin(elevation),Math.cos(elevation)*Math.sin(azimuth));
 }
 
+// The production facade faces -X; a little +Z light also reaches the entrances.
+// Rotate the sky and its reflections together, preserving the photographed sun's height.
+export function orientSkyToFront(scene,direction){
+  const yaw=Math.atan2(direction.z,direction.x)-Math.atan2(.55,-1);
+  scene.backgroundRotation.set(0,yaw,0);
+  scene.environmentRotation.set(0,yaw,0);
+  return direction.clone().applyEuler(scene.backgroundRotation);
+}
+
 // Fixed light basis + texel-snapped translation. The square only changes size
 // when zoom crosses a 16 m band; orbiting cannot rotate the shadow texel grid.
 export function fitSunShadow(sun,camera,target,direction,{mapSize=4096}={}){

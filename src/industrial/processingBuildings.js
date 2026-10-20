@@ -3,7 +3,7 @@ import {PROCESS_BUILDINGS as L} from './siteLayout.js';
 // Architectural envelope only: the production equipment keeps its existing layout.
 export function buildProcessingBuildings(k,roofs,structures){
   const {box,group,material,textPlate,m}=k;
-  const wall=material('#e1e3df',.04,.82),seam=material('#cdd2cf',.10,.78);
+  const wall=material('#f4f5f3',.04,.82),seam=material('#cdd2cf',.10,.78);
   const roof=material('#abb3b5',.08,.85),coping=material('#d8dcda',.24,.61);
   const glass=material('#304a52',.45,.28),frame=material('#c4cdcb',.32,.57);
   const bodies={};
@@ -48,7 +48,7 @@ export function buildProcessingBuildings(k,roofs,structures){
   for(const z of [-6.2,-.6,5,10.6,16.2])slit('main',z,2.9,25.3,.32);
   for(const z of [22.6,27.3])slit('rightCore',z,2.15,19.25,.31);
   for(const z of [29.8,32.4,35.0])slit('rightWing',z,1.05,5.9,.34);
-  const label=textPlate('TÜRKMEN GIPS',6.4,.46,[L.main.x-L.main.width/2-.065,26.12,4.8],structures,'#5593a6','#e1e3df');
+  const label=textPlate('TÜRKMEN GIPS',6.4,.46,[L.main.x-L.main.width/2-.065,26.12,4.8],structures,'#5593a6','#f4f5f3');
   label.rotation.y=-Math.PI/2;
 
   // A low set-back roof house replaces the extra full-height front slab.
