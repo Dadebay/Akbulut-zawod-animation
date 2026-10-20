@@ -46,15 +46,17 @@ test('freight only appears when a forklift deposits it and vehicles depart after
 // Check the physical handoff after changing vehicle geometry, not just counters.
 import * as T from 'three';
 import {createJourneyMotion} from './industrial/journeyMotion.js';
-import {TRUCK_LAYOUT} from './industrial/trucks.js';
+import {TRUCK_LAYOUT,TRUCK_SCALE} from './industrial/trucks.js';
 import {RAIL_LAYOUT} from './industrial/rail.js';
+import {RAIL_SIDE_LOADING} from './industrial/siteLayout.js';
+const LOADING_DECK=RAIL_SIDE_LOADING.platform.height;
 test('forklift loads meet the truck and rail decks without a vertical or lateral jump',()=>{
   const fork=()=>{
     const g=new T.Group(),mast=new T.Group(),lift=new T.Group(),cargo=new T.Group(),bagCargo=new T.Group();
     mast.position.set(F.mastX,F.mastBaseY,0);g.add(mast);mast.add(lift);lift.add(cargo,bagCargo);
     cargo.position.set(F.cargoX-F.mastX,F.palletOffsetY,0);bagCargo.position.copy(cargo.position);
     return {g,fork:lift,cargo,bagCargo,ws:[],update(pose){
-      g.position.set(pose.x,0,pose.z);g.rotation.y=pose.yaw;
+      g.position.set(pose.x,pose.y||0,pose.z);g.rotation.y=pose.yaw;
       lift.position.y=pose.height-F.mastBaseY;mast.rotation.z=pose.tilt;
       cargo.visible=pose.carrying&&pose.kind==='panel';bagCargo.visible=pose.carrying&&pose.kind==='bags';
     }};
@@ -65,10 +67,19 @@ test('forklift loads meet the truck and rail decks without a vertical or lateral
   const move=createJourneyMotion(logistics),start=JOURNEY_STEPS[S.load].start;
   move(journeyAt(start+FORKLIFT_JOBS[0].trips[0].depositAt-.001));
   const truckPoint=truckFork.cargo.getWorldPosition(new T.Vector3());
-  const truckDeck=new T.Vector3(64-TRUCK_LAYOUT.kingpinX-TRUCK_LAYOUT.trailerOffsetX-TRUCK_LAYOUT.cargoXs[0],TRUCK_LAYOUT.deckHeight,-43-TRUCK_LAYOUT.cargoZ);
+  const truckDeck=new T.Vector3(64-TRUCK_SCALE*(TRUCK_LAYOUT.kingpinX+TRUCK_LAYOUT.trailerOffsetX+TRUCK_LAYOUT.cargoXs[0]),LOADING_DECK+TRUCK_SCALE*TRUCK_LAYOUT.deckHeight,-43-TRUCK_SCALE*TRUCK_LAYOUT.cargoZ);
   assert.ok(truckPoint.distanceTo(truckDeck)<.01);assert.equal(truckFork.cargo.visible,true);
   move(journeyAt(start+FORKLIFT_JOBS[1].trips[0].depositAt-.001));
   const railPoint=railForkA.cargo.getWorldPosition(new T.Vector3());
-  const railDeck=new T.Vector3(RAIL_LAYOUT.wagonCentres[0]+RAIL_LAYOUT.cargoXs[0],RAIL_LAYOUT.deckHeight,RAIL_LAYOUT.z+RAIL_LAYOUT.cargoZ);
+  const railDeck=new T.Vector3((RAIL_LAYOUT.wagonCentres[0]+RAIL_LAYOUT.cargoXs[0])*RAIL_LAYOUT.scale,RAIL_LAYOUT.deckHeight*RAIL_LAYOUT.scale,RAIL_LAYOUT.z+RAIL_LAYOUT.cargoZ);
   assert.ok(railPoint.distanceTo(railDeck)<.01);assert.equal(railForkA.cargo.visible,true);
+  for(const [i,job] of FORKLIFT_JOBS.entries())for(const trip of job.trips){
+    const activeFork=[truckFork,railForkA,railForkB][i];
+    const cargo=trip.target.kind==='bags'?activeFork.bagCargo:activeFork.cargo;
+    const pickup=trip.phases.find(phase=>phase.carrying);
+    move(journeyAt(start+trip.start+pickup.start+.0001));
+    assert.ok(cargo.getWorldPosition(new T.Vector3()).distanceTo(new T.Vector3(...job.source))<.01,'pallet lifts from its actual dock height');
+    move(journeyAt(start+trip.start+trip.depositAt-.0001));
+    assert.ok(cargo.getWorldPosition(new T.Vector3()).distanceTo(new T.Vector3(trip.target.x,trip.target.y,trip.target.z))<.01,'raised pickup still deposits on the vehicle deck');
+  }
 });

@@ -30,7 +30,7 @@ export function createSolarPanels(k){
   };
 }
 
-export function buildOldFrontParking(k,panel){
+export function buildOldFrontParking(k){
   const {box,rod,mesh,group,material,m}=k;
   const concrete=material('#b7b7aa',0,.94),curb=material('#d0d0c4',0,.9);
   const frame=material('#c0c9c5',.6,.44),green=material('#587e69',.3,.56),paint=material('#e6e5d7',0,.87);
@@ -64,9 +64,7 @@ export function buildOldFrontParking(k,panel){
       rod([x,top-.50,z],[x+(x>0?-.65:.65),top-.02,z],.033,frame,canopy);
     }
   }
-  // The photographed canopy has a dark gridded top and a slim green fascia.
-  for(let col=0;col<7;col++)for(let row=0;row<3;row++)
-    panel(1.54,1.70,[(col-3)*1.61,.11,(row-1)*1.78],roof);
+  // A plain green roof covers the bays; it carries no solar panels.
   for(const x of posts)box(.075,.008,5.7,[x,.016,.15],paint,canopy);
   for(const x of [-4.45,-1.35,1.35,4.45]){
     box(1.6,.10,.15,[x,.065,-1.45],curb,canopy);

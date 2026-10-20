@@ -14,13 +14,19 @@
     "test": "node --test src/*.test.js"
   },
   "dependencies": {
-    "leaflet": "^1.9.4",
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/ios": "^8.5.3",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.4",
     "lucide-react": "^0.468.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "three": "^0.181.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.3",
     "@gltf-transform/core": "^4.5.1",
     "@gltf-transform/functions": "^4.5.1",
     "@vitejs/plugin-react": "^5.1.1",

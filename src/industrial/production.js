@@ -7,6 +7,7 @@ import {PROCESS_STATIONS,BOARD_ROUTE,BOARD_START,BOARD_END,BAG_ROUTE,BAG_PALLET_
 import {createEquipmentConnections,machinePort} from './equipmentConnections.js';
 import {conveyorMotion,transferTable} from './conveyorTransfer.js';
 import {buildPalletizingCell} from './palletizingCell.js';
+import {createCeilingPanelStyles,ceilingBatchType} from './ceilingPanelStyles.js';
 import {PROCESS_PHYSICS as P,createDrive,createProcessPhysics,createBoardBatch,advanceBoard,boardReady,rpmToRadians,rollerAngularSpeed} from './processPhysics.js';
 
 export const STATIONS=PROCESS_STATIONS.map(s=>({...s,pos:localPoint(s.world)}));
@@ -15,6 +16,7 @@ export function buildProduction(k){
   const {m,box,cyl,ring,rod,pipe,group,frame,platform,ladder,bolts,motor,cabinet,textPlate,material,mesh}=k;
   const rotors=[],products=[],lamps=[],flows=[],operators=[];
   const equipment=createEquipmentModels(k,rotors),machines={};
+  const panelStyles=createCeilingPanelStyles(k);
   const root=group([0,0,0],k.scene,true),outdoor=group([8,0,-25],k.scene,true);
   const network=createEquipmentConnections(k,root,equipment,rotors);
   function plinth(w,d,g){box(w,.22,d,[0,.11,0],m.concrete,g);for(const z of [-d/2,d/2])box(w,.018,.07,[0,.235,z],m.yellow,g);}
@@ -70,8 +72,8 @@ export function buildProduction(k){
   const plate=box(.3,2.35,2.6,[.8,2.3,0],m.steel,jaw);plate.rotation.z=-.28;plate.userData.dynamic=true;
   for(let z=-1.15;z<1.2;z+=.19)box(.13,2.15,.08,[-1.42,2.4,z],m.dark,jaw);
   box(3.7,.18,3.5,[0,3.6,0],m.dark,jaw);equipment.hollowHopper(3.5,3.2,2.7,2.4,1.0,[0,3.65,0],jaw);
-  for(const z of [-1.65,1.65]){const wheel=group([.5,2.4,z],jaw,true);const disk=cyl(1.15,.22,[0,0,0],m.steel,wheel);disk.rotation.x=Math.PI/2;k.ring(1.05,.1,[0,0,0],m.dark,wheel,'z');for(let n=0;n<8;n++){const a=n*Math.PI/4;rod([0,0,.14],[Math.cos(a)*.9,Math.sin(a)*.9,.14],.065,m.dark,wheel);}rotors.push({object:wheel,axis:'z',zone:'CR',speed:rpmToRadians(P.jawRpm)});}
-  equipment.gearmotor([3,.4,0],jaw,1.55);for(const z of [-1.95,1.95])equipment.fence(3.3,2.8,[.5,.4,z],jaw);for(const x of [-1.6,1.6])for(const z of [-1.5,1.5])equipment.bolt([x,3.75,z],jaw);cabinet([-2.5,0,3],jaw);operators.push({pos:localPoint([GYPSUM_CRUSHER[0]-2,0,GYPSUM_CRUSHER[2]+4.6]),zone:'CR',angle:Math.PI});
+  for(const z of [-1.89,1.89]){const face=Math.sign(z);const wheel=group([.5,2.4,z],jaw,true);const disk=cyl(1.15,.22,[0,0,0],m.steel,wheel);disk.rotation.x=Math.PI/2;k.ring(1.05,.1,[0,0,0],m.dark,wheel,'z');for(let n=0;n<8;n++){const a=n*Math.PI/4;rod([0,0,face*.14],[Math.cos(a)*.9,Math.sin(a)*.9,face*.14],.065,m.dark,wheel);}rotors.push({object:wheel,axis:'z',zone:'CR',speed:rpmToRadians(P.jawRpm)});}
+  equipment.gearmotor([3,.4,0],jaw,1.55);for(const z of [-2.2,2.2])equipment.fence(3.3,2.8,[.5,.4,z],jaw);for(const x of [-1.6,1.6])for(const z of [-1.5,1.5])equipment.bolt([x,3.75,z],jaw);cabinet([-2.5,0,3],jaw);operators.push({pos:localPoint([GYPSUM_CRUSHER[0]-2,0,GYPSUM_CRUSHER[2]+4.6]),zone:'CR',angle:Math.PI});
   // Inspect the feeder from the aisle beside its supply pallet and robot fence.
   operators.push({pos:localPoint([2,0,-25]),zone:'GP',angle:Math.PI,walkAxis:'z'});
   // Slurry is formed and allowed to set before cutting, then enters the dryer.
@@ -112,11 +114,8 @@ export function buildProduction(k){
         }
       }else if(kind==='ceiling'){
         variants.blank=group([0,0,0],product,true);box(1.32,.035,1.32,[0,.025,0],m.paper,variants.blank,.006);
-        variants.cut=group([0,0,0],product,true);variants.holes=group([0,0,0],product,true);
-        for(const x of [-.33,.33])for(const z of [-.33,.33]){
-          box(.62,.035,.62,[x,.025,z],m.paper,variants.cut,.006);
-          for(const dx of [-.18,0,.18])for(const dz of [-.18,0,.18])cyl(.015,.004,[x+dx,.045,z+dz],m.dark,variants.holes,undefined,6);
-        }
+        variants.cut=panelStyles.sheet(product,.0075,0,{pattern:false,dynamic:true});
+        variants.finish=panelStyles.choices(product,.0075);variants.holes=variants.finish.root;
       }else{box(.75,.23,.46,[0,.12,0],m.paper,product,.10);box(.45,.012,.20,[0,.24,0],m.blue,product);}
       const record={object:product,variants,motion,delay:i*interval,period:count*interval,fillTime:options.startHold||0,kind,zone};
       product.visible=false;products.push(record);line.products.push(record);
@@ -271,8 +270,11 @@ export function buildProduction(k){
           p.object.userData.processBatch=p.batch;
         }else if(p.kind==='ceiling'){
           const cut=phase>=p.motion.milestones[3].departure,perforated=phase>=p.motion.milestones[4].departure;
-          p.variants.blank.visible=!cut;p.variants.cut.visible=cut;p.variants.holes.visible=perforated;
-          p.object.userData.materialState=perforated?'perforated-panel':cut?'cut-panel':'dry-board';
+          p.variants.blank.visible=!cut;p.variants.cut.visible=cut&&!perforated;p.variants.holes.visible=perforated;
+          const sheetNumber=Math.round((line.time-phase)/line.interval);
+          p.variants.finish.select(ceilingBatchType(sheetNumber));
+          p.object.userData.panelType=p.variants.holes.userData.panelType;
+          p.object.userData.materialState=perforated?'finished-ceiling-panel':cut?'cut-panel':'dry-board';
         }else{
           p.object.userData.filledKg=25*Math.min(1,phase/p.fillTime);
           p.object.userData.materialState='dry-mixture';

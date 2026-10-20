@@ -8,7 +8,7 @@ import {SHIFT_WALKS,OLD_HALL_WALKS,oldForkMotion,operatorWork,operatorGesture} f
 import {pedestrianMotion} from './industrial/pedestrianMotion.js';
 import {dispatchPose,truckFootprint,PARKED_TRUCKS} from './industrial/trafficLayout.js';
 import {FORKLIFT_JOBS,sampleForklift,forkliftFootprint} from './industrial/forkliftMotion.js';
-import {ARRIVAL_PROFILE,arrivalTrainPose,SECOND_TRACK_Z} from './industrial/arrivalTrain.js';
+import {ARRIVAL_PROFILE,ARRIVAL_CAR_OFFSETS,arrivalTrainPose,SECOND_TRACK_Z} from './industrial/arrivalTrain.js';
 import {QUARRY_SCOOPS,QUARRY_LOADING_SECONDS,quarryCycle} from './quarryCycle.js';
 import {treeWindDisplacement} from './industrial/treeWind.js';
 const rect=(x,z,w,d)=>[[x-w/2,z-d/2],[x+w/2,z-d/2],[x+w/2,z+d/2],[x-w/2,z+d/2]];
@@ -73,11 +73,11 @@ test('operator walking areas keep body clearance from the actual machinery and c
 test('all forklifts stay below ten km/h and tilt their carried load back',()=>{
   for(const job of FORKLIFT_JOBS)for(let t=0;t<job.duration;t+=.1){const p=sampleForklift(job,t);assert.ok(Math.abs(p.speed)<=10/3.6);if(p.carrying&&Math.abs(p.speed)>.2)assert.ok(p.tilt>=0,'rearward tilt');}
 });
-test('incoming empty train brakes on the second track without overlapping its wagons',()=>{
+test('incoming raw-material train brakes on the second track without overlapping its wagons',()=>{
   for(let t=0;t<ARRIVAL_PROFILE.duration+10;t+=.2){
-    const poses=[0,15.2,30.4].map(offset=>arrivalTrainPose(t,offset));
+    const poses=ARRIVAL_CAR_OFFSETS.map(offset=>arrivalTrainPose(t,offset));
     assert.ok(poses[0].speed<=3.001);
-    for(let i=1;i<poses.length;i++)assert.ok(poses[i].position.distanceTo(poses[i-1].position)>14.5);
+    for(let i=1;i<poses.length;i++)assert.ok(poses[i].position.distanceTo(poses[i-1].position)>14.5*.8); // 20% shorter cars
   }
   const stopped=arrivalTrainPose(ARRIVAL_PROFILE.duration+5);assert.equal(stopped.speed,0);assert.equal(stopped.position.z,SECOND_TRACK_Z);assert.equal(stopped.switch,0);
 });

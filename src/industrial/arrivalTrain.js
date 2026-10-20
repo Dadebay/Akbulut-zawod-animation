@@ -2,12 +2,16 @@ import * as T from 'three';
 import {routeProfile,smooth} from './motionPath.js';
 import {RAIL_LAYOUT} from './railLayout.js';
 export const SECOND_TRACK_Z=-57.6;
+// The dormitory-side siding ends before the road crossing.
+export const SECOND_TRACK_END_X=84.5;
+// The detailed locomotive is longer than either of its two raw-stone wagons.
+// Car spacing follows the 20% shorter rolling stock.
+export const ARRIVAL_CAR_OFFSETS=[0,17.4,32.2].map(offset=>offset*.8);
 const P=(x,z)=>new T.Vector3(x,0,z);
 export function secondTrackPath(){
   const track=new T.CurvePath();
   track.add(new T.CubicBezierCurve3(P(-150,RAIL_LAYOUT.z),P(-130,RAIL_LAYOUT.z),P(-130,SECOND_TRACK_Z),P(-110,SECOND_TRACK_Z)));
-  track.add(new T.LineCurve3(P(-110,SECOND_TRACK_Z),P(68,SECOND_TRACK_Z)));
-  track.add(new T.CubicBezierCurve3(P(68,SECOND_TRACK_Z),P(88,SECOND_TRACK_Z),P(88,RAIL_LAYOUT.z),P(108,RAIL_LAYOUT.z)));
+  track.add(new T.LineCurve3(P(-110,SECOND_TRACK_Z),P(SECOND_TRACK_END_X,SECOND_TRACK_Z)));
   return track;
 }
 const route=new T.CurvePath();route.add(new T.LineCurve3(P(-470,RAIL_LAYOUT.z),P(-150,RAIL_LAYOUT.z)));

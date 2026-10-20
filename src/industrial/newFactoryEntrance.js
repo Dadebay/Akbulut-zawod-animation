@@ -101,7 +101,8 @@ export function buildNewFactoryEntrance(k){
 
   // White sliding leaf is parked along the right fence so moving trucks can pass.
   const fenceDepth=L.x-L.fenceX;
-  const leaf=group([21.05,0,fenceDepth],g);leaf.name='main-entrance-open-sliding-gate';
+  const rightShift=(1-L.widthScale)*L.right;
+  const leaf=group([21.05-rightShift,0,fenceDepth],g);leaf.name='main-entrance-open-sliding-gate';
   const width=15.6;
   box(width,.55,.10,[0,.49,0],white,leaf);
   for(const y of [.19,.79,2.36,2.57])box(width,.065,.09,[0,y,0],metal,leaf);
@@ -111,6 +112,10 @@ export function buildNewFactoryEntrance(k){
   for(const x of [-5.5,5.5]){
     const wheel=k.cyl(.11,.08,[x,.17,0],dark,leaf,undefined,12);wheel.rotation.x=Math.PI/2;
   }
-  box(.42,.65,.48,[13.40,.325,fenceDepth-.65],edge,g);
+  const stop=box(.42,.65,.48,[13.40-rightShift,.325,fenceDepth-.65],edge,g);
+  // Narrow the facade to 70% and raise its current height by 10%.
+  // Keep the canopy depth and the sliding leaf height as they were.
+  const body=group([0,0,0],g);body.scale.set(L.widthScale,.8*1.1,.8);
+  for(const child of [...g.children])if(child!==body&&child!==leaf&&child!==stop)body.add(child);
   return g;
 }

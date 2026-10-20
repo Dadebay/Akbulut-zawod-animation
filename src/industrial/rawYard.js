@@ -18,8 +18,14 @@ export function buildRawYard(k){
     box(width,.006,.035,[(apron.west+apron.east)/2,.084,z],joint).castShadow=false;
 
   // A low transfer pit and angular covered hopper sit at the far end.
-  const {x:unitX,z:unitZ}=RAW_YARD_CONVEYOR;
-  const unit=group([unitX,0,unitZ]);unit.name='exterior-yard-conveyors';
+  const {x:unitX,z:unitZ,scale,westReach,stockOffsetX,stockOffsetZ}=RAW_YARD_CONVEYOR;
+  // Build the connected equipment in local coordinates so relocating it keeps
+  // both belt ends aligned with the shared receiving pile and truck stop.
+  const ground=.08;
+  const machinery=group([unitX,ground,unitZ]);
+  machinery.name='exterior-yard-conveyor-system';machinery.scale.setScalar(scale);
+  const model=group([0,-ground,0],machinery);
+  const unit=group([0,0,0],model);unit.name='exterior-yard-conveyors';
   box(10,.17,8,[0,.115,0],concrete,unit);
   box(7.6,.12,5.8,[0,.255,0],dark,unit);
   for(const x of [-3.85,3.85])box(.16,.20,6,[x,.33,0],steel,unit);
@@ -47,7 +53,7 @@ export function buildRawYard(k){
 
   function conveyor(start,end,w=1.35){
     const a=new T.Vector3(...start),b=new T.Vector3(...end),delta=b.clone().sub(a),length=delta.length();
-    const g=group(a.clone().lerp(b,.5).toArray());
+    const g=group(a.clone().lerp(b,.5).toArray(),model);
     g.rotation.set(0,-Math.atan2(delta.z,delta.x),0);
     g.rotateZ(Math.atan2(delta.y,Math.hypot(delta.x,delta.z)));
     box(length,.10,w,[0,0,0],rubber,g);
@@ -63,15 +69,15 @@ export function buildRawYard(k){
       const p=a.clone().lerp(b,t);
       for(const side of [-1,1]){
         const x=p.x+normal.x*side,z=p.z+normal.z*side;
-        box(.45,.12,.45,[x,.10,z],concrete);
-        rod([x,.16,z],[x,p.y-.2,z],.05,dark);
+        box(.45,.12,.45,[x,.10,z],concrete,model);
+        rod([x,.16,z],[x,p.y-.2,z],.05,dark,model);
       }
     }
   }
-  conveyor([unitX,.65,unitZ-3.5],[unitX,1.05,unitZ-.5]);
-  conveyor([unitX-2,1.0,unitZ+1],[apron.west+3,3.6,unitZ+2]);
+  conveyor([0,.65,-3.5],[0,1.05,-.5]);
+  conveyor([-2,1.0,1],[-westReach,3.6,2]);
   // Feed the back of the heap, keeping the truck's unloading side clear.
-  conveyor([unitX+2,1.0,unitZ+1],[RAW_STOCK[0],2.65,RAW_STOCK[2]-2.5]);
+  conveyor([2,1.0,0],[stockOffsetX,2.65,stockOffsetZ-5]);
   // The photographed receiving area has two slender white silos west of the
   // transfer equipment, aligned side by side near the railway.
   const siloWhite=material('#e5e9e7',.06,.78);
@@ -116,17 +122,14 @@ export function buildRawYard(k){
     cyl(.27,.15,[0,1.01,0],siloFrame,g,.27,24);
     return g;
   }
-  // The rail-side vessel stays fixed. Place the other on its conveyor-side
-  // left at the same distance from the wall, rather than behind it.
-  receivingSilo(OLD_RAW_SILOS.x,OLD_RAW_SILOS.z+3.8,8.4);
-  const conveyorSilo=receivingSilo(OLD_RAW_SILOS.x,OLD_RAW_SILOS.z-3.8,8.4);
-  conveyorSilo.rotation.y=Math.atan2(unitX-conveyorSilo.position.x,unitZ-conveyorSilo.position.z);
+  // The two receiving silos are no longer built here.
   // The single pile is supplied by the existing delivery animation.
   const [pileX,,pileZ]=RAW_STOCK;
   for(const z of [pileZ-3.4,pileZ+3.4])box(7.5,1.4,.22,[pileX+2,.70,z],steel);
   box(.22,1.4,7,[pileX+5.75,.70,pileZ],steel);
-  // Short dark crossing approach connects the concrete edge to the railway.
+  // Pale asphalt continues the yard's light paving up to the railway.
   const crossingX=apron.west+4.3;
-  box(7,.13,3.8,[crossingX,.04,apron.south-.6],m.road).castShadow=false;
+  const whiteAsphalt=material('#d7d9d4',0,.96,{map:m.road.map,bumpMap:m.road.bumpMap,bumpScale:.013});
+  box(7,.13,3.8,[crossingX,.04,apron.south-.6],whiteAsphalt).castShadow=false;
   return {bounds:RAW_YARD};
 }

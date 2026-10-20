@@ -20,7 +20,7 @@ import {poolSurfaces,batchAssemblies} from './industrial/surfaceBatching.js';
 import {JOURNEY_STEPS,JOURNEY_STAGE as S,journeyAt,journeyOpacity} from './journey.js';
 import {ZONES,STATUSES} from './data.js';
 import {createRenderClock,createResolutionBudget} from './renderBudget.js';
-import {POND,OLD_ENTRANCE} from './industrial/siteLayout.js';
+import {POND,OLD_ENTRANCE,OLD_PAVILION,OLD_RAIL_DORMITORY as DORM,OLD_WORK_OFFICE as OFFICE,RAIL_ACCESS_CROSSING as RAIL_GATE,PRODUCTION_ENTRANCE as ENTRY} from './industrial/siteLayout.js';
 import {quarryPoint} from './industrial/quarryLayout.js';
 
 // The light profile is the default everywhere to keep Chrome's memory low; add ?hq to the URL for the full-detail scene.
@@ -32,21 +32,28 @@ const PRESETS={
   site:{position:[-290,235,250],target:[22,0,-56]},
   dispatch:{position:[-105,30,-106],target:[-32,2.0,-53]},
   oldsite:{position:[-96,60,-192],target:[25,2,-111]},
-  oldInterior:{position:[-16,27,-145],target:[31,1.5,-106]},
+  oldInterior:{position:[43,46,-42],target:[31,1.5,-103]},
+  oldoffice:{position:[OFFICE.x-21,18,OFFICE.z-16],target:[OFFICE.x,1.6,OFFICE.z]},
+  pavilion:{position:[OLD_PAVILION.hall.x-15,21,OLD_PAVILION.hall.z-24],target:[OLD_PAVILION.hall.x-6,1.3,OLD_PAVILION.hall.z]},
   trucks:{position:[58,8,-65],target:[70,1.8,-43]},
   truckDetail:{position:[56.4,4.2,-49.5],target:[63.4,2,-43]},
   trainDetail:{position:[-90,6.5,-67],target:[-75,2.9,-53]},
   raw:{position:quarryPoint(-251,108,182),target:quarryPoint(24,16,-21)},
   rawyard:{position:[130,86,14],target:[130,1,-109]},
+  railgate:{position:[RAIL_GATE.x+14,30,-82],target:[RAIL_GATE.x,0,-54.5]},
   pond:{position:[-224,113,-52],target:[OLD_ENTRANCE.outerX,0,OLD_ENTRANCE.z]},
 };
 const EQUIPMENT_VIEWS={...STATION_VIEWS,...Object.fromEntries(INTERIOR_VIEWS.map(v=>[v.id,v]))};
 const SITE_VIEWS=[
   {name:'ÇIG MAL KÄNI · NUSGA',anchor:quarryPoint(3,9,4),position:quarryPoint(-28,30,49),target:quarryPoint(3,2,4)},
   {name:'DEMIR ÝOL',anchor:[20,4,-53],position:[-40,54,-133],target:[-20,2,-53]},
+  {name:'ÝÜKLEME NOKADY',anchor:[25,7.5,-46.4],position:[-9,35,-110],target:[25,2.7,-43]},
+  {name:'ÖNÜMÇILIK BINASY',anchor:[ENTRY.x,6.3,ENTRY.z],position:[ENTRY.x-3,6.8,ENTRY.z+14],target:[ENTRY.x,2.9,ENTRY.z+.6]},
   {name:'TIR MEÝDANÇASY',anchor:[-111,3,-25],position:[-158,56,14],target:[-111,1,-27]},
   {name:'ÇIG MAL',anchor:[45,5,14],position:[98,48,64],target:[48,1.5,14]},
   {name:'BALYK HOWUZY',anchor:[POND.x,2,POND.z],position:[POND.x-47,65,POND.z+49],target:[POND.x,0,POND.z]},
+  {name:'ÝATAKHANA',anchor:[DORM.x,3,DORM.z],position:[DORM.x-8,20,DORM.z-22],target:[DORM.x,0,DORM.z]},
+  {name:'NAHARHANA · OFIS',anchor:[OLD_PAVILION.hall.x-7,4,OLD_PAVILION.hall.z],position:[OLD_PAVILION.hall.x-15,21,OLD_PAVILION.hall.z-24],target:[OLD_PAVILION.hall.x-6,1.3,OLD_PAVILION.hall.z]},
 ];
 export default function PlantScene({machines,selected,onSelect,view='perspective',area='site',equipmentFocus='BS',cameraRequest=0,roof=true,night=false,eco=false,paused=false,follow=false,speed=1,loopStep=null,journeyRequest,onJourney,onManualCamera,onProcess}){
   const host=useRef(),labels=useRef(),api=useRef(),state=useRef();
@@ -190,8 +197,12 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
         if(camera.position.y<floor){camera.position.y=floor;camera.lookAt(controls.target);}
       }
       site.oldShells.forEach(shell=>{shell.visible=!showInterior;});site.roofs.visible=!showInterior;site.structures.visible=!showInterior;production.root.visible=showInterior;oldInterior.root.visible=showInterior;
+      logistics.setTruckInteriorVisible(showInterior);
       if(TABLET&&lastInterior!==showInterior){renderer.shadowMap.needsUpdate=true;lastInterior=showInterior;}
-      if(!animateMotion&&!transition&&!cameraMoved&&!dirty&&!changed){resolutionBudget.reset();return;}
+      // Facade ventilation runs at a steady speed even when the tour is paused.
+      const ventilationMoving=!showInterior&&!reduced.matches;
+      if(ventilationMoving)site.updateVentilation(dt);
+      if(!animateMotion&&!ventilationMoving&&!transition&&!cameraMoved&&!dirty&&!changed){resolutionBudget.reset();return;}
       if(cameraMoved||dirty||changed)k.updateDetailVisibility(camera);
       production.updateMotion(animateMotion?dt*s.speed:0,{preview:equipmentPreview,stage:journey.index,active,showInterior,showLines:s.area==='lines'&&showInterior});
       if(showInterior&&(now-lastProcessNotify>500||changed)){
@@ -209,7 +220,7 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
       if(now-lastNotify>180||changed){s.onJourney?.({index:journey.index,progress:journey.progress,blocked});lastNotify=now;}
       container.dataset.journeyStep=journey.step.id;container.dataset.truckLoads=journey.truckLoads;container.dataset.trainLoads=journey.trainLoads;
       if(cameraMoved||dirty||changed||now-lastLabelTime>100){lastLabelTime=now;camera.updateMatrixWorld();anchors.forEach(({label,point,zone,site:siteLabel,line:lineLabel})=>{tmp.copy(point).project(camera);label.style.transform=`translate(-50%,-100%) translate(${(tmp.x*.5+.5)*width}px,${(-tmp.y*.5+.5)*height}px)`;label.style.visibility=tmp.z>1||tmp.x< -1||tmp.x>1||tmp.y< -1||tmp.y>1||(siteLabel&&(['process','lines'].includes(s.area)||s.follow))||(lineLabel&&(s.area!=='lines'||!showInterior))||(!siteLabel&&!lineLabel&&(!showInterior||s.area==='lines'))?'hidden':'visible';if(zone){label.style.setProperty('--status',STATUSES[active.get(zone)?.status||'offline'].color);label.classList.toggle('is-selected',s.selected===`AKB-${zone}-001`);}});}
-      if(TABLET&&(animateMotion||transition||cameraMoved)){const scale=resolutionBudget.sample(dt);if(scale!==null)pipeline.resize(width,height,Math.min(devicePixelRatio,scale));}
+      if(TABLET&&(animateMotion||ventilationMoving||transition||cameraMoved)){const scale=resolutionBudget.sample(dt);if(scale!==null)pipeline.resize(width,height,Math.min(devicePixelRatio,scale));}
       updateBatches();const drawStart=performance.now();pipeline.render();const drawEnd=performance.now();dirty=false;
       if(meter){workMs+=drawStart-workStart;drawMs+=drawEnd-drawStart;renderedFrames++;if(now-measuredAt>=1000){meter.textContent=`${TABLET?'TABLET':'DESKTOP'} · ${Math.round(renderedFrames*1000/(now-measuredAt))} FPS · ${(renderer.info.render.triangles/1e6).toFixed(2)}M triangles · ${renderer.info.render.calls} draws · CPU ${(workMs/renderedFrames).toFixed(1)}+${(drawMs/renderedFrames).toFixed(1)} ms · ${renderer.getPixelRatio().toFixed(2)}× · ${performance.memory?Math.round(performance.memory.usedJSHeapSize/1048576)+' MB JS':'JS n/a'}`;renderedFrames=0;workMs=0;drawMs=0;measuredAt=now;}}
     }

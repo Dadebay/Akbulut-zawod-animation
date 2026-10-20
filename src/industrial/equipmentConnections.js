@@ -51,7 +51,7 @@ export function createEquipmentConnections(k,root,equipment,rotors){
     if(kind==='gravity'&&points.some((p,i)=>i&&p.y>points[i-1].y+.001))throw new Error(`Uphill gravity chute: ${from.name} → ${to.name}`);
     const path=roundedConnection(points,kind==='mechanical'?.18:Math.max(.5,radius*2));
     const shell=k.mesh(new T.TubeGeometry(path,Math.max(24,Math.ceil(path.getLength()*3)),radius,k.tablet?8:12,false),shellMaterial,[0,0,0],root);
-    shell.userData.connection={from:from.name,to:to.name,kind,material};
+    shell.userData.connection={from:from.name,to:to.name,fromMachine:from.machine.name,toMachine:to.machine.name,kind,material};
     // Reducers seal differing nozzle diameters instead of a small pipe ending
     // in a larger open mouth. Both end planes coincide with their machine port.
     for(const e of [a,b])if(e.r>radius+.005){

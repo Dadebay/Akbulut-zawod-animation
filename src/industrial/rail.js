@@ -1,23 +1,20 @@
-import {secondTrackPath,arrivalTrainPose} from './arrivalTrain.js';
+import {secondTrackPath,arrivalTrainPose,ARRIVAL_CAR_OFFSETS,SECOND_TRACK_END_X,SECOND_TRACK_Z} from './arrivalTrain.js';
 import * as T from 'three';
 import {buildTurkmenLocomotive} from './turkmenLocomotive.js';
+import {buildBoulderPiles} from './rubble.js';
 import {RAW_YARD,RAW_YARD_APRON,RAIL_ACCESS_CROSSING} from './siteLayout.js';
 import {RAIL_LAYOUT} from './railLayout.js';
 
 export {RAIL_LAYOUT} from './railLayout.js';
-export const FREIGHT_RAIL_EXTENSION={startX:110,bendX:RAW_YARD_APRON.east-28,endX:RAW_YARD_APRON.east-6,endZ:RAW_YARD_APRON.south-20};
+export const FREIGHT_RAIL_EXTENSION={startX:110,endX:RAW_YARD_APRON.east-6};
 export const RAW_YARD_RAIL_GATE={west:RAW_YARD.east-9,east:RAW_YARD.east-3};
 
-// Turn directly into the compact apron, leaving room beside the rail endpoint.
-// Terrain grading uses this same path so the new rails remain above ground.
+// End beside the apron on the existing straight axis, outside the paved yard.
+// Terrain grading follows the same line as the visible rails.
 export function freightRailExtensionPath(){
-  const {startX,bendX,endX,endZ}=FREIGHT_RAIL_EXTENSION,P=(x,z)=>new T.Vector3(x,0,z);
+  const {startX,endX}=FREIGHT_RAIL_EXTENSION,P=x=>new T.Vector3(x,0,RAIL_LAYOUT.z);
   const path=new T.CurvePath();
-  path.add(new T.LineCurve3(P(startX,RAIL_LAYOUT.z),P(bendX,RAIL_LAYOUT.z)));
-  const quarterTurn=.55228475;
-  path.add(new T.CubicBezierCurve3(
-    P(bendX,RAIL_LAYOUT.z),P(bendX+(endX-bendX)*quarterTurn,RAIL_LAYOUT.z),
-    P(endX,endZ+(RAIL_LAYOUT.z-endZ)*quarterTurn),P(endX,endZ)));
+  path.add(new T.LineCurve3(P(startX),P(endX)));
   return path;
 }
 
@@ -28,10 +25,10 @@ export function buildRail(k,pallet){
   const railWheels=[],trainCargo=[];
   const blue=material('#1b507e',.32,.42),white=material('#dce1e3',.2,.47),frame=material('#30383d',.64,.58),steel=material('#899195',.82,.37),rubber=material('#1b242a',0,.92),glass=material('#213c49',.35,.2),darkGlass=material('#14232c',.25,.26),edge=material('#c4ae61',.25,.6);
   const ballast=material('#8b8981',0,1),railMat=material('#7b7770',.83,.4),tie=material('#79796f',0,.95);
-  const straightLength=FREIGHT_RAIL_EXTENSION.bendX+700,straightCenter=(FREIGHT_RAIL_EXTENSION.bendX-700)/2;
+  const straightLength=FREIGHT_RAIL_EXTENSION.endX+700,straightCenter=(FREIGHT_RAIL_EXTENSION.endX-700)/2;
   box(straightLength,.18,4.05,[straightCenter,.005,RAIL_LAYOUT.z],ballast);
   // Concrete sleepers, fastenings, rail webs and polished running surfaces.
-  for(let x=-700;x<=FREIGHT_RAIL_EXTENSION.bendX+.01;x+=.7){
+  for(let x=-700;x<=FREIGHT_RAIL_EXTENSION.endX+.01;x+=.7){
     box(.24,.15,2.64,[x,.19,RAIL_LAYOUT.z],tie);
     if(x>-165)for(const z of [-.76,.76]){box(.32,.035,.25,[x,.285,RAIL_LAYOUT.z+z],frame);for(const dz of [-.12,.12])box(.07,.06,.045,[x,.30,RAIL_LAYOUT.z+z+dz],railMat);}
   }
@@ -40,34 +37,22 @@ export function buildRail(k,pallet){
   for(const x of [-143,-62]){box(10,.19,1.30,[x,.30,RAIL_LAYOUT.z],frame);for(const dz of [-1.30,1.30])box(10,.19,.85,[x,.30,RAIL_LAYOUT.z+dz],frame);}
   const ballastCount=k.tablet?1800:6500,stones=k.instances(new T.DodecahedronGeometry(1,0),ballast,ballastCount);const dummy=new T.Object3D();let seed=83;
   const rnd=()=>{seed=(1664525*seed+1013904223)>>>0;return seed/4294967296;};
-  for(let i=0;i<ballastCount;i++){dummy.position.set(-180+rnd()*(FREIGHT_RAIL_EXTENSION.bendX+180),.14,RAIL_LAYOUT.z+(rnd()>.5?1:-1)*(1.35+rnd()*.65));dummy.rotation.set(rnd()*3,rnd()*3,rnd()*3);const s=.045+rnd()*.075;dummy.scale.set(s,s*.55,s);dummy.updateMatrix();stones.setMatrixAt(i,dummy.matrix);}stones.instanceMatrix.needsUpdate=true;stones.userData.detailDistance=100;
+  for(let i=0;i<ballastCount;i++){dummy.position.set(-180+rnd()*(FREIGHT_RAIL_EXTENSION.endX+180),.14,RAIL_LAYOUT.z+(rnd()>.5?1:-1)*(1.35+rnd()*.65));dummy.rotation.set(rnd()*3,rnd()*3,rnd()*3);const s=.045+rnd()*.075;dummy.scale.set(s,s*.55,s);dummy.updateMatrix();stones.setMatrixAt(i,dummy.matrix);}stones.instanceMatrix.needsUpdate=true;stones.userData.detailDistance=100;
 
-  // Continue the same rail profile and sleeper pitch around the yard-end bend.
+  // A braced buffer stop makes the straight track's endpoint visible.
   {
-    const bend=freightRailExtensionPath().curves.at(-1),length=bend.getLength(),segments=Math.ceil(length/.6);
-    const positions=[],indices=[];
-    for(let i=0;i<=segments;i++){
-      const p=bend.getPointAt(i/segments),t=bend.getTangentAt(i/segments);
-      for(const side of [-1,1])positions.push(p.x-t.z*side*2.025,.095,p.z+t.x*side*2.025);
-      if(i<segments){const a=i*2;indices.push(a,a+1,a+2,a+1,a+3,a+2);}
+    const stop=group([FREIGHT_RAIL_EXTENSION.endX-1.7,0,RAIL_LAYOUT.z]);stop.name='freight-track-buffer-stop';
+    for(const z of [-.76,.76]){
+      box(2.8,.18,.23,[.25,.49,z],frame,stop);
+      rod([-1.1,.58,z],[0,1.25,z],.10,frame,stop);
+      rod([1.5,.58,z],[0,1.25,z],.10,frame,stop);
     }
-    const bed=new T.BufferGeometry();bed.setAttribute('position',new T.Float32BufferAttribute(positions,3));bed.setIndex(indices);bed.computeVertexNormals();
-    mesh(bed,ballast).castShadow=false;
-    for(let i=0;i<segments;i++){
-      const a=bend.getPointAt(i/segments),b=bend.getPointAt((i+1)/segments),mid=a.clone().lerp(b,.5);
-      const g=group([mid.x,0,mid.z]);g.rotation.y=-Math.atan2(b.z-a.z,b.x-a.x);
-      for(const side of [-.76,.76])for(const [y,h,w,mat] of [[.285,.035,.16,railMat],[.34,.075,.055,railMat],[.3775,.065,.075,steel]])
-        box(a.distanceTo(b)+.01,h,w,[0,y,side],mat,g);
-    }
-    for(let d=.7;d<length;d+=.7){
-      const p=bend.getPointAt(d/length),t=bend.getTangentAt(d/length),g=group([p.x,0,p.z]);g.rotation.y=-Math.atan2(t.z,t.x);
-      box(.24,.15,2.64,[0,.19,0],tie,g);
-      for(const z of [-.76,.76]){box(.32,.035,.25,[0,.285,z],frame,g);for(const dz of [-.12,.12])box(.07,.06,.045,[0,.30,z+dz],railMat,g);}
-    }
+    box(.28,.32,2.7,[0,1.25,0],frame,stop);
+    for(let i=0;i<5;i++)box(.025,.22,.5,[-.153,1.25,-1+i*.5],i%2?m.red:white,stop);
   }
 
-  // A second track runs beside the main line near the plant: one carries cargo in, the other takes it away.
-  // It leaves the main line with a gentle S-curve and joins it again at the far end.
+  // The incoming siding branches from the main line at the west end and stops
+  // beside the dormitory, before the road crossing.
   {
     const track=secondTrackPath();
     const length=track.getLength(),segments=Math.ceil(length/2);
@@ -78,18 +63,25 @@ export function buildRail(k,pallet){
       const item=mesh(geo,mat);item.castShadow=false;return item;
     }
     strip(3.3,.07,ballast);
-    for(const side of [-.76,.76]){strip(.16,.31,railMat,side);strip(.07,.4,steel,side);}
+    for(const side of [-.76,.76]){strip(.16,.31,railMat,side);strip(.07,RAIL_LAYOUT.railTop,steel,side);}
     const count=Math.floor(length/.7),sleepers=k.instances(new T.BoxGeometry(.24,.15,2.64),tie,count),o=new T.Object3D();
     for(let i=0;i<count;i++){const p=track.getPointAt(i/(count-1)),t=track.getTangentAt(i/(count-1));o.position.set(p.x,.19,p.z);o.rotation.set(0,-Math.atan2(t.z,t.x),0);o.scale.set(1,1,1);o.updateMatrix();sleepers.setMatrixAt(i,o.matrix);}
     sleepers.instanceMatrix.needsUpdate=true;
+    // A low stone cap buries the rail ends, matching the straight siding in the reference.
+    const sidingEnd=group([SECOND_TRACK_END_X,0,SECOND_TRACK_Z]);
+    sidingEnd.name='dormitory-siding-stone-end';
+    box(2.2,.16,3.05,[.60,.14,0],ballast,sidingEnd);
+    box(2.0,.32,2.8,[-.35,.35,0],material('#5b605f',0,.94),sidingEnd,.055);
   }
 
-  // Graded two-lane approach through both boundary openings. The prefabricated
-  // crossing panels sit just below the railheads and keep the flangeways open.
+  // A plain concrete road crossing spans the whole fence opening. The siding
+  // stops beside it, so only the straight main rails pass through.
   {
-    const {x:roadX,width}=RAIL_ACCESS_CROSSING,west=roadX-width/2,east=roadX+width/2;
-    const roadSurface=m.road,paint=material('#d9d9d2',0,.94);
-    const panelSurface=material('#7c8382',0,.96,{
+    const {x:roadX,width}=RAIL_ACCESS_CROSSING;
+    const west=roadX-width/2,east=roadX+width/2;
+    const entrance=group();entrance.name='rail-access-gateway';
+    const roadSurface=m.road;
+    const panelSurface=material('#8b9191',0,.96,{
       map:roadSurface.map,bumpMap:roadSurface.bumpMap,bumpScale:.009
     });
     const seam=material('#515957',0,.98),header=material('#a8aaa5',0,.94);
@@ -103,64 +95,41 @@ export function buildRail(k,pallet){
       ],2));
       geo.setIndex(z1>z0?[0,2,1,1,2,3]:[0,1,2,1,3,2]);
       geo.computeVertexNormals();
-      mesh(geo,mat).castShadow=false;
+      const surface=mesh(geo,mat,[0,0,0],entrance);surface.castShadow=false;return surface;
     }
-    // The site apron and older courtyard meet the rail level over gentle
-    // grades. The wider ends blend into the adjoining paved yards.
-    for(const [z0,y0,w0,z1,y1,w1] of [
-      [-40,-.035,10.2,-50.7,.392,width],
-      [-58.9,.392,width,-69,.145,10.2]
-    ]){
+    const approaches=[
+      [-45.5,-.035,width,-50.7,.392,width],
+      [-58.9,.392,width,-64.5,.145,width]
+    ];
+    // Short grades merge into the yard asphalt; only the rail deck reads as concrete.
+    for(const [z0,y0,w0,z1,y1,w1] of approaches){
       strip(roadX-w0/2,roadX+w0/2,z0,y0,
         roadX-w1/2,roadX+w1/2,z1,y1,roadSurface);
-      for(const side of [-1,1]){
-        const a=.10,b=.90;
-        const za=z0+(z1-z0)*a,zb=z0+(z1-z0)*b;
-        const ya=y0+(y1-y0)*a+.008,yb=y0+(y1-y0)*b+.008;
-        const wa=w0+(w1-w0)*a,wb=w0+(w1-w0)*b;
-        const xa=roadX+side*(wa/2-.32),xb=roadX+side*(wb/2-.32);
-        strip(xa-.045,xa+.045,za,ya,xb-.045,xb+.045,zb,yb,paint);
-      }
     }
-    function turnoutZ(x){
-      let lo=0,hi=1;
-      for(let i=0;i<18;i++){
-        const t=(lo+hi)/2,u=1-t;
-        const curveX=u*u*u*68+3*u*u*t*88+3*u*t*t*88+t*t*t*108;
-        if(curveX<x)lo=t;else hi=t;
-      }
-      const t=(lo+hi)/2,u=1-t;
-      return -57.6*(u*u*u+3*u*u*t)-53*(3*u*t*t+t*t*t);
-    }
-    const panelStep=.28,grooveHalfWidth=.13,north=-50.7,south=-58.9;
-    const positions=[],uvs=[],indices=[];
+    const grooveHalfWidth=.13,north=-50.7,south=-58.9;
+    const roadPanels={positions:[],uvs:[],indices:[]};
     function panel(x0,x1,z0,z1){
+      const {positions,uvs,indices}=roadPanels;
       const base=positions.length/3,y=.392;
       positions.push(x0,y,z0,x1,y,z0,x0,y,z1,x1,y,z1);
       uvs.push(x0/3,z0/3,x1/3,z0/3,x0/3,z1/3,x1/3,z1/3);
       indices.push(base,base+2,base+1,base+1,base+2,base+3);
     }
-    for(let x=west;x<east-.001;x+=panelStep){
-      const segmentWidth=Math.min(panelStep,east-x),centerX=x+segmentWidth/2;
-      const branch=turnoutZ(centerX);
-      const grooves=[RAIL_LAYOUT.z-.76,RAIL_LAYOUT.z+.76,branch-.76,branch+.76]
-        .map(z=>[z-grooveHalfWidth,z+grooveHalfWidth]).sort((a,b)=>a[0]-b[0]);
-      let edge=south;
-      for(const [start,end] of [...grooves,[north,north]]){
-        if(start>edge+.02)panel(x,x+segmentWidth,edge,start);
-        edge=Math.max(edge,end);
-      }
+    const grooves=[RAIL_LAYOUT.z-.76,RAIL_LAYOUT.z+.76]
+      .map(z=>[z-grooveHalfWidth,z+grooveHalfWidth]).sort((a,b)=>a[0]-b[0]);
+    let edge=south;
+    for(const [start,end] of [...grooves,[north,north]]){
+      if(start>edge+.02)panel(west,east,edge,start);
+      edge=Math.max(edge,end);
     }
     const panels=new T.BufferGeometry();
-    panels.setAttribute('position',new T.Float32BufferAttribute(positions,3));
-    panels.setAttribute('uv',new T.Float32BufferAttribute(uvs,2));
-    panels.setIndex(indices);panels.computeVertexNormals();
-    mesh(panels,panelSurface).castShadow=false;
-    // A few genuine panel joints read as manufactured sections; the fine
-    // sampling above is only for following the curved switch rails.
-    for(const x of [west+2,roadX,east-2]){
-      const branch=turnoutZ(x),grooves=[RAIL_LAYOUT.z-.76,RAIL_LAYOUT.z+.76,branch-.76,branch+.76]
-        .map(z=>[z-grooveHalfWidth,z+grooveHalfWidth]).sort((a,b)=>a[0]-b[0]);
+    panels.setAttribute('position',new T.Float32BufferAttribute(roadPanels.positions,3));
+    panels.setAttribute('uv',new T.Float32BufferAttribute(roadPanels.uvs,2));
+    panels.setIndex(roadPanels.indices);panels.computeVertexNormals();
+    const crossing=mesh(panels,panelSurface,[0,0,0],entrance);
+    crossing.name='rail-access-crossing-panels';crossing.castShadow=false;
+    // A single panel joint gives the crossing the simple slab detail in the reference.
+    for(const x of [west+1.8]){
       let edge=south;
       for(const [start,end] of [...grooves,[north,north]]){
         if(start>edge+.04)box(.025,.004,start-edge,[x,.396,(edge+start)/2],seam).castShadow=false;
@@ -177,6 +146,7 @@ export function buildRail(k,pallet){
     const axle=cyl(.105,2.25,[x,y,0],frame,parent);axle.rotation.x=Math.PI/2;
     for(const side of [-1,1]){
       const g=group([x,y,side*.76],parent,true);g.userData.wheelKey=`rail:${r}:${side}`;
+      g.userData.radius=r;
       const profile=[[0,-.10],[r*.50,-.10],[r*.68,-.067],[r*.85,-.067],[r,-.088],[r,.067],[r+.035,.067],[r+.035,.105],[r*.76,.105],[r*.58,.065],[0,.065]].map(([rr,z])=>new T.Vector2(rr,z));
       const wheel=mesh(new T.LatheGeometry(profile,k.tablet?24:64),steel,[0,0,0],g);wheel.rotation.x=side*Math.PI/2;
       const hub=cyl(.16,.20,[0,0,side*.12],frame,g,undefined,32);hub.rotation.x=Math.PI/2;
@@ -233,21 +203,29 @@ export function buildRail(k,pallet){
   }
 
   buildTurkmenLocomotive(k,train,{z:RAIL_LAYOUT.z,bogie,coupling});
+  // Shrink along the track and in height only; pallets keep their real size.
+  const s=RAIL_LAYOUT.scale;train.scale.set(s,s,1);
+  for(const cargo of trainCargo)cargo.scale.set(1/s,1/s,1);
   const incoming=[],firstIncomingWheel=railWheels.length;
   for(let i=0;i<3;i++){
-    const g=group([0,0,0],k.scene,true);incoming.push(g);
-    bogie(g,-3.6);bogie(g,3.6);box(i?13.4:10.5,.25,2.8,[0,1.42,0],blue,g);
+    const g=group([0,0,0],k.scene,true);incoming.push(g);g.scale.set(RAIL_LAYOUT.scale,RAIL_LAYOUT.scale,1);
     if(i===0){
-      box(6,1.65,2.65,[.5,2.4,0],blue,g,.12);box(2.8,2.7,2.9,[-3.1,2.92,0],white,g,.08);
-      for(const side of [-1,1])box(2,.9,.035,[-3.1,3.5,side*1.47],glass,g);
-      box(.04,.9,2.5,[-1.68,3.5,0],glass,g);cyl(.13,.7,[2.1,3.55,0],frame,g);
-      textPlate('AK BULUT',2,.35,[.4,2.7,1.34],g,'#ffffff','#1b507e');
+      buildTurkmenLocomotive(k,g,{z:0,bogie,coupling,sectionCentres:[0],frontTowardsPositiveX:true});
     }else{
+      bogie(g,-3.6);bogie(g,3.6);box(13.4,.25,2.8,[0,1.42,0],blue,g);
       box(13.2,.08,2.65,[0,1.58,0],m.wood,g);
-      for(const side of [-1,1])box(13.3,.45,.08,[0,1.83,side*1.4],blue,g);
-      for(const x of [-6.6,6.6])box(.08,.45,2.85,[x,1.83,0],blue,g);
+      for(const side of [-1,1]){
+        box(13.3,.82,.08,[0,2.01,side*1.4],blue,g);
+        for(let x=-5.6;x<6;x+=2.8)box(.10,.86,.12,[x,2.01,side*1.43],steel,g);
+      }
+      for(const x of [-6.6,6.6])box(.08,.82,2.85,[x,2.01,0],blue,g);
+      const rawLoad=group([0,1.68,0],g);rawLoad.name='incoming-gypsum-stone-load';
+      // Heaped to the brim: a fuller bed under overlapping, taller piles along the whole wagon.
+      box(12.6,.74,2.52,[0,.37,0],material('#dedbd0',0,.96),rawLoad,.08);
+      const spots=Array.from({length:15},(_,n)=>[-5.6+n*.8,n%2?-.14:.14,1.32,1.05+(n%3)*.12]);
+      buildBoulderPiles(k,spots,{parent:rawLoad,seed:283+i*31,depthScale:.9});
+      for(const x of [-6.9,6.9])coupling(g,x,Math.sign(x));
     }
-    for(const x of [-6.9,6.9])coupling(g,x,Math.sign(x));
   }
   const incomingWheels=railWheels.splice(firstIncomingWheel),tongues=[];
   for(const side of [-1,1]){
@@ -256,8 +234,8 @@ export function buildRail(k,pallet){
   }
   function updateArrival(time){
     const lead=arrivalTrainPose(time);
-    incoming.forEach((car,i)=>{const pose=arrivalTrainPose(time,i*15.2);car.position.copy(pose.position);car.rotation.y=pose.yaw;});
-    incomingWheels.forEach(w=>{w.rotation.z=-lead.distance/.46;});
+    incoming.forEach((car,i)=>{const pose=arrivalTrainPose(time,ARRIVAL_CAR_OFFSETS[i]);car.position.copy(pose.position);car.rotation.y=pose.yaw;});
+    incomingWheels.forEach(w=>{w.rotation.z=-lead.distance/(w.userData.radius||.46);});
     tongues.forEach((tongue,i)=>{tongue.rotation.y=(i?1:-1)*.025+lead.switch*.055;});
   }
   updateArrival(0);

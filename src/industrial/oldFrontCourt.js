@@ -3,13 +3,22 @@ import {OLD_FRONT_COURT as C,OLD_FRONT_PARK as PARK,OLD_LEFT_CAMPUS as L,OLD_PAV
 import {createParkedCarBuilder} from './parkedCars.js';
 
 // The old hall opens onto one pale concrete court behind a planted white fence.
+// Flat asphalt with world-space UVs: no side faces or texture seams where patches meet.
+function flatPatch(mesh,mat,west,east,north,south,y){
+  const geo=new T.BufferGeometry(),corners=[[west,north],[east,north],[east,south],[west,south]];
+  geo.setAttribute('position',new T.Float32BufferAttribute(corners.flatMap(([x,z])=>[x,y,z]),3));
+  geo.setAttribute('uv',new T.Float32BufferAttribute(corners.flatMap(([x,z])=>[x/3,z/3]),2));
+  geo.setIndex([0,2,1,0,3,2]);geo.computeVertexNormals();
+  const surface=mesh(geo,mat);surface.castShadow=false;return surface;
+}
+
 export function buildOldFrontCourt(k,plants){
   const {box,cyl,rod,mesh,group,material,m}=k;
   const concrete=material('#b9baae',0,.96),asphalt=m.road;
   const white=material('#e1e4da',.06,.78),metal=material('#b9c5bd',.48,.52);
   const grass=m.grass,soil=material('#77774e',0,1);
   function apron(west,east,north,south){
-    box(east-west,.62,south-north,[(west+east)/2,-.335,(north+south)/2],asphalt);
+    flatPatch(mesh,asphalt,west-.03,east+.03,north-.03,south+.03,-.025);
   }
   apron(C.west,C.east,C.north,C.south);
   apron(C.east,C.drive.east,C.drive.north,C.drive.south);
@@ -27,11 +36,10 @@ export function buildOldFrontCourt(k,plants){
   // Continue the parking access lane beyond both ends of the canopy, from
   // the northern forecourt to the secondary gate's transverse driveway.
   const laneWest=PARK.east+.25,laneEast=-16.6,laneNorth=C.north,laneSouth=C.entryZ;
-  const parkingLane=box(laneEast-laneWest,.012,laneSouth-laneNorth,
-    [(laneWest+laneEast)/2,-.012,(laneNorth+laneSouth)/2],asphalt);
-  parkingLane.castShadow=false;
+  // Keep the lane below the approach sidewalk so its full-width stones stay visible.
+  flatPatch(mesh,asphalt,laneWest,laneEast,laneNorth,laneSouth,-.019);
 
-  function bed(west,east,north,south,{openSouth=false}={}){
+  function bed(west,east,north,south,{openSouth=false,openEast=false,rim=true}={}){
     const w=east-west,d=south-north,x=(west+east)/2,z=(north+south)/2;
     function outline(inset){
       const a=-w/2+inset,b=w/2-inset,c=-d/2+inset,e=d/2-inset,r=Math.min(.85,(w-2*inset)/2,(d-2*inset)/2);
@@ -39,9 +47,34 @@ export function buildOldFrontCourt(k,plants){
       shape.lineTo(b,e-r);shape.quadraticCurveTo(b,e,b-r,e);shape.lineTo(a+r,e);
       shape.quadraticCurveTo(a,e,a,e-r);shape.lineTo(a,c+r);shape.quadraticCurveTo(a,c,a+r,c);shape.closePath();return shape;
     }
-    if(openSouth){
+    if(openEast){
+      // The east side butts against the fence: square corners, kerb on the other three sides only.
+      const a=-w/2,b=w/2,c=-d/2,e=d/2,r=0,inset=.14;
+      const ai=a+inset,bi=b+.02,ci=c+inset,ei=e-inset,ri=0;
+      const rim=new T.Shape();rim.moveTo(b,e-r);
+      rim.quadraticCurveTo(b,e,b-r,e);rim.lineTo(a+r,e);
+      rim.quadraticCurveTo(a,e,a,e-r);rim.lineTo(a,c+r);
+      rim.quadraticCurveTo(a,c,a+r,c);rim.lineTo(b-r,c);
+      rim.quadraticCurveTo(b,c,b,c+r);
+      rim.lineTo(b-inset,c+r);
+      rim.quadraticCurveTo(b-inset,ci,b-r,ci);rim.lineTo(ai+ri,ci);
+      rim.quadraticCurveTo(ai,ci,ai,ci+ri);rim.lineTo(ai,ei-ri);
+      rim.quadraticCurveTo(ai,ei,ai+ri,ei);rim.lineTo(b-r,ei);
+      rim.quadraticCurveTo(b-inset,ei,b-inset,e-r);rim.closePath();
+      const curb=new T.ExtrudeGeometry(rim,{depth:.20,bevelEnabled:false,curveSegments:5});curb.rotateX(-Math.PI/2);
+      mesh(curb,concrete,[x,-.07,z]);
+      const turf=new T.Shape();turf.moveTo(ai+ri,ci);turf.lineTo(bi-ri,ci);
+      turf.quadraticCurveTo(bi,ci,bi,ci+ri);turf.lineTo(bi,ei-ri);
+      turf.quadraticCurveTo(bi,ei,bi-ri,ei);turf.lineTo(ai+ri,ei);
+      turf.quadraticCurveTo(ai,ei,ai,ei-ri);turf.lineTo(ai,ci+ri);
+      turf.quadraticCurveTo(ai,ci,ai+ri,ci);turf.closePath();
+      const lawn=new T.ExtrudeGeometry(turf,{depth:.18,bevelEnabled:false,curveSegments:5});lawn.rotateX(-Math.PI/2);
+      mesh(lawn,grass,[x,-.035,z]);
+    }else if(openSouth){
       // The planted strip joins the lawn beyond this end: keep its outer U
       // border and leave the shared green edge free of a white crossbar.
+      // World z is the negated shape y: mirror so the open end faces the lawn it joins.
+      const mirror=sh=>new T.Shape(sh.getPoints(8).map(q=>new T.Vector2(q.x,-q.y)));
       const a=-w/2,b=w/2,c=-d/2,e=d/2,r=.85,inset=.14;
       const ai=a+inset,bi=b-inset,ci=c+inset,ri=r-inset;
       const rim=new T.Shape();rim.moveTo(a,e);rim.lineTo(a,c+r);
@@ -50,18 +83,18 @@ export function buildOldFrontCourt(k,plants){
       rim.lineTo(bi,e);rim.lineTo(bi,ci+ri);
       rim.quadraticCurveTo(bi,ci,bi-ri,ci);rim.lineTo(ai+ri,ci);
       rim.quadraticCurveTo(ai,ci,ai,ci+ri);rim.lineTo(ai,e);rim.closePath();
-      const curb=new T.ExtrudeGeometry(rim,{depth:.20,bevelEnabled:false,curveSegments:5});curb.rotateX(-Math.PI/2);
+      const curb=new T.ExtrudeGeometry(mirror(rim),{depth:.20,bevelEnabled:false,curveSegments:5});curb.rotateX(-Math.PI/2);
       mesh(curb,concrete,[x,-.07,z]);
       const turf=new T.Shape();turf.moveTo(ai+ri,ci);turf.lineTo(bi-ri,ci);
       turf.quadraticCurveTo(bi,ci,bi,ci+ri);turf.lineTo(bi,e+.12);
       turf.lineTo(ai,e+.12);turf.lineTo(ai,ci+ri);
       turf.quadraticCurveTo(ai,ci,ai+ri,ci);turf.closePath();
-      const lawn=new T.ExtrudeGeometry(turf,{depth:.18,bevelEnabled:false,curveSegments:5});lawn.rotateX(-Math.PI/2);
+      const lawn=new T.ExtrudeGeometry(mirror(turf),{depth:.18,bevelEnabled:false,curveSegments:5});lawn.rotateX(-Math.PI/2);
       mesh(lawn,grass,[x,-.035,z]);
     }else{
-      const curb=new T.ExtrudeGeometry(outline(0),{depth:.20,bevelEnabled:false,curveSegments:5});curb.rotateX(-Math.PI/2);
-      mesh(curb,concrete,[x,-.07,z]);
-      const lawn=new T.ExtrudeGeometry(outline(.14),{depth:.18,bevelEnabled:false,curveSegments:5});lawn.rotateX(-Math.PI/2);
+      if(rim){const curb=new T.ExtrudeGeometry(outline(0),{depth:.20,bevelEnabled:false,curveSegments:5});curb.rotateX(-Math.PI/2);
+      mesh(curb,concrete,[x,-.07,z]);}
+      const lawn=new T.ExtrudeGeometry(outline(rim?.14:0),{depth:.18,bevelEnabled:false,curveSegments:5});lawn.rotateX(-Math.PI/2);
       mesh(lawn,grass,[x,-.035,z]);
     }
     box(w-.3,.46,d-.3,[x,-.30,z],soil);
@@ -71,8 +104,10 @@ export function buildOldFrontCourt(k,plants){
   // approach road and fence. The sidewalk remains above it.
   const vergeWest=L.frontRoadX+3.5,vergeEast=L.fenceX-.02;
   const vergeNorth=APPROACH.z+APPROACH.width/2,vergeSouth=entryNorth;
+  // Lift the turf above the gate forecourt slab so its angled asphalt edge
+  // cannot show through the lawn at the north-west corner.
   const verge=box(vergeEast-vergeWest,.12,vergeSouth-vergeNorth,
-    [(vergeWest+vergeEast)/2,-.10,(vergeNorth+vergeSouth)/2],grass);
+    [(vergeWest+vergeEast)/2,-.04,(vergeNorth+vergeSouth)/2],grass);
   verge.castShadow=false;
   // One continuous lawn replaces the raised island and its internal white rim.
   // Finish only the exposed outside edges; the fence already frames the east.
@@ -81,7 +116,13 @@ export function buildOldFrontCourt(k,plants){
   for(const z of [vergeNorth,vergeSouth])
     box(vergeEast-vergeWest,.16,.18,[vergeMidX,.025,z],white).castShadow=false;
   bed(-28.6,-26.3,-116.7,-102.3);
-  bed(-33.6,-29.45,entrySouth+.25,OLD_PAVILION.garden.south);
+  // This bed runs right up to the fence base and keeps its white kerb on the outer sides.
+  // It reaches the lane edge like the verge across the entry, and is planted.
+  bed(vergeWest,L.fenceX-.12,entrySouth+.25,OLD_PAVILION.garden.south,{openEast:true});
+  for(let z=entrySouth+1.6,i=0;z<OLD_PAVILION.garden.south-1;z+=2.4,i++){
+    plants.plant(-33.2+(i%2)*.25,z,.36+(i%3)*.04,{plantedBed:true});
+    plants.plant(-30.6-(i%2)*.2,z+1.2,.28+(i%4)*.03,{plantedBed:true});
+  }
   // Vary the small boundary trees; the open centre of the court remains paved.
   for(let i=0;i<9;i++){
     const z=-114.5+i*3.15;
@@ -118,9 +159,9 @@ export function buildOldFrontCourt(k,plants){
   }
   fence([L.fenceX,-113],[L.fenceX,entryNorth]);
   fence([L.fenceX,entrySouth],[L.fenceX,OLD_PAVILION.garden.north]);
-  // The garden-side leaf folds out over the asphalt, clear of the planting.
+  // The gate leaves swing open the other way from before: each folds back along the opposite side of the fence.
   for(const z of [entryNorth,entrySouth]){
-    const direction=z===entrySouth?-1:1;
+    const direction=z===entrySouth?1:-1;
     box(.38,2.0,.38,[L.fenceX,1,z],white);
     box(.50,.13,.50,[L.fenceX,2.05,z],white);
     for(const y of [.28,1.57])box(4.3,.08,.07,[L.fenceX+direction*2.15,y,z],metal);
@@ -130,11 +171,12 @@ export function buildOldFrontCourt(k,plants){
   // Slim planting beds follow the white gable and wrap the glazed office corner.
   bed(-10,-7.3,-115.5,-113.0);
   bed(-10,-7.3,-111.0,-108.5);
-  bed(-16.3,-14.1,-105.7,-100.6);
-  bed(-16.3,-14.1,-96.3,-87.0,{openSouth:true});
+  // The entrance sits mid-facade: beds stop either side of its 4.4 m opening.
+  bed(-16.3,-14.1,-105.7,-98.4);
+  bed(-16.3,-14.1,-94.0,-87.0,{openSouth:true});
   for(const z of [-114.2,-109.7])plants.plant(-8.7,z,.27);
-  for(const z of [-104,-102,-94.8,-91.8,-88.8])plants.plant(-15.1,z,.25);
-  for(const [x,z] of [[-11.2,-115],[-16.45,-104.7],[-16.45,-90],[-6,-82.9]]){
+  for(const z of [-104,-102,-92.6,-90.6,-88.8])plants.plant(-15.1,z,.25);
+  for(const [x,z] of [[-16.45,-103],[-16.45,-90],[-6,-82.9]]){
     cyl(.034,2.9,[x,1.45,z],metal,k.scene,undefined,10);
     cyl(.10,.20,[x,2.98,z],white,k.scene,undefined,12);
     box(.20,.06,.20,[x,3.11,z],m.light);

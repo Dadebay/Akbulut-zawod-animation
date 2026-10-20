@@ -114,11 +114,11 @@ export function buildMaterialFlow(k,logistics){
   const silo=group([1.25,0,3.2],receiver);k.frame(2.3,2.3,1.6,silo);cyl(.2,1.1,[0,1.65,0],m.steel,silo,1.05);cyl(1.05,3.1,[0,3.75,0],m.white,silo);cyl(1.1,.15,[0,5.36,0],m.steel,silo);
   k.pipe([[1.25,6.7,0],[1.25,7.1,0],[1.25,7.1,3.2],[1.25,5.3,3.2]],.18,m.steel,receiver);k.motor([1.7,6.2,0],receiver,.7);k.ladder(5.4,1.25,4.5,receiver);
   k.textPlate('KALSIT',1.6,.35,[1.25,4.2,4.26],receiver);
-  const boardDelivery=[BOARD_PALLET_OUT,[BOARD_PALLET_OUT[0],.8,-36],[25,.8,-36],[25,.8,-41]];
-  const bagDelivery=[BAG_PALLET_OUT,[-26,.8,-36],[10,.8,-36],[10,.8,-41]];
+  const boardDelivery=[BOARD_PALLET_OUT,[BOARD_PALLET_OUT[0],.8,-36],[25,.8,-36]];
+  const bagDelivery=[BAG_PALLET_OUT,[-26,.8,-36],[10,.8,-36]];
   // The pallet feeds share two straight runs. Trim each belt at a junction
   // plate so its blue guide rails cannot cross the neighbouring carrying face.
-  const deckHalf=1.1,deckOverlap=.08,feedZ=-36,transferZ=-41,boardX=BOARD_PALLET_OUT[0];
+  const deckHalf=1.1,deckOverlap=.08,feedZ=-36,boardX=BOARD_PALLET_OUT[0];
   function transferDeck(x,z,open){
     const g=group([x,0,z]);
     box(2*deckHalf+.04,.055,2*deckHalf+.04,[0,.752,0],m.steel,g);
@@ -131,37 +131,21 @@ export function buildMaterialFlow(k,logistics){
   }
   const upperJunctions=[
     [boardX,feedZ,['west','east','north']],
-    [10,feedZ,['west','east','south']],
-    [25,feedZ,['west','south']]
+    [10,feedZ,['west','east']],
+    [25,feedZ,['west']]
   ];
-  const lowerJunctions=[
-    [-8,transferZ,['east','south']],
-    [10,transferZ,['west','east','north']],
-    [25,transferZ,['west','east','north','south']],
-    [51,transferZ,['west','south']]
-  ];
-  for(const [x,z,open] of [...upperJunctions,...lowerJunctions])transferDeck(x,z,open);
+  for(const [x,z,open] of upperJunctions)transferDeck(x,z,open);
   const edge=deckHalf-deckOverlap;
   belt([BAG_PALLET_OUT,[-26,.8,feedZ],[boardX-edge,.8,feedZ]],1.4);
   belt([BOARD_PALLET_OUT,[boardX,.8,feedZ+edge]],1.7);
   for(const [from,to] of [[boardX,10],[10,25]])
     belt([[from+edge,.8,feedZ],[to-edge,.8,feedZ]],1.7);
-  for(const [x,width] of [[10,1.4],[25,1.7]])
-    belt([[x,.8,feedZ-edge],[x,.8,transferZ+edge]],width);
-  for(const [from,to] of [[-8,10],[10,25],[25,51]])
-    belt([[from+edge,.8,transferZ],[to-edge,.8,transferZ]],1.7);
-  for(const x of [51,-8,25]){
-    const lastZ=x===51?-45:-43;
-    belt([[x,.8,transferZ-edge],[x,.27,lastZ]],1.7);
-  }
-  // Pallets use the level transfer decks. The sloped exit belts are kept for
-  // the loading area, but a moving pallet must not overrun their open ends.
-  // One board stream continues east; a later board takes the central branch.
+  // Packing deliveries end inside the hall. The exterior apron has no
+  // conveyor, transfer decks or sloping exits, so pallets stop on these decks.
   const palletTravelPerStep=90;
   const goods=[
-    {bags:false,points:[...boardDelivery,[51,.8,transferZ]],starts:[0,.14]},
-    {bags:true,points:[...bagDelivery,[-8,.8,transferZ]],starts:[0,.14,.28]},
-    {bags:false,points:boardDelivery,starts:[.5]},
+    {bags:false,points:boardDelivery,starts:[0,.14,.5]},
+    {bags:true,points:bagDelivery,starts:[0,.14,.28]},
   ].map(({bags,points,starts})=>{
     const path=makeCurve(points);
     return {bags,path,length:path.getLength(),starts,objects:starts.map(()=>logistics.pallet(k.scene,[0,0,0],bags?'bags':'panel',true))};

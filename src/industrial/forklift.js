@@ -71,7 +71,7 @@ export function createForkliftBuilder(k,pallet,worker){
     cargo.rotation.y=bagCargo.rotation.y=-Math.PI/2;
     const driver=worker({parent:g,position:[-.30,0,0],yaw:Math.PI/2,seated:true,seed:index});
     function update(pose,time){
-      g.position.set(pose.x,0,pose.z);g.rotation.y=pose.yaw;
+      g.position.set(pose.x,pose.y||0,pose.z);g.rotation.y=pose.yaw;
       fork.position.y=pose.height-F.mastBaseY;mast.rotation.z=pose.tilt;
       liftRam.scale.y=Math.max(.08,(pose.height+.58)/1.8);
       cargo.visible=pose.carrying&&pose.kind==='panel';bagCargo.visible=pose.carrying&&pose.kind==='bags';

@@ -73,13 +73,13 @@ export function createEquipmentModels(k,rotors){
     for(let x=-4.8;x<5.1;x+=1.2)ring(1.503,.009,[x,0,0],seam,drum,'x');for(let n=0;n<4;n++){const a=n/4*Math.PI*2;rod([-5.1,Math.sin(a)*1.502,Math.cos(a)*1.502],[5.1,Math.sin(a)*1.502,Math.cos(a)*1.502],.009,seam,drum);}
     for(const x of [-3.45,3.45]){cylinder(1.6,.28,[x,0,0],cast,drum,'x',1.6,80);cylinder(1.64,.18,[x,0,0],m.polished,drum,'x',1.64,80);circleBolts(1.55,[x+.17,0,0],drum,'x',28);
       const contactZ=Math.sqrt((1.64+.43)**2-(2.65-1.12)**2);
-      for(const z of [-contactZ,contactZ]){box(1.4,.4,.75,[x,.73,z],cast,g,.045);
-        const roller=group([x,1.12,z],g,true);cylinder(.43,.62,[0,0,0],zinc,roller,'x');box(.64,.04,.06,[0,.43,0],cast,roller);
+      for(const z of [-contactZ,contactZ]){box(1.4,.4,.75,[x,.43,z],cast,g,.045);
+        const roller=group([x,1.12,z],g,true);cylinder(.43,.62,[0,0,0],zinc,roller,'x');box(.012,.05,.68,[.316,0,0],cast,roller);
         rotors.push({object:roller,axis:'x',zone:'BS',speed:-rpmToRadians(P.drumRpm)*1.64/.43});
         for(const dx of [-.47,.47]){box(.18,.52,.6,[x+dx,.91,z],cast,g,.09);bolt([x+dx,.68,z+.22],g);}cylinder(.12,1.25,[x,1.12,z],m.polished,g,'x');}}
     cylinder(1.68,.26,[.7,0,0],cast,drum,'x',1.68,80);for(let n=0;n<80;n++){const a=n/80*Math.PI*2;const tooth=box(.28,.12,.10,[.7,Math.sin(a)*1.72,Math.cos(a)*1.72],zinc,drum);tooth.rotation.x=-a;}circleBolts(1.61,[.88,0,0],drum,'x',32);rotors.push({object:drum,axis:'x',zone:'BS',speed:rpmToRadians(P.drumRpm)});
     gearmotor([1.3,.6,-2.05],g,1.4);const pinion=group([.7,1.18,-1.45],g,true);cylinder(.35,.3,[0,0,0],cast,pinion,'x');for(let n=0;n<18;n++){const a=n/18*Math.PI*2;const t=box(.3,.06,.08,[0,Math.sin(a)*.36,Math.cos(a)*.36],zinc,pinion);t.rotation.x=-a;}rotors.push({object:pinion,axis:'x',zone:'BS',speed:-rpmToRadians(P.drumRpm)*P.drumTeeth/P.pinionTeeth});
-    for(const x of [-5.5,5.5]){cylinder(1.52,.55,[x,2.65,0],blue,g,'x');cylinder(1.57,.06,[x+(x>0?-.3:.3),2.65,0],zinc,g,'x');circleBolts(1.43,[x+(x>0?.31:-.31),2.65,0],g,'x',24);box(.7,1.4,1.1,[x,1,0],cast,g);}
+    for(const x of [-5.5,5.5]){cylinder(1.52,.55,[x,2.65,0],blue,g,'x');cylinder(1.57,.06,[x+(x>0?-.255:.255),2.65,0],zinc,g,'x');circleBolts(1.43,[x+(x>0?.31:-.31),2.65,0],g,'x',24);box(.7,1.4,1.1,[x,1,0],cast,g);}
     hollowHopper(1.4,1.1,.6,.6,1.2,[-5.65,3.7,0],g);pipe([[5.5,3.4,0],[5.5,4.7,0],[5.5,5.4,-.7],[5.5,5.4,-2]],.4,zinc,g);flange(.47,[5.5,4.55,0],g);
     hatch([-2,0,1.48],.28,drum);gauge([5.45,3.6,.9],g);pipe([[5.5,2.8,1.2],[5.5,1.7,1.5],[4.3,1.7,1.5]],.05,zinc,g);valve([4.7,1.7,1.5],g,'x');
     const walk=group([0,0,2.75],g);frame(10.7,.9,1.15,walk);deck(10.7,1,1.15,walk);ladder(1.2,-5.4,3.3,g);textPlate('BS-01',1.2,.25,[0,1.35,3.28],g);

@@ -141,7 +141,6 @@ export function buildNewFrontCourt(k,plants){
   flatBox(11.55,3.6,-70.425,-25,pavers,.065);
   for(let x=-102.3;x<-82.2;x+=.75)flatBox(.025,3.6,x,-25,curb,.084);
   for(let x=-76.1;x<-64.7;x+=.75)flatBox(.025,3.6,x,-25,curb,.075);
-  for(let x=-81.5;x<-76.5;x+=.68)flatBox(.36,3.1,x,-25,paint,.080);
 
   // Truck bays face a clear central manoeuvring lane, away from the passenger aisle.
   for(const {position,angle,scale} of PARKED_TRUCKS){
@@ -196,9 +195,8 @@ export function buildNewFrontCourt(k,plants){
         mesh(blossomGeometry,flowerBorder,[x,.69,flowerZ]);
     }
   }
-  // The office palms mark the outer corners and leave its tall windows visible.
-  for(const [x,z,h,s] of [[-75.1,-38.1,4.1,1.7],[-75.1,-10.7,4.0,1.7]])
-    palm(x,z,h,s);
+  // Keep the palm at the southern end of the office garden.
+  palm(-75.1,-10.7,4.0,1.7);
   for(const [x,z,h,s] of [[-74,4.3,3.6,1.35],[-73.6,21.3,3.6,1.35]])
     palm(x,z,h,s);
   flatBox(13.5,3.1,-71.8,12.8,pavers,.065);

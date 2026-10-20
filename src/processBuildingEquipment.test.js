@@ -14,6 +14,15 @@ test('reference equipment fits both buildings, clears service aisles and has con
     scene.updateMatrixWorld(true);
     const entries=production.interiorInventory.filter(e=>e.building),bounds=[];
     assert.ok(entries.some(e=>e.building==='main')&&entries.some(e=>e.building==='rear'));
+    const added=entries.filter(e=>/^(tower-recovery|rear-blend)-/.test(e.id));
+    assert.equal(added.length,18,'two recovery and two blending trains add eighteen machines');
+    const machinery=[];
+    production.root.traverse(object=>{
+      if(object.name.startsWith('interior-')||object.name.startsWith('machine-')){
+        machinery.push([object.name,new T.Box3().setFromObject(object)]);
+      }
+    });
+    const existing=machinery.filter(([name])=>!/^interior-(tower-recovery|rear-blend)-/.test(name));
     for(const entry of entries){
       const object=production.root.getObjectByName(`interior-${entry.id}`);
       const b=new T.Box3().setFromObject(object),shell=PROCESS_BUILDINGS[entry.building];
@@ -30,21 +39,51 @@ test('reference equipment fits both buildings, clears service aisles and has con
       for(const [other,c] of bounds)assert.equal(b.intersectsBox(c),false,`${entry.id} overlaps ${other}`);
       bounds.push([entry.id,b]);
       const ports=object.userData.ports;
+      if(added.includes(entry)){
+        for(const [name,c] of existing)assert.equal(b.intersectsBox(c),false,`${entry.id} overlaps existing ${name}`);
+        assert.ok(ports.in.connected&&ports.out.connected,`${entry.id}: complete circuit`);
+        if(entry.kind==='cyclone')assert.ok(ports.air.connected,`${entry.id}: extraction`);
+        if(entry.building==='main'){
+          const northWalk=new T.Box3(new T.Vector3(-35.9,0,-8.025),new T.Vector3(-22.1,26,-6.975));
+          assert.equal(b.intersectsBox(northWalk),false,`${entry.id}: north catwalk`);
+        }
+      }
       if(['process-silo','hopper','filter','drum'].includes(entry.kind)){
         assert.ok(ports.in.connected,`${entry.id}: inlet`);
         assert.ok(ports.out.connected,`${entry.id}: outlet`);
       }
       assert.ok(entry.sourceFiles.every(file=>file.startsWith('photo_2026-10-20_')));
     }
+    // New routes may approach their own nozzles, but cannot be routed through
+    // the body envelope of another machine. Full-turn tests cover moving parts.
+    production.root.traverse(object=>{
+      const connection=object.userData.connection;
+      if(!connection||!/tower-recovery|rear-blend-/.test(connection.fromMachine+connection.toMachine))return;
+      const path=object.geometry.parameters.path;
+      const points=path.getSpacedPoints(Math.ceil(path.getLength()/.15)).map(p=>p.applyMatrix4(object.matrixWorld));
+      for(const [name,b] of machinery){
+        if(name===connection.fromMachine||name===connection.toMachine)continue;
+        const interior=b.clone().expandByScalar(-.08);
+        assert.equal(points.some(p=>interior.containsPoint(p)),false,`${connection.fromMachine} → ${connection.toMachine} crosses ${name}`);
+      }
+    });
     // Drives are part of the existing run/pause lifecycle, including after
     // scene batching: pausing must not keep the added valves/drum turning.
     const rotor=production.root.getObjectByName('interior-rear-thermal-drum').children.find(c=>c.userData.dynamic);
+    const moving=[];
+    for(const entry of added)production.root.getObjectByName(`interior-${entry.id}`).traverse(o=>{if(o.userData.dynamic)moving.push(o);});
+    assert.ok(moving.length>=18,'each new machine retains its drive');
+    const pose=o=>[...o.position.toArray(),...o.rotation.toArray()];
+    const before=moving.map(pose);
     const active=new Map(['CR','TY','BS','GR','GK','GP'].map(zone=>[zone,{status:'running'}]));
     const angle=rotor.rotation.x;
     production.updateMotion(.5,{preview:true,active,showInterior:true});
     assert.notEqual(rotor.rotation.x,angle);
+    moving.forEach((o,i)=>assert.notDeepEqual(pose(o),before[i],'new drive runs'));
     const paused=rotor.rotation.x;
+    const held=moving.map(pose);
     production.updateMotion(0,{preview:true,active,showInterior:true});
     assert.equal(rotor.rotation.x,paused);
+    assert.deepEqual(moving.map(pose),held,'new drives pause together');
   }finally{kit.dispose();globalThis.document=previous;}
 });

@@ -22,7 +22,7 @@ export function buildPondApproach(k,plants){
   const parkingEast=PARK.east+.175,parkingSouth=PARK.south+.175;
   const vergeEast=OLD_LEFT_CAMPUS.frontRoadX-3.5-1.3;
   const vergeSouth=ROAD.z-ROAD.width/2-1-.775;
-  const entrySidewalkEast=PARK.entryX+PARK.entryWidth/2+1+.775;
+  const entrySidewalkEast=PARK.entryX+PARK.entryWidth/2+1.3;
   for(const [west,east,north,south] of [
     [parkingEast,vergeEast,PARK.north-.175,vergeSouth],
     [entrySidewalkEast,parkingEast,parkingSouth,vergeSouth]
@@ -58,6 +58,13 @@ export function buildPondApproach(k,plants){
     for(const side of [-1,1]){rod([x,8.7,z],[x+side*1.3,9,z],.055,m.steel);box(.8,.12,.3,[x+side*1.3,9,z],m.light);}
   }
   buildOldEntrance(k);
+  // White kerb along the lawn edge of the pond road's south sidewalk, from the gate to the
+  // orchard's end, so no stretch of that edge is left bare between the existing kerb stones.
+  {
+    const west=OLD_ENTRANCE.outerX+2.6,east=OLD_FRONT_COURT.orchard.east+1;
+    const z=ROAD.z+ROAD.width/2+1+.775+.07;
+    box(east-west,.19,.14,[(west+east)/2,.03,z],curb).castShadow=false;
+  }
   plants.row(-198,ROAD.z+10.2,-154,ROAD.z+10.2,4);
   plants.row(-131,ROAD.z+10.2,-87,ROAD.z+10.2,4);
   // Dense woodland east of the pond, with no road along the railway, as in the aerial photo.

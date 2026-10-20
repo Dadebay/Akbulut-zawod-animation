@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as T from 'three';
 import {PARKED_TRUCKS,DISPATCH_PAVEMENT,DISPATCH_EXIT_ROAD_X,DISPATCH_EXIT_ROAD_Z,dispatchPose,truckFootprint,trafficClearance} from './industrial/trafficLayout.js';
-import {NEW_ENTRANCE_MEDIAN,VISITOR_PARK} from './industrial/siteLayout.js';
+import {NEW_ENTRANCE_MEDIAN,VISITOR_PARK,RAIL_SIDE_LOADING as LOADING} from './industrial/siteLayout.js';
 import {SERVICE_ROUTE_BOUNDS,serviceMotion} from './industrial/serviceTraffic.js';
 import {OLD_SOUTH_GARDENS} from './industrial/oldCampus.js';
 import {RAIL_CROSSINGS,RAIL_CROSSING_POSTS} from './industrial/outerRail.js';
@@ -10,6 +10,7 @@ import {WALK_ROUTES,pedestrianMotion} from './industrial/pedestrianMotion.js';
 import {createVegetation} from './industrial/vegetation.js';
 import {FORKLIFT_JOBS,sampleForklift,forkliftFootprint} from './industrial/forkliftMotion.js';
 import {QUARRY,QUARRY_LOAD_POINT,EXCAVATOR_LAYOUT,excavatorLoadingPose} from './industrial/quarryLayout.js';
+import {TRUCK_SCALE} from './industrial/trucks.js';
 
 const rectangle=(x,z,w,d)=>[[x-w/2,z-d/2],[x+w/2,z-d/2],[x+w/2,z+d/2],[x-w/2,z+d/2]];
 test('both outer railway crossings have opposing barrier and sign posts',()=>{
@@ -61,6 +62,41 @@ function overlaps(a,b){
   return true;
 }
 
+test('loading canopy guards and low panel bundles leave forklift routes clear',()=>{
+  const guards=LOADING.columnXs.map(x=>rectangle(x,LOADING.columnZ,LOADING.guardWidth,LOADING.guardWidth));
+  const bundles=LOADING.panelBays.flatMap(({x,width})=>LOADING.panelRows.map(z=>rectangle(x,z,width,LOADING.panelDepth)));
+  for(const [index,job] of FORKLIFT_JOBS.entries())for(let t=0;t<=job.duration;t+=.1){
+    const pose=sampleForklift(job,t),full=forkliftFootprint(pose,.12);
+    for(const guard of guards)assert.equal(overlaps(full,guard),false,`guard: forklift ${index} at ${t}`);
+    // Raised tines can pass over the low stock; the chassis must always clear it.
+    const body=rectangle(-.25,0,2.4,1.6).map(([along,side])=>[
+      pose.x+along*Math.cos(pose.yaw)+side*Math.sin(pose.yaw),
+      pose.z-along*Math.sin(pose.yaw)+side*Math.cos(pose.yaw),
+    ]);
+    const lowPart=pose.height-.15>LOADING.panelTop?body:forkliftFootprint(pose);
+    for(const bundle of bundles)assert.equal(overlaps(lowPart,bundle),false,`panel: forklift ${index} at ${t}`);
+  }
+});
+
+test('forklifts work on the raised deck, which reaches the wagons',()=>{
+  const {platform}=LOADING;
+  const inside=([x,z])=>[platform,...LOADING.deckExtensions].some(d=>x>=d.west&&x<=d.east&&z>=d.north&&z<=d.south);
+  // The deck edge sits just clear of the 3.2 m locomotive and the wagons.
+  assert.ok(platform.north>-53-1.6&&platform.north<-53+1.6);
+  for(const [index,job] of FORKLIFT_JOBS.entries()){
+    assert.equal(job.base,platform.height);
+    for(let t=0;t<=job.duration;t+=.05){
+      const pose=sampleForklift(job,t);
+      assert.equal(pose.y,platform.height);
+      const body=rectangle(-.25,0,2.4,1.6).map(([along,side])=>[
+        pose.x+along*Math.cos(pose.yaw)+side*Math.sin(pose.yaw),
+        pose.z-along*Math.sin(pose.yaw)+side*Math.cos(pose.yaw),
+      ]);
+      for(const corner of body)assert.ok(inside(corner),`chassis leaves the deck: ${index} at ${t}`);
+    }
+  }
+});
+
 test('the articulated truck keeps a 35 cm margin from pavement edges, planters, docks, gate and kerbs',()=>{
   const obstacles=[[-69,-31,6.5,10.5],[-69,-16,7.5,9.5],[-84,-29.5,2.5,25.5],[-137,-11.5,1.4,1.5],[-137,7.5,1.4,1.5]].map(r=>rectangle(...r));
   const median=NEW_ENTRANCE_MEDIAN;
@@ -68,7 +104,8 @@ test('the articulated truck keeps a 35 cm margin from pavement edges, planters, 
   // The boundary fence and the main-road kerbs resume outside the gate opening.
   obstacles.push(rectangle(-137,-30.75,.43,38.5),rectangle(-137,23.75,.43,32.5));
   for(const x of [-147.82,-138.18])obstacles.push(rectangle(x,110.5,.25,181));
-  for(let x=8;x<44;x+=7){obstacles.push(rectangle(x,-42,4.8,4));for(const dx of [-2.7,2.7])obstacles.push(rectangle(x+dx,-45,.18,.18));}
+  for(const x of LOADING.columnXs)obstacles.push(rectangle(x,LOADING.columnZ,LOADING.guardWidth,LOADING.guardWidth));
+  for(const {x,width} of LOADING.panelBays)for(const z of LOADING.panelRows)obstacles.push(rectangle(x,z,width,LOADING.panelDepth));
   let previous;
   for(let i=0;i<=1200;i++){
     const pose=dispatchPose(i/1200),footprint=truckFootprint(pose,.35);
@@ -92,11 +129,11 @@ test('freight roads have straight axis-aligned edges instead of a curved swept o
   }
 });
 
-test('full-size waiting trucks fit their bays and leave the dispatch route clear',()=>{
+test('scaled waiting trucks fit their bays and leave the dispatch route clear',()=>{
   const footprints=[];
   for(const {position:[x,,z],angle,scale} of PARKED_TRUCKS){
-    assert.equal(scale,1);
-    const corners=rectangle(-6.2,0,17.6,2.7).map(([along,side])=>[x+scale*(along*Math.cos(angle)+side*Math.sin(angle)),z+scale*(-along*Math.sin(angle)+side*Math.cos(angle))]);
+    const size=scale*TRUCK_SCALE;
+    const corners=rectangle(-6.2,0,17.6,2.7).map(([along,side])=>[x+size*(along*Math.cos(angle)+side*Math.sin(angle)),z+size*(-along*Math.sin(angle)+side*Math.cos(angle))]);
     for(const [px,pz] of corners){assert.ok(px>-135.5&&px<-104.7);assert.ok(pz>-44&&pz<-8);}
     for(const other of footprints)assert.equal(overlaps(corners,other),false);
     footprints.push(corners);
@@ -108,7 +145,7 @@ test('full-size waiting trucks fit their bays and leave the dispatch route clear
 test('planting excludes the full conifer crown from both traffic lanes and trailer turns',()=>{
   const meshes=[],updaters=[],previousDocument=globalThis.document;
   globalThis.document={createElement:()=>({getContext:()=>new Proxy({},{get:()=>()=>{}})})};
-  const kit={tablet:true,windTime:{value:0},trackMaterial(){},onDetailUpdate:fn=>updaters.push(fn),trackTexture:t=>t,box(){},m:{},material:()=>new T.MeshBasicMaterial(),instances(geometry,material,count){const mesh=new T.InstancedMesh(geometry,material,count);meshes.push(mesh);return mesh;}};
+  const kit={tablet:true,windTime:{value:0},trackMaterial(){},onDetailUpdate:fn=>updaters.push(fn),trackTexture:t=>t,box(){return {castShadow:true};},m:{},material:()=>new T.MeshBasicMaterial(),instances(geometry,material,count){const mesh=new T.InstancedMesh(geometry,material,count);meshes.push(mesh);return mesh;}};
   const plants=createVegetation(kit);
   plants.row(-147,-150,-147,36,5); // Old row intruded on the main road.
   plants.row(-151,-150,-151,36,5); // Relocated row retains the planted boundary.

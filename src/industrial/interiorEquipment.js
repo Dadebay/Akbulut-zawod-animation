@@ -4,6 +4,7 @@ import {buildProcessTower} from './processTower.js';
 import {JOURNEY_STAGE as S} from '../journey.js';
 import {createArchiveEquipment} from './archiveEquipment.js';
 import {buildProcessBuildingEquipment} from './processBuildingEquipment.js';
+import {createCeilingPanelStyles} from './ceilingPanelStyles.js';
 
 // The first leg takes a dry sheet off the supply pallet into the finishing magazine.
 export const CEILING_ROUTE=[[5,1.18,-25.6],[5,1.18,-23],[14,1.18,-23],[28,1.18,-23],[40,1.18,-23],[53,1.18,-23],[69,1.18,-23],[69,1.18,-33.5],[58,1.18,-33.5],[40,1.18,-33.5],[26,1.18,-33.5],[20,1.18,-33.5]];
@@ -21,6 +22,7 @@ export function buildInteriorEquipment(k,{root,equipment,machines,network}){
   const models=createArchiveEquipment(k,equipment);
   const {box,cyl,rod,pipe,group,m}=k,{steel,panel,dark}=models.materials;
   const inventory=[];
+  const panelStyles=createCeilingPanelStyles(k);
   const units={...machines};
   function install(id,kind,zone,position,options={},references=[],yaw=0,scale=1,parent=root){
     const g=group(parent===root?localPoint(position):position,parent);
@@ -56,11 +58,16 @@ export function buildInteriorEquipment(k,{root,equipment,machines,network}){
     k.ladder(y,-w/2-.5,d/2,g,true);return g;
   }
   function label(text,x,y,z,width=3){k.textPlate(text,width,.34,localPoint([x,y,z]),root,'#344f5c','#e4e9e7');}
-  function pallet(x,z,w=2.4,d=1.4,layers=14){
+  function pallet(x,z,w=2.4,d=1.4,layers=14,finish=null){
     const g=group(localPoint([x,0,z]),root);
     for(const zz of [-d*.35,0,d*.35])box(w,.14,.18,[0,.12,zz],m.wood,g);
     for(const xx of [-w*.35,0,w*.35])box(.18,.1,d,[xx,.23,0],m.wood,g);
-    for(let n=0;n<layers;n++)box(w-.08,.035,d-.08,[0,.32+n*.039,0],m.paper,g);
+    for(let n=0;n<layers-(finish===null?0:1);n++)box(w-.08,.035,d-.08,[0,.32+n*.039,0],finish===null?m.paper:panelStyles.plain[finish],g);
+    if(finish!==null){
+      const top=panelStyles.sheet(g,.3025+(layers-1)*.039,finish);
+      top.scale.set((w-.08)/1.28,1,(d-.08)/1.28);
+      g.userData.panelType=top.userData.panelType;
+    }
     for(const xx of [-w*.28,w*.28])box(.045,.02,d,[xx,.35+layers*.039,0],m.blue,g);
     return g;
   }
@@ -134,15 +141,17 @@ export function buildInteriorEquipment(k,{root,equipment,machines,network}){
   install('twin-roll-feed','mill','TY',[-49.5,.1,34],{},[63],0,.75);
   install('transfer-weigher','belt','TY',[-44.4,.1,34],{length:4.3,width:1.2},[45]);
 
-  // Dry-mix metering / bag filling along the west end of the production hall.
+  // Dry-mix metering / bag filling along the west end of the production hall,
+  // set back from the office's rear wall so the strip behind it stays clear.
+  const officeClearX=-50;
   deck(-51,-18,5.5,5,3.4);
   install('drymix-day-bin','hopper','GR',[-51,3.6,-18],{width:3,depth:2.6,height:3.2,weigh:true},[44,34]);
   install('drymix-screw','screw','GR',[-49.783,1.7,-18.884],{length:4.7,closed:true},[17],Math.PI/5);
-  install('additive-pan','mixer','GR',[-54,.1,-24.5],{pan:true},[58],0,.8);
+  install('additive-pan','mixer','GR',[officeClearX,.1,-24.5],{pan:true},[58],0,.8);
   install('ribbon-mixer','mixer','GR',[-35.5,.1,-24.5],{},[47]);
   install('vibrating-classifier','screen','GR',[-29,.1,-25],{round:true},[57],0,.85);
-  install('manual-bag-dump','bagDump','GR',[-54,.1,-29],{},[31,49]);
-  install('bulk-bag-filler','bagStation','GR',[-54,.1,-35],{bulk:true},[42]);
+  install('manual-bag-dump','bagDump','GR',[officeClearX,.1,-29],{},[31,49]);
+  install('bulk-bag-filler','bagStation','GR',[officeClearX,.1,-35],{bulk:true},[42]);
   install('rotary-packer','bagStation','GR',[-23.5,.1,-34],{rotary:true},[53]);
   install('bag-magazine','palletizer','GR',[-23.5,.1,-26.5],{},[64,70],0,.72);
   install('bag-discharge-belt','belt','GR',[-28,.1,-34],{length:4.2,width:.85},[45]);
@@ -194,8 +203,8 @@ export function buildInteriorEquipment(k,{root,equipment,machines,network}){
   install('board-palletizer','palletizer','GP',[26,.1,-33.5],{inline:true},[70]);
   install('final-pack-tunnel','tunnel','GP',[40,0,-33.5],{length:4,width:2.8,withBelt:false},[52]);
   install('package-lift','table','GP',[55,.1,-36.5],{kind:'lift',length:3},[43]);
-  for(const [x,z] of [[33,-36],[45,-36],[59,-36],[64,-37]])pallet(x,z);
-  for(const x of [22,30,38,54,62])pallet(x,-29,1.5,1.3,8);
+  for(const [finish,[x,z]] of [[33,-36],[45,-36],[59,-36],[64,-37]].entries())pallet(x,z,2.4,1.4,14,finish+1);
+  for(const [finish,x] of [22,30,38,54,62].entries())pallet(x,-29,1.5,1.3,8,finish);
   // The robot shares the live board receiver and fills the output pallet.
   inventory.push({id:'existing-robot-cell',kind:'robot',zone:'GP',position:PALLET_ROBOT_BASE,references:[41,59]});
   inventory.push({id:'existing-jaw-crusher',kind:'jaw-crusher',zone:'CR',position:[60,0,34.8],references:[40]});
@@ -242,7 +251,7 @@ export function buildInteriorEquipment(k,{root,equipment,machines,network}){
   join('tower-discharge','out','tower-gate','in',[],'gravity');
   join('tower-gate','out','tower-open-screw','in',[],'gravity');
   join('tower-open-screw','out','BS','in',[
-    [-22.788,3.65,-2.5],[-22,3.65,-2.5],[-22,6.2,-2.5],[-22,6.2,12],[-35.7,6.2,12],[-35.7,6.2,8],[-34.65,6.2,8]
+    [-22.788,3.65,-2.5],[-22.788,3.65,-.9],[-22,3.65,-.9],[-22,6.2,-.9],[-22,6.2,12],[-35.7,6.2,12],[-35.7,6.2,8],[-34.65,6.2,8]
   ]);
   join('thermal-burner','out','BS','heat',[],'duct','heat');
   join('BS','out','cooling-drum','in',[
@@ -270,7 +279,7 @@ export function buildInteriorEquipment(k,{root,equipment,machines,network}){
     [-39,1.7,-22.3],[-38.5,1.7,-27.5],[-38.5,6.5,-27.5],[-44.3,6.5,-27.5],[-44.3,6.5,-32.5]
   ],'mechanical','powder','GR');
   join('manual-bag-dump','out','ribbon-mixer','in',[
-    [-54,.35,-29],[-54,.35,-27],[-54,4.2,-27],[-35.5,4.2,-27],[-35.5,4.2,-24.5]
+    [officeClearX,.35,-29],[officeClearX,.35,-27],[officeClearX,4.2,-27],[-35.5,4.2,-27],[-35.5,4.2,-24.5]
   ],'mechanical','powder','GR');
   join('ribbon-mixer','out','vibrating-classifier','in',[
     [-35.5,.4,-24.5],[-32,.4,-24.5],[-32,3.8,-24.5],[-29,3.8,-25]
@@ -280,7 +289,7 @@ export function buildInteriorEquipment(k,{root,equipment,machines,network}){
   ],'mechanical','powder','GR');
 
   // Pumped water enters only the wet board mixer. Finished dry-mix stays dry.
-  join('water-buffer','out','liquid-metering','in',[[-10.8,1.2,17],[-11.6,1.2,17],[-11.6,.9,17]],'duct','water','GK');
+  join('water-buffer','out','liquid-metering','in',[[-11.6,1.75,17],[-11.6,.9,17]],'duct','water','GK');
   join('liquid-metering','out','board-slurry-mixer','water',[
     [-10.15,5.3,17],[-18,5.3,17],[-18,5.3,-6.5],[-46,5.3,-6.5],[-46,5.3,-9.8]
   ],'duct','water','GK');
@@ -340,7 +349,7 @@ export function buildInteriorEquipment(k,{root,equipment,machines,network}){
   join('panel-dust-collector','air','finishing-extraction-fan','in',[[48,4.2,-31],[48,1.2,-30.3],[50.6,1.2,-30.3]],'duct','air','GK');
   join('finishing-extraction-fan','out','finishing-vent','in',[[51.25,3.2,-31.5],[54,3.2,-31.5]],'duct','air','GK');
   machinePort(k,units['pulse-filter'],'cleaningAir',[1.65,7.65,.7],[1,0,0],.09,'air',{nozzle:.15});
-  join('air-receiver','out','pulse-filter','cleaningAir',[[-1.1,2.7,13],[-20,2.7,13],[-20,25.155,13],[-20,25.155,9.59]],'duct','air');
+  join('air-receiver','out','pulse-filter','cleaningAir',[[-1.1,2.7,13],[-1.1,4.9,13],[-20,4.9,13],[-20,25.155,13],[-20,25.155,9.59]],'duct','air');
 
   buildProcessBuildingEquipment(k,{root,models,equipment,units,inventory,network});
   return {inventory,units,update:models.update};

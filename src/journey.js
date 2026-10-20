@@ -2,6 +2,7 @@ import {quarryCycle,QUARRY_LOADING_SECONDS} from './quarryCycle.js';
 import {LOADING_DURATION,loadingCounts} from './industrial/forkliftMotion.js';
 import {quarryPoint} from './industrial/quarryLayout.js';
 import {HAUL_PROFILE} from './industrial/haulMotion.js';
+import {RAW_STOCK} from './industrial/siteLayout.js';
 import {DISPATCH_PROFILE} from './industrial/trafficLayout.js';
 import {JOURNEY_STAGE} from './journeyStages.js';
 export {JOURNEY_STAGE} from './journeyStages.js';
@@ -10,7 +11,7 @@ export {JOURNEY_STAGE} from './journeyStages.js';
 const definitions=[
   ['quarry','Kän','Kände ýüklemek','Ekskawator kamyony 4 susguçda ýükleýär — her aýlaw 18 sekunt.',QUARRY_LOADING_SECONDS,'CR',false,quarryPoint(-15,11,16),quarryPoint(-1,2,0)],
   ['haul','Daşama','Çig mal ýolda','Ýükli kamyon köne zawodyň yzky kabul ediş meýdançasyna gelýär.',HAUL_PROFILE.duration,'CR',false,quarryPoint(13,9,15),quarryPoint(-2,2,0)],
-  ['receive','Üýşmek','Çig maly meýdança boşatmak','Kamyon çig maly daşky konweýeriň ýanynda boşadýar.',12,'CR',false,[172.5,18,-105],[152,2,-129]],
+  ['receive','Üýşmek','Çig maly meýdança boşatmak','Kamyon çig maly daşky konweýeriň ýanynda boşadýar.',12,'CR',false,[RAW_STOCK[0]+20.5,18,RAW_STOCK[2]+24],[RAW_STOCK[0],2,RAW_STOCK[2]]],
   ['scoop','Susguç','Çig maly susup almak','Ýükleýji sagdaky çig mal üýşmeginden iri daşlary alýar.',18,'CR',false,[88,12,31.5],[70,2,14.5]],
   ['carry','Bunkere','Ýükleýji bunkere barýar','Ýükleýji sagdaky üýşmekden alan daşlaryny döwüji binanyň sag derwezesine getirýär.',28,'CR',false,[104,24,48],[80,2,25]],
   ['tip','Bunker','Susgujy bunkere boşatmak','Ýükleýji susgujyny galdyryp iri daşlary bunkere dökýär.',13,'CR',true,[88,11,47],[71,2,34.8]],
@@ -36,7 +37,8 @@ export function journeyOpacity(time,{following=false,playing=false,loopStep=null
 export const clamp01=n=>n<1e-12?0:n>1-1e-12?1:n;
 export function completedLoads(elapsed,period,count){return Math.min(count,Math.max(0,Math.floor(elapsed/period)+(elapsed%period>=period*.78?1:0)));}
 export function journeyAt(seconds){
-  const time=((seconds%JOURNEY_DURATION)+JOURNEY_DURATION)%JOURNEY_DURATION;
+  // Avoid rounding an exact stage boundary backwards by adding a full cycle.
+  const wrapped=seconds%JOURNEY_DURATION,time=wrapped<0?wrapped+JOURNEY_DURATION:wrapped;
   const step=JOURNEY_STEPS.find(s=>time<s.start+s.duration)||JOURNEY_STEPS.at(-1);
   const elapsed=time-step.start,progress=clamp01(elapsed/step.duration),index=step.index;
   const loads=step.id==='load'?loadingCounts(elapsed):null;

@@ -26,8 +26,9 @@ export function createVegetation(k){
   function isClear(tree,{plantedBed=false,plantedMedian=false}={}){
     const {x,z,sx,sz,sy,leanX,leanZ}=tree;
     const crown=2.65*Math.max(sx,sz)+7.5*sy*Math.max(Math.abs(leanX),Math.abs(leanZ))+.3;
-    if(!plantedMedian&&(trafficClearance(x,z)<crown+.3||pondAccessClearance(x,z)<crown+.6||loaderRoadClearance(x,z)<crown+.4))return false;
-    if(!plantedMedian&&oldEntranceClearance(x,z)<crown+.3)return false;
+    // Crowns render wider than the nominal radius, so keep a generous margin from every road.
+    if(!plantedMedian&&(trafficClearance(x,z)<crown+1.8||pondAccessClearance(x,z)<crown+2||loaderRoadClearance(x,z)<crown+1.8))return false;
+    if(!plantedMedian&&oldEntranceClearance(x,z)<crown+1.8)return false;
     if(rectDistance(x,z,ENTRANCE.x-1.1,ENTRANCE.x+3.8,ENTRANCE.z+ENTRANCE.left,ENTRANCE.z+ENTRANCE.right)<crown+.3)return false;
     if(rectDistance(x,z,OLD_FRONT_PARK.west,OLD_FRONT_PARK.east,OLD_FRONT_PARK.north,OLD_FRONT_PARK.south)<crown+.4)return false;
     if(rectDistance(x,z,LEFT.parking.west,LEFT.parking.east,LEFT.parking.north,LEFT.parking.south)<crown+.25)return false;
@@ -35,7 +36,10 @@ export function createVegetation(k){
       if(rectDistance(x,z,b.x-b.width/2,b.x+b.width/2,b.z-b.depth/2,b.z+b.depth/2)<crown+.3)return false;
     const rear=OLD_REAR_BOUNDARY.building;
     if(rectDistance(x,z,rear.x-2.6,rear.x+2.6,rear.z+rear.depth/2,rear.z+rear.depth/2+2.8)<crown+.3)return false;
-    if(rectDistance(x,z,-13,20,28.3,39.95)<crown+.4)return false;
+    // The dining street cuts the front woodland's south-east corner; keep crowns off it.
+    if(rectDistance(x,z,-91,-86.5,4.5,28.8)<crown+1.8)return false;
+    // Leave the silo approach beside the north fence open.
+    if(rectDistance(x,z,-22.5,20,28.3,39.95)<crown+.4)return false;
     for(const b of [GYPSUM_RECEIVING_HALL,GYPSUM_RECEIVING_HALL.wing])
       if(rectDistance(x,z,b.west,b.east,b.north,b.south)<crown+.4)return false;
     if(rectDistance(x,z,POND.x-POND.width/2-1.5,POND.x+POND.width/2+1.5,POND.z-POND.depth/2-1.5,POND.z+POND.depth/2+1.5)<crown)return false;
@@ -46,19 +50,21 @@ export function createVegetation(k){
     if(x<116&&Math.abs(z-freightRailZ)<freightRailHalfWidth+crown)return false;
     // The pavilion's narrow landscaped beds border a service lane. Trees
     // deliberately placed in those beds still respect buildings and rail.
-    if(!plantedBed&&!plantedMedian&&campusLanes.some(bounds=>rectDistance(x,z,...bounds)<crown+.8))return false;
+    if(!plantedBed&&!plantedMedian&&campusLanes.some(bounds=>rectDistance(x,z,...bounds)<crown+2.4))return false;
     return true;
   }
   function plant(x,z,size,options){
     const tree={x,z,sx:size*(.88+random()*.25),sz:size*(.86+random()*.27),sy:size*(.78+random()*.60),yaw:random()*Math.PI*2,leanX:(random()-.5)*.045,leanZ:(random()-.5)*.045,variant:Math.floor(random()*3),tint:Math.floor(random()*5)};
+    const bounds=options?.bounds;
+    if(bounds&&(x<bounds.west||x>bounds.east||z<bounds.north||z>bounds.south))return false;
     if(!isClear(tree,options))return false;
     sites.push(tree);return true;
   }
-  function row(x1,z1,x2,z2,spacing=4.5){
+  function row(x1,z1,x2,z2,spacing=4.5,options){
     const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz),n=Math.max(1,Math.ceil(len/spacing)),nx=len?-dz/len:0,nz=len?dx/len:0;
     for(let i=0;i<=n;i++){
       const t=T.MathUtils.clamp((i+(random()-.5)*.48)/n,0,1),side=(random()-.5)*1.05;
-      plant(x1+dx*t+nx*side,z1+dz*t+nz*side,.72+random()*.31);
+      plant(x1+dx*t+nx*side,z1+dz*t+nz*side,.72+random()*.31,options);
     }
   }
   function scatter(x,z,w,d,spacing,small=false){
@@ -84,7 +90,12 @@ export function createVegetation(k){
   function grove(x,z,w,d,spacing=4.2,{surface=true}={}){
     const crossesAvenue=x+w/2>POND_APPROACH.west&&x-w/2<POND_APPROACH.east&&Math.abs(z-POND_APPROACH.z)<d/2+POND_APPROACH.width/2+2;
     const crossesGateRoad=x+w/2>GATE_ROAD.west&&x-w/2<GATE_ROAD.east&&Math.abs(z-GATE_ROAD.z)<d/2+GATE_ROAD.width/2+2;
-    if(surface)k.box(w,.15,d,[x,crossesAvenue||crossesGateRoad?-.24:-.10,z],k.m.grass);scatter(x,z,w,d,spacing);
+    if(surface){
+      // Ground planes must receive tree shadows, not cast shadow-map acne onto themselves.
+      const lawn=k.box(w,.15,d,[x,crossesAvenue||crossesGateRoad?-.24:-.10,z],k.m.grass);
+      lawn.castShadow=false;
+    }
+    scatter(x,z,w,d,spacing);
   }
   function garden(x,z,w,d,{curb=true,surface=true}={}){
     if(curb)k.box(w+.5,.23,d+.5,[x,.02,z],k.m.white,k.scene,.6);

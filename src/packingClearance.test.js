@@ -35,3 +35,26 @@ test('receiver fence clears the supply pallet and both moving product streams',(
     assert.ok(carried&&feed,'exercise robot handling and the ceiling feed');
   }finally{kit.dispose();globalThis.document=previous;}
 });
+
+test('main ceiling line produces every finish and has matching finished stock',()=>{
+  const previous=globalThis.document;
+  globalThis.document={createElement:()=>({getContext:()=>new Proxy({createImageData:(w,h)=>({data:new Uint8ClampedArray(w*h*4)})},{get:(o,key)=>o[key]??(()=>{})})})};
+  const scene=new T.Scene(),kit=createKit(scene,{tablet:true});
+  try{
+    const production=buildProduction(kit);
+    const expected=new Set(['white','green','yellow','metal','plastic']),stock=new Set(),seen=new Set();
+    production.root.traverse(o=>{if(o.userData.panelType&&!o.userData.dynamic)stock.add(o.userData.panelType);});
+    assert.deepEqual(stock,expected);
+    const active=new Map(['CR','TY','BS','GR','GK','GP'].map(id=>[id,{status:'running'}]));
+    for(let time=0;time<420;time++){
+      production.updateMotion(1,{preview:true,active,showInterior:true});
+      for(const p of production.products){
+        if(p.kind!=='ceiling'||!p.object.visible||!p.variants.holes.visible)continue;
+        seen.add(p.object.userData.panelType);
+        assert.equal(p.variants.cut.visible,false,'plain and decorated sheets cannot overlap');
+        assert.equal(p.variants.finish.variants.filter(g=>g.visible).length,1);
+      }
+    }
+    assert.deepEqual(seen,expected);
+  }finally{kit.dispose();globalThis.document=previous;}
+});

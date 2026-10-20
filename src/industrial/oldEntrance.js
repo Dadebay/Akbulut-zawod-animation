@@ -179,7 +179,5 @@ export function buildOldEntrance(k){
     }
     for(const y of [.45,1.30])box(.055,.055,1.6,[0,y,side*6.95],trim,inner);
     for(let z=6.3;z<7.7;z+=.18)rod([0,.40,side*z],[0,1.35,side*z],.014,trim,inner);
-    cyl(.06,4.1,[3.9,2.05,side*6.1],trim,inner,undefined,12);
-    box(.48,.10,.34,[3.9,4.13,side*6.1],m.light,inner);
   }
 }

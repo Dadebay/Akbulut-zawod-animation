@@ -6,6 +6,7 @@ import {buildOldCampus} from './oldCampus.js';
 import {buildNewFrontCourt} from './newFrontCourt.js';
 import {buildNewFactoryEntrance} from './newFactoryEntrance.js';
 import {buildProcessingBuildings} from './processingBuildings.js';
+import {buildProductionEntrance} from './productionEntrance.js';
 import {buildRawYard} from './rawYard.js';
 import {buildFishPond} from './fishPond.js';
 import {buildOuterRail} from './outerRail.js';
@@ -14,8 +15,9 @@ import {buildPondApproach} from './pondApproach.js';
 import {buildCornerSilo} from './rawInfeed.js';
 import {buildGypsumReceivingHall} from './gypsumReceivingHall.js';
 import {buildBoulderPiles} from './rubble.js';
+import {buildWeighbridge} from './weighbridge.js';
 import {MAIN_ROAD_X} from './trafficLayout.js';
-import {GYPSUM_STOCKYARD as STOCKYARD,GYPSUM_SILO_TOWER as SILO_TOWER,LOADER_STOCK,NEW_FACTORY_ENTRANCE as ENTRANCE,NEW_ENTRANCE_MEDIAN,OUTER_RAIL_Z,RAIL_ACCESS_CROSSING} from './siteLayout.js';
+import {GYPSUM_STOCKYARD as STOCKYARD,GYPSUM_SILO_TOWER as SILO_TOWER,LOADER_STOCK,NEW_FACTORY_ENTRANCE as ENTRANCE,NEW_ENTRANCE_MEDIAN,OUTER_RAIL_Z,RAIL_ACCESS_CROSSING,RAIL_SIDE_LOADING as LOADING} from './siteLayout.js';
 
 // Proportions traced from user-supplied architectural renders 220–227.
 // These presentation dimensions are not survey measurements.
@@ -30,25 +32,48 @@ export function buildSite(k){
   for(let x=-136;x<98;x+=6)box(.025,.01,90,[x,-.13,-5],m.dark);
   for(let z=-50;z<41;z+=6)box(233,.01,.025,[-20,-.13,z],m.dark);
   function fence(a,b){const A=new T.Vector3(...a),B=new T.Vector3(...b),len=A.distanceTo(B),mid=A.clone().add(B).multiplyScalar(.5),g=group(mid.toArray());g.rotation.y=-Math.atan2(B.z-A.z,B.x-A.x);box(len,.55,.25,[0,.28,0],white,g);for(let x=-len/2;x<=len/2;x+=4){box(.3,1.85,.3,[x,.9,0],white,g);box(.43,.16,.43,[x,1.87,0],white,g);}for(const y of [.65,1.55])box(len,.08,.08,[0,y,0],white,g);for(let x=-len/2;x<len/2;x+=.4)box(.035,.85,.035,[x,1.1,0],white,g);}
-  const southFenceX=ENTRANCE.southFenceX,southGateZ=ENTRANCE.z+ENTRANCE.left;
+  const southFenceX=ENTRANCE.southFenceX,southGateZ=ENTRANCE.z+ENTRANCE.left*ENTRANCE.widthScale;
   const railGateWest=RAIL_ACCESS_CROSSING.x-RAIL_ACCESS_CROSSING.width/2;
   const railGateEast=RAIL_ACCESS_CROSSING.x+RAIL_ACCESS_CROSSING.width/2;
   fence([southFenceX,0,-50],[-33,0,-50]);
   fence([65,0,-50],[railGateWest,0,-50]);fence([railGateEast,0,-50],[97,0,-50]);
-  for(const x of [railGateWest,railGateEast]){
-    box(.46,2.05,.46,[x,1.025,RAIL_ACCESS_CROSSING.northFenceZ],white);
-    box(.61,.15,.61,[x,2.125,RAIL_ACCESS_CROSSING.northFenceZ],white);
-  }
   fence([-137,0,40],[97,0,40]);fence([97,0,-50],[97,0,3]);fence([97,0,20],[97,0,40]);
   fence([southFenceX,0,-50],[southFenceX,0,southGateZ]);
   // The open sliding leaf covers this stretch of the right boundary. Its
   // outer end meets the fixed fence without the old diagonal transition.
-  const parkedLeafEndZ=ENTRANCE.z+21.05+15.6/2;
+  const parkedLeafEndZ=ENTRANCE.z+21.05-(1-ENTRANCE.widthScale)*ENTRANCE.right+15.6/2;
   fence([ENTRANCE.fenceX,0,parkedLeafEndZ],[ENTRANCE.fenceX,0,40]);
   function cladding(x,z,w,d,h,parent=structures){const g=group([x,0,z],parent);box(w,h,d,[0,h/2,0],white,g);box(w+.25,.26,d+.25,[0,h+.13,0],white,g);for(let xx=-w/2;xx<=w/2;xx+=1)for(const zz of [-d/2-.02,d/2+.02])box(.024,h-.4,.022,[xx,h/2,zz],trim,g);for(let zz=-d/2;zz<=d/2;zz+=1)for(const xx of [-w/2-.02,w/2+.02])box(.022,h-.4,.024,[xx,h/2,zz],trim,g);return g;}
-  function windows(g,w,d,h,vertical=false){if(vertical){for(let z=-d/2+2;z<d/2-1;z+=5){box(.04,h*.78,.55,[-w/2-.04,h*.49,z],glass,g);for(let y=2;y<h*.9;y+=2.5)box(.07,.08,.58,[-w/2-.07,y,z],white,g);}}else{for(let x=-w/2+2;x<w/2-1;x+=3.3)box(2.5,.65,.04,[x,h-1.1,d/2+.04],glass,g);}}
   // Long production hall: three shallow parallel ridges and repeated skylight strips.
-  const hall=cladding(8,-25,132,29,8,structures);windows(hall,132,29,8);
+  const hall=cladding(8,-25,132,29,8,structures);
+  buildProductionEntrance(k,hall);
+  // Keep five small extraction fans on each half of the facade. Their shallow
+  // faces sit almost flush with the wall instead of projecting from it.
+  const vents=group([0,0,0],hall);vents.name='production-hall-ventilation';
+  const fanRotors=[];
+  const fanWhite=material('#f6f7f4',.08,.72),fanInset=material('#e8ece9',.04,.86),fanDetail=material('#cbd3d0',.18,.72),fanRotorGrey=material('#818b8e',.28,.65);
+  for(const side of [-1,1])for(let i=0;i<5;i++){
+    const fan=group([side*(7+i*12),6.5,29/2],vents);
+    fan.name=`production-hall-fan-${side<0?'left':'right'}-${i+1}`;
+    fan.scale.setScalar(.65);
+    box(1.9,1.9,.016,[0,0,.020],fanWhite,fan);
+    box(1.75,1.75,.012,[0,0,.042],fanInset,fan,.04);
+    k.ring(.72,.045,[0,0,.075],fanWhite,fan,'z');
+    const rotor=group([0,0,.065],fan,true);
+    rotor.name=`${fan.name}-rotor`;fanRotors.push(rotor);
+    const hub=cyl(.13,.08,[0,0,0],fanRotorGrey,rotor);hub.rotation.x=Math.PI/2;
+    for(let blade=0;blade<6;blade++){
+      const angle=blade*Math.PI/3;
+      const part=box(.24,.59,.018,[Math.sin(angle)*.37,Math.cos(angle)*.37,0],fanRotorGrey,rotor,.01);
+      part.rotation.z=-angle+.25;
+    }
+    for(const radius of [.26,.45,.61])k.ring(radius,.012,[0,0,.105],fanDetail,fan,'z');
+    for(let spoke=0;spoke<8;spoke++){
+      const angle=spoke*Math.PI/4;
+      rod([0,0,.110],[Math.cos(angle)*.72,Math.sin(angle)*.72,.110],.012,fanDetail,fan);
+    }
+    textPlate('HOWA',1.15,.23,[0,-1.10,.042],fan);
+  }
   box(132,.15,29,[8,-.02,-25],m.floor);
   for(let x=-57;x<75;x+=6){for(const z of [-39,-11])box(.28,8,.34,[x,4,z],m.steel,structures);for(const z of [-34.67,-25,-15.33]){rod([x,8,z-4.83],[x,9.5,z],.06,m.steel,roofs);rod([x,9.5,z],[x,8,z+4.83],.06,m.steel,roofs);}}
   for(const z of [-34.67,-25,-15.33])for(const side of [-1,1]){
@@ -56,13 +81,97 @@ export function buildSite(k){
     for(let x=-58;x<74;x+=6){const stripe=box(.32,.04,5.06,[x,8.90,z+side*2.42],glass,roofs);stripe.rotation.x=r.rotation.x;}
     for(let x=-58;x<74;x+=.8){const rib=box(.035,.035,5.05,[x,8.91,z+side*2.42],trim,roofs);rib.rotation.x=r.rotation.x;}
   }
-  for(let x=8;x<44;x+=7){box(4.4,4,.12,[x,2.1,-39.58],glass,structures);box(4.8,.6,4,[x,.25,-42],m.concrete);for(const dx of [-2.7,2.7]){
-    // The pallet transfer gap uses the neighbouring canopy columns so the
-    // forklift can turn and enter between the two raised loading platforms.
-    if(Math.abs(x+dx-12.3)>.01)box(.18,5.26,.18,[x+dx,2.63,-45],m.white);
-  }}
-  box(7.2,.20,.22,[14.2,5.15,-45],trim,roofs);
-  box(40,.28,6.4,[25,5.4,-43],roof,roofs);box(40,.8,.18,[25,5.05,-46.2],white,roofs);
+  // The railway loading face follows the supplied view: a white, deep
+  // cantilever with a tall ribbed fascia, a single outer row of posts and
+  // sectional loading doors against the factory wall. The clear slot at
+  // x=11.5 remains open for the forklift that supplies the train.
+  const loadingRoof=group([0,0,0],roofs);loadingRoof.name='rail-loading-canopy';
+  const loadingFace=group([0,0,0],structures);loadingFace.name='rail-loading-bays';
+  const fascia=material('#dfe3e1',.07,.76),soffit=material('#c4d0cb',.08,.84);
+  const shutter=material('#d0d5d3',.12,.72),shutterLine=material('#aeb8b7',.22,.70);
+  const steelPost=material('#d5dcda',.32,.58);
+  // The sheltered stock sits on a raised concrete dock, with a visible
+  // retaining face toward the railway and a real sloped entrance at the end.
+  const dock=LOADING.platform;
+  const loadingPlatform=group();loadingPlatform.name='rail-loading-platform';
+  const dockConcrete=material('#777e7c',0,.94),dockEdge=material('#a0a6a2',0,.90);
+  const deckWidth=dock.east-dock.west,deckDepth=dock.south-dock.north;
+  const deckX=(dock.west+dock.east)/2,deckZ=(dock.north+dock.south)/2;
+  box(deckWidth,dock.height+.06,deckDepth,[deckX,(dock.height-.18)/2,deckZ],dockConcrete,loadingPlatform);
+  box(deckWidth,.06,deckDepth,[deckX,dock.height-.03,deckZ],paving,loadingPlatform);
+  for(const d of LOADING.deckExtensions){
+    const w=d.east-d.west,dd=d.south-d.north,cx=(d.west+d.east)/2,cz=(d.north+d.south)/2;
+    box(w,dock.height+.06,dd,[cx,(dock.height-.18)/2,cz],dockConcrete,loadingPlatform);
+    box(w,.06,dd,[cx,dock.height-.03,cz],paving,loadingPlatform);
+  }
+  box(deckWidth,.09,.12,[deckX,dock.height-.045,dock.north+.06],dockEdge,loadingPlatform);
+  for(const x of [dock.west,dock.east])
+    box(.12,.09,deckDepth,[x+(x===dock.west?.06:-.06),dock.height-.045,deckZ],dockEdge,loadingPlatform);
+  for(let x=dock.west+5;x<dock.east;x+=5)
+    box(.018,dock.height-.12,.009,[x,(dock.height-.12)/2,dock.north-.006],shutterLine,loadingPlatform);
+  const loadingDoors=group([0,dock.height,0],loadingFace);
+  for(let x=8;x<44;x+=7){
+    // The reference has quiet, pale roller shutters instead of dark glazing.
+    box(4.45,3.95,.06,[x,2.05,-39.61],shutter,loadingDoors);
+    for(let y=.45;y<3.95;y+=.30)
+      box(4.42,.015,.012,[x,y,-39.655],shutterLine,loadingDoors);
+    for(const dx of [-2.26,2.26])
+      box(.10,4.18,.12,[x+dx,2.09,-39.66],trim,loadingDoors);
+    box(4.7,.18,.20,[x,4.13,-39.67],trim,loadingDoors);
+  }
+  // Six slender posts form one row. Each has the reference's small yellow
+  // impact cage, with clear gaps for the working forklifts.
+  const guardHalf=LOADING.guardWidth/2-.028;
+  for(const x of LOADING.columnXs){
+    const post=group([x,dock.height,LOADING.columnZ],loadingFace);post.name='rail-loading-column';
+    box(.34,.12,.34,[0,.06,0],m.concrete,post);
+    box(.22,6.10-dock.height,.22,[0,3.15-dock.height/2,0],steelPost,post);
+    box(.30,.16,.30,[0,6.20-dock.height,0],trim,post);
+    for(const sx of [-guardHalf,guardHalf])for(const sz of [-guardHalf,guardHalf])
+      cyl(.028,.51,[sx,.255,sz],m.yellow,post,undefined,8);
+    for(const side of [-guardHalf,guardHalf]){
+      rod([-guardHalf,.47,side],[guardHalf,.47,side],.028,m.yellow,post);
+      rod([side,.47,-guardHalf],[side,.47,guardHalf],.028,m.yellow,post);
+    }
+  }
+  // Truck ramps at both ends: up from the east yard, down to the west lane.
+  for(const access of LOADING.ramps){
+    const ramp=group([0,0,0],k.scene);ramp.name='rail-loading-truck-ramp';
+    const low=access.high==='east'?access.west:access.east,high=access.high==='east'?access.east:access.west;
+    const rampProfile=new T.Shape();
+    rampProfile.moveTo(low,-.12);rampProfile.lineTo(high,-.12);
+    rampProfile.lineTo(high,dock.height);rampProfile.lineTo(low,0);rampProfile.closePath();
+    mesh(new T.ExtrudeGeometry(rampProfile,{depth:access.south-access.north,bevelEnabled:false}),paving,[0,0,access.north],ramp);
+    for(const z of [access.north,access.south]){
+      const edgeProfile=new T.Shape();
+      edgeProfile.moveTo(low,0);edgeProfile.lineTo(high,dock.height);
+      edgeProfile.lineTo(high,dock.height+.12);edgeProfile.lineTo(low,.12);edgeProfile.closePath();
+      mesh(new T.ExtrudeGeometry(edgeProfile,{depth:.14,bevelEnabled:false}),dockConcrete,[0,0,z-.07],ramp);
+    }
+  }
+  // A long flat soffit gives the approaching viewer the sheltered depth in
+  // the reference; roof and signage disappear together in the cutaway view.
+  box(40,.24,6.55,[25,6.36,-43.05],soffit,loadingRoof);
+  box(40,.14,6.45,[25,7.12,-43.05],fascia,loadingRoof);
+  // The broad lettered face is the short entrance end of the long canopy.
+  for(const x of [5.02,44.98])box(.20,1.45,6.62,[x,6.73,-43.05],fascia,loadingRoof);
+  box(40,1.45,.20,[25,6.73,-46.38],fascia,loadingRoof);
+  for(const y of [6.23,6.53,6.83,7.13])
+    box(39.98,.016,.015,[25,y,-46.489],trim,loadingRoof);
+  for(const x of [13,21,29,37])
+    box(.014,1.40,.015,[x,6.73,-46.489],trim,loadingRoof);
+  for(let y=6.28;y<7.39;y+=.13){
+    for(const x of [4.90,45.10])
+      box(.027,.018,6.35,[x,y,-43.05],trim,loadingRoof);
+  }
+  for(let x=5.5;x<45;x+=2.8)box(.08,.085,6.18,[x,6.20,-43.05],trim,loadingRoof);
+  box(40,.15,.24,[25,7.49,-46.38],white,loadingRoof);
+  for(const x of [5.02,44.98])box(.24,.10,6.65,[x,7.47,-43.05],trim,loadingRoof);
+  box(.15,.12,6.7,[5.02,5.96,-43.05],trim,loadingRoof);
+  const loadingSign=textPlate('YÜK YÜKLEME WE DÜŞÜRME NOKADY',6.10,.43,
+    [4.892,6.93,-43.05],loadingRoof,'#9c7d22','#dfe3e1');
+  loadingSign.rotation.y=-Math.PI/2;
+  loadingSign.name='rail-loading-sign';
   for(const z of [-40,-10])for(let x=-50;x<75;x+=18)cyl(.06,7.6,[x,3.8,z],trim,structures);
   buildProcessingBuildings(k,roofs,structures);
   // Separate narrow tower visible beside the silo in the construction photo.
@@ -119,6 +228,14 @@ export function buildSite(k){
       box(upperDepth+.32,.18,d+.34,[upperX,upperTop+.09,0],white,g);
       box(.20,.22,d+.36,[upperFront-.10,upperTop+.04,0],white,g);
       box(upperDepth-.22,.04,d-.30,[upperX,upperTop+.20,0],material('#c7cdce',.1,.84),g);
+      // Glaze the upper front wall on both sides of the entrance terrace.
+      for(const side of [-1,1])for(const offset of [4.15,7.25,10.35]){
+        const zz=side*offset,windowY=h+1.55;
+        box(.07,1.30,1.78,[upperFront-.035,windowY,zz],trim,g);
+        box(.045,1.14,1.62,[upperFront-.09,windowY,zz],officeGlass,g);
+        box(.055,1.17,.045,[upperFront-.12,windowY,zz],trim,g);
+        box(.16,.075,1.90,[upperFront-.08,h+.93,zz],white,g);
+      }
       for(const side of [-1,1]){
         box(1.65,1.65,.055,[upperX,h+1.145,side*(d/2+.04)],officeGlass,g);
         for(const xx of [upperX-.84,upperX,upperX+.84])
@@ -155,9 +272,6 @@ export function buildSite(k){
         for(const offset of [.12,.55,.98])
           box(.46,.045,wingDepth+.04,[front-.28,h+offset,cz],trim,g);
         box(.56,.13,wingDepth+.16,[front-.28,h+1.24,cz],white,g);
-        // Narrow vertical ribs finish both exposed end walls.
-        for(let xx=front+.6;xx<front+3.5;xx+=.22)
-          box(.065,h-.80,.065,[xx,h/2,side*(d/2+.10)],trim,g);
       }
       // The cafeteria side elevation has only a small high service window.
       if(singleRoof){
@@ -250,11 +364,26 @@ export function buildSite(k){
   mesh(padGeometry,asphalt,[(STOCKYARD.west+STOCKYARD.east)/2,-.08,(STOCKYARD.north+STOCKYARD.south)/2]);
   box(25,.12,20,[-58,-.02,26],asphalt,k.scene,1);
   buildBoulderPiles(k,pileSpots);
-  buildGypsumReceivingHall(k,roofs,structures);buildCornerSilo(k);
+  buildGypsumReceivingHall(k,roofs,structures);buildCornerSilo(k);buildWeighbridge(k);
   // Landscaped office frontage, passenger bays and the separate truck court.
   buildNewFrontCourt(k,plants);
   buildNewFactoryEntrance(k);
+  const frontWoodland={west:-133.5,east:-86.5,north:4.5,south:37.5};
   plants.grove(-110,21,47,33,2.8);
+  // The dining street covers the eastern part of this lawn up to z=28.8.
+  // Follow the exposed grass edge so the kerb does not cross the road.
+  const woodlandKerb=material('#9da5a5',.03,.88);
+  const woodlandOutline=[
+    [frontWoodland.west,frontWoodland.north],[-91,frontWoodland.north],
+    [-91,28.8],[frontWoodland.east,28.8],
+    [frontWoodland.east,frontWoodland.south],[frontWoodland.west,frontWoodland.south]
+  ];
+  woodlandOutline.forEach(([ax,az],i)=>{
+    const [bx,bz]=woodlandOutline[(i+1)%woodlandOutline.length];
+    const kerb=box(Math.hypot(bx-ax,bz-az)+.22,.20,.22,
+      [(ax+bx)/2,.055,(az+bz)/2],woodlandKerb);
+    kerb.rotation.y=-Math.atan2(bz-az,bx-ax);kerb.castShadow=false;
+  });
   // Bring the woodland lawn and canopy up to the avenue's outer sidewalk.
   plants.grove(-172.3,-9,49.4,96,3.0);
   // Replace the bare shoulder between the avenue sidewalk and woodland, up to the rail ballast.
@@ -271,6 +400,12 @@ export function buildSite(k){
   for(let z=RAIL_LAYOUT.z+5.5,i=0;z<=-11.5;z+=3.4,i++){
     plants.plant(-198+(i%2)*.18,z,.33+(i%3)*.02,{plantedBed:true});
   }
+  // South of the gate road the open lawn margins round the woodland get the
+  // same mix of slim conifers and small trees instead of an inner kerb.
+  for(let z=7,i=0;z<=43;z+=3.2,i++)
+    plants.plant(-198.1+(i%2)*.2,z,.32+(i%3)*.025,{plantedBed:true});
+  for(let x=-194,i=0;x<=-153;x+=3.4,i++)
+    plants.plant(x,41.2+(i%2)*.9,i%3?.34+(i%2)*.04:.5,{plantedBed:true});
   // Continue the woodland lawn to the outer railway's ballast edge.
   const railVergeSouth=OUTER_RAIL_Z-3.4;
   const railVerge=box(49.4,.15,railVergeSouth-39,
@@ -292,6 +427,12 @@ export function buildSite(k){
   plants.grove(-110,-106,55,72,3.0);plants.grove(-168.25,-110.5,61.5,108,3.1);
   // Match the neighbouring woodland edges so no bare L-shaped seam remains.
   plants.grove(-168.25,-199,61.5,69,3.1);
+  // Join these two woodland lawns to the avenue stones without moving the trees.
+  // Keep this strip below the crossing asphalt, as with the grove surfaces.
+  const woodlandSeamWest=-199.555,woodlandSeamEast=-199;
+  const woodlandSeam=box(woodlandSeamEast-woodlandSeamWest,.15,177,
+    [(woodlandSeamWest+woodlandSeamEast)/2,-.24,-145],m.grass);
+  woodlandSeam.castShadow=false;
   // Carry the lawn and trees up to the visitor parking edge.
   plants.grove(-117.75,-166.25,39.5,59.5,3.1);
   // Extend this lawn to the western woodland and its neighbour to the north.
@@ -320,24 +461,8 @@ export function buildSite(k){
     plants.plant(x+1.15,-63.7,.38+(i%4)*.025);
     plants.plant(x+.25,-66.4,.42+(i%3)*.025);
   }
-  // The pale, stepped fountain forms a round island at the office junction.
-  const fountain=group([-78,0,-2]);fountain.scale.setScalar(1.9);
-  cyl(2.10,.14,[0,.07,0],m.concrete,fountain,undefined,48);
-  cyl(1.85,.19,[0,.205,0],white,fountain,undefined,48);
-  k.ring(1.85,.06,[0,.31,0],white,fountain);
-  cyl(1.55,.23,[0,.34,0],white,fountain,undefined,48);
-  const water=material('#afcbd0',.12,.3);
-  cyl(1.25,.025,[0,.47,0],water,fountain,undefined,48);
-  k.ring(1.43,.10,[0,.475,0],white,fountain);
-  cyl(.43,.28,[0,.62,0],white,fountain,undefined,24);
-  cyl(.22,.48,[0,.96,0],white,fountain,undefined,24);
-  cyl(.54,.12,[0,1.26,0],white,fountain,undefined,24);
-  cyl(.18,.20,[0,1.42,0],white,fountain,undefined,20);
-  for(let i=0;i<5;i++){
-    const a=i*Math.PI*2/5,dx=Math.cos(a),dz=Math.sin(a);
-    k.pipe([[0,1.41,0],[dx*.35,1.52,dz*.35],[dx*.78,1.11,dz*.78],[dx*1.14,.48,dz*1.14]],.022,water,fountain);
-  }
-  plants.row(-133,38,92,38,5);plants.row(-135,-49,-36,-49,4.5);plants.row(88,-49,95,-49,4.5);plants.row(-151,-150,-151,36,5);
+  plants.row(-133,34,92,34,5,{bounds:{west:-131,east:-89,north:7,south:35}});
+  plants.row(-135,-49,-36,-49,4.5);plants.row(88,-49,95,-49,4.5);plants.row(-151,-150,-151,36,5);
   const oldCampus=buildOldCampus(k,plants);
   const pond=buildFishPond(k);
   buildPondApproach(k,plants);
@@ -370,9 +495,15 @@ export function buildSite(k){
     plants.plant(x+.35,-58.4+.12*Math.sin(i*2.3),.45+(i%3)*.025);
   }
   for(let x=-133;x<94;x+=15)for(const originalZ of [-47,38]){if((originalZ===-47&&x>=47&&x<=77)||(originalZ===38&&x>=-13&&x<=76))continue;
+    if(originalZ===-47&&Math.abs(x-RAIL_ACCESS_CROSSING.x)<RAIL_ACCESS_CROSSING.width/2+.8)continue;
     // Put the loading-area lights beyond the opposite rail edge, leaving the
     // entire forklift aisle clear rather than driving through lamp posts.
     const z=originalZ===-47&&x>-26&&x<36?-56:originalZ;
     cyl(.055,5.2,[x,2.6,z],white);for(const dx of [-.6,.6]){rod([x,5,z],[x+dx,5.3,z],.035,white);box(.6,.08,.24,[x+dx,5.3,z],m.light);}}
-  plants.finish();return {roofs,structures,oldShells:oldCampus.shells,update:pond.update};
+  plants.finish();return {
+    roofs,structures,oldShells:oldCampus.shells,update:pond.update,
+    updateVentilation(dt){
+      for(const rotor of fanRotors)rotor.rotation.z=(rotor.rotation.z-dt*4)%(2*Math.PI);
+    },
+  };
 }

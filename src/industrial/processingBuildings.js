@@ -44,18 +44,10 @@ export function buildProcessingBuildings(k,roofs,structures){
       box(.042,.065,width+.02,[front-.083,yy,zz],coping,g);
     box(.11,.065,width+.18,[front-.06,bottom-.05,zz],coping,g);
   }
-  // Five fine vertical strips on the main face, two on each projecting core.
+  // Keep the process glazing on the main and right-hand volumes.
   for(const z of [-6.2,-.6,5,10.6,16.2])slit('main',z,2.9,25.3,.32);
-  for(const z of [-8.2,-3.8])slit('leftCore',z,3.65,12.35,.31);
   for(const z of [22.6,27.3])slit('rightCore',z,2.15,19.25,.31);
   for(const z of [29.8,32.4,35.0])slit('rightWing',z,1.05,5.9,.34);
-  for(const z of [-9,-5,-1])slit('leftBase',z,.65,2.65,.64);
-
-  // Low plinth and short link attach the smaller left tower to the main volume.
-  for(const z of [-8.9,-1.3]){
-    box(.035,2.05,.86,[L.leftBase.x-L.leftBase.width/2-.04,1.16,z],glass,structures);
-    box(.30,.08,1.02,[L.leftBase.x-L.leftBase.width/2-.10,2.23,z],coping,structures);
-  }
   const label=textPlate('TÜRKMEN GIPS',6.4,.46,[L.main.x-L.main.width/2-.065,26.12,4.8],structures,'#5593a6','#e1e3df');
   label.rotation.y=-Math.PI/2;
 
@@ -67,7 +59,7 @@ export function buildProcessingBuildings(k,roofs,structures){
   for(const z of [-2.4,2.4])box(.45,.32,.50,[3,3.01,z],coping,roofHouse);
 
   // The broad blank rear building carries the service deck seen in the render.
-  const roofY=L.rear.height+.19,deck=group([-6,roofY,11],roofs);
+  const roofY=L.rear.height+.19,deck=group([L.rear.x+2,roofY,L.rear.z],roofs);
   box(14,.10,12,[0,.05,0],coping,deck);
   for(let x=-5.4;x<6;x+=3.6)for(let z=-4.4;z<5;z+=4.4){
     box(.48,.12,.48,[x,.16,z],m.steel,deck);
@@ -77,7 +69,7 @@ export function buildProcessingBuildings(k,roofs,structures){
     box(1.30,.70,.82,[x,.45,z],material('#69977d',.08,.76),deck);
     box(1.44,.10,.94,[x,.85,z],coping,deck);
   }
-  const roofCabin=group([.8,roofY,4],roofs);
+  const roofCabin=group([L.rear.x+8.8,roofY,L.rear.z-7],roofs);
   box(3.4,2.4,3.8,[0,1.2,0],wall,roofCabin);
   box(3.65,.18,4.05,[0,2.49,0],coping,roofCabin);
   box(3.1,.045,3.5,[0,2.61,0],roof,roofCabin);

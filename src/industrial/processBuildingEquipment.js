@@ -14,10 +14,10 @@ export function buildProcessBuildingEquipment(k,{root,models,equipment,units,inv
   const {box,cyl,rod,ring,group,m}=k;
   const {steel,panel,dark}=models.materials;
   const frame=k.material('#77866a',.45,.6),duct=k.material('#2682a8',.5,.4);
-  function install(id,kind,building,position,options={},reference='mixing',yaw=0){
+  function install(id,kind,building,position,options={},reference='mixing',yaw=0,scale=1){
     const g=group(localPoint(position),root);
-    g.name=`interior-${id}`;g.rotation.y=yaw;
-    const entry={id,kind,zone:'BS',building,position,sourceFiles:[PROCESS_EQUIPMENT_REFERENCES[reference]]};
+    g.name=`interior-${id}`;g.rotation.y=yaw;g.scale.setScalar(scale);
+    const entry={id,kind,zone:'BS',building,position,scale,sourceFiles:[PROCESS_EQUIPMENT_REFERENCES[reference]]};
     g.userData.equipment=entry;inventory.push(entry);units[id]=g;
     (kind==='process-silo'?silo:models.builders[kind])(g,'BS',options);
     return g;
@@ -121,7 +121,7 @@ export function buildProcessBuildingEquipment(k,{root,models,equipment,units,inv
     // Separate metering legs feed the existing cooled-product transfer screw.
     port('thermal-screw',`meter-${i}`,[-1+i*2,2.18,0],[0,1,0]);
     join(weigh,'out','thermal-screw',`meter-${i}`,[
-      [x,7.345,17],[x,7.345,19.2],[x,15.5,19.2],[-30+i*2,15.5,19.2],[-30+i*2,15.5,14]
+      [x,6.8,17],[x,6.8,19.2],[x,17.8,19.2],[-30+i*2,17.8,19.2],[-30+i*2,17.8,14]
     ],'mechanical','stucco');
   }
   // Distribution spine and its enclosed lift fill the top row through four
@@ -156,7 +156,7 @@ export function buildProcessBuildingEquipment(k,{root,models,equipment,units,inv
     }
     port('rear-distribution-lift',`recovery-${i}`,[-1,1.2+i*.5,0],[-1,0,0]);
     join(`rear-filter-${i+1}`,'out','rear-distribution-lift',`recovery-${i}`,[
-      [x,6.815,4],[x,6.2,8.2],[-19.5,6.2,8.2],[-19.5,1.3+i*.5,10.5]
+      [x,6.3,4],[x,6.3,8.2],[-19.5,6.3,8.2],[-19.5,1.3+i*.5,10.5]
     ],'mechanical','stucco');
   }
   install('rear-exhaust-cyclone','cyclone','rear',[-16.4,.1,4],{height:10.8},'thermal',Math.PI);
@@ -179,7 +179,7 @@ export function buildProcessBuildingEquipment(k,{root,models,equipment,units,inv
   ],'mechanical');
   port('cooling-drum','thermalIn',[-3,3.2,0],[0,1,0]);
   join('rear-thermal-drum','out','cooling-drum','thermalIn',[
-    [-1.5,.75,5.2],[-1.5,.45,7.5],[-1.5,4.5,7.5],[-1.5,4.5,15.5],[-11,4.5,15.5]
+    [-1.05,.4,5.2],[-1.05,.4,7.5],[-1.05,4.5,7.5],[-1.05,4.5,15.5],[-11,4.5,15.5]
   ],'mechanical','stucco');
   port('rear-distribution-lift','fines',[-1,.8,.3],[-1,0,0]);
   join('rear-exhaust-cyclone','out','rear-distribution-lift','fines',[
@@ -195,5 +195,91 @@ export function buildProcessBuildingEquipment(k,{root,models,equipment,units,inv
   for(const [x,z] of [[-35.1,3.6],[-17.3,19.9],[-1,8.8]]){
     const controls=group(localPoint([x,.1,z]),root);
     k.cabinet([0,0,0],controls);equipment.gauge([.15,1.25,.32],controls);
+  }
+
+  // Two compact recovery trains occupy the north bays, between the elevator
+  // and the existing raw-air filter. Each level retains the perimeter catwalk.
+  for(const [i,x] of [-31.6,-27].entries()){
+    const prefix=`tower-recovery-${i+1}`,z=-5.95;
+    install(`${prefix}-cyclone`,'cyclone','main',[x,18.15,z],{height:6},'calcite',0,.75);
+    install(`${prefix}-hopper`,'hopper','main',[x,12.15,z],{width:2.4,depth:2.1,height:3.4,weigh:true},'calcite',0,.75);
+    install(`${prefix}-valve`,'valve','main',[x,10.2,z],{},'calcite',0,.65);
+    install(`${prefix}-screw`,'screw','main',[x,6.15,z],{length:3.1,closed:true},'calcite',0,.75);
+    install(`${prefix}-fan`,'fan','main',[x,.1,z],{},'calcite',0,.75);
+    const stand=support(x,z,3.2,1.95,18.15);
+    for(const y of [6.15,12.15]){
+      for(const zz of [-.975,.975])box(3.2,.22,.18,[0,y-.11,zz],frame,stand);
+      for(const xx of [-1.6,1.6])box(.18,.22,1.95,[xx,y-.11,0],frame,stand);
+    }
+    join(`${prefix}-cyclone`,'out',`${prefix}-hopper`,'in');
+    join(`${prefix}-hopper`,'out',`${prefix}-valve`,'in');
+    join(`${prefix}-valve`,'out',`${prefix}-screw`,'in');
+    // Pick up dust from the raw day bin; recovered powder returns before firing.
+    port('tower-day-bin',`north-dust-${i}`,[-1.25+i*2.5,3.4,-1.98],[0,0,-1],.2,'air');
+    join('tower-day-bin',`north-dust-${i}`,`${prefix}-cyclone`,'in',[
+      [-30.25+i*2.5,21.55,-4.9],[x+1.6,21.55,-4.9],[x+1.6,21.435,z]
+    ],'duct','air');
+    const riser=x-2.1,riserZ=i?-5.05:z;
+    join(`${prefix}-cyclone`,'air',`${prefix}-fan`,'in',[
+      [x,23,z],[riser,23,z],[riser,23,riserZ],
+      [riser,2.4,riserZ],[x-.3,2.4,riserZ],[x-.3,2.4,-4.9],[x-.3,1.1,-4.9]
+    ],'duct','air');
+    const exhaustX=-24.4+i*1.4,exhaustY=2.4+i*.4;
+    port('tower-aspiration',`recovery-air-${i}`,[-.7+i*1.4,1.9,-1.15],[0,0,-1],.18,'air');
+    join(`${prefix}-fan`,'out','tower-aspiration',`recovery-air-${i}`,[
+      [x+.1875,exhaustY,z],[x+.1875,exhaustY,-6.55],
+      [exhaustX,exhaustY,-6.55],[exhaustX,20.05,-6.55]
+    ],'duct','air');
+    const returnX=-29.8+i*1.6,returnY=3.4-i*.6;
+    port('tower-buffer-screw',`recovered-raw-${i}`,[-.8+i*1.6,2.18,0],[0,1,0],.18);
+    join(`${prefix}-screw`,'out','tower-buffer-screw',`recovered-raw-${i}`,[
+      [x+.744,returnY,z],[returnX,returnY,z],[returnX,returnY,3.6]
+    ],'gravity','raw');
+    const panelGroup=group(localPoint([x+.95,6.15,-5.1]),root);
+    const cabinet=k.cabinet([0,0,0],panelGroup);cabinet.scale.setScalar(.55);
+  }
+
+  // A paired blending mezzanine fills the open middle of the rear building.
+  // Feed hoppers, rotary valves, open pan mixers and enclosed transfer screws
+  // form complete circuits; the two older service aisles remain unobstructed.
+  const blendRack=support(-7.5,10.6,13,3.5,11.25);
+  blendRack.name='rear-blending-rack';
+  for(const y of [6.75,11.25]){
+    for(const x of [-2.5,2.5])for(const z of [-1.105,1.105])box(3.2,.18,.3,[x,y-.09,z],frame,blendRack);
+    box(13,.10,.65,[0,y-.05,1.75],steel,blendRack);
+    for(let x=-6.5;x<=6.5;x+=1.3)rod([x,y,2.05],[x,y+1.05,2.05],.025,m.yellow,blendRack);
+    for(const h of [.5,1.05])rod([-6.5,y+h,2.05],[6.5,y+h,2.05],.03,m.yellow,blendRack);
+  }
+  // Short stepped bridges meet the existing gallery and upper stair landing.
+  for(const [startY,endY,endX] of [[6.75,6.5,1.5],[11.25,11.15,2.7]]){
+    const length=endX+1;
+    for(let step=0;step<3;step++)box(length/3+.02,.08,.65,localPoint([
+      -1+length*(step+.5)/3,startY+(endY-startY)*step/2-.04,12.35
+    ]),steel,root);
+    for(const z of [12.025,12.675])rod(localPoint([-1,startY+1.05,z]),localPoint([endX,endY+1.05,z]),.03,m.yellow,root);
+  }
+  for(const [i,x] of [-10,-5].entries()){
+    const prefix=`rear-blend-${i+1}`,z=10.6,feederZ=i?10.5:11.25,feederY=i?3.7:3.4;
+    install(`${prefix}-hopper`,'hopper','rear',[x,11.25,z],{width:2.8,depth:2.2,height:3.8,weigh:true});
+    install(`${prefix}-valve`,'valve','rear',[x,9.9,z],{},'mixing',0,.75);
+    install(`${prefix}-mixer`,'mixer','rear',[x,6.75,z],{pan:true},'mixing',0,.85);
+    install(`${prefix}-screw`,'screw','rear',[x,feederY,feederZ],{length:2.5,closed:true,yellowCover:true});
+    support(x,feederZ,2.8,1.2,feederY);
+    port('rear-distribution-lift',`blend-${i}`,[1.2,16.4+i*.6,-.2],[1,0,0]);
+    join('rear-distribution-lift',`blend-${i}`,`${prefix}-hopper`,'in',[
+      [-17,16.6+i*.6,9.6-i*.9],[x,16.6+i*.6,9.6-i*.9],[x,16.6+i*.6,z]
+    ],'mechanical','stucco');
+    join(`${prefix}-hopper`,'out',`${prefix}-valve`,'in');
+    join(`${prefix}-valve`,'out',`${prefix}-mixer`,'in');
+    join(`${prefix}-mixer`,'out',`${prefix}-screw`,'in',[
+      [x+2.25,7.94,z],[x+2.25,6.3,feederZ],[x-.8,6.3,feederZ]
+    ],'gravity','stucco');
+    port('rear-distribution-lift',`blend-return-${i}`,[1,2.5+i*.5,0],[1,0,0],.2);
+    join(`${prefix}-screw`,'out','rear-distribution-lift',`blend-return-${i}`,[
+      [x+.8,feederY+.4,feederZ],[x+.8,feederY+.4,11.8],
+      [-17,feederY+.4,11.8],[-17,2.6+i*.5,10.5]
+    ],'mechanical','stucco');
+    const controls=group(localPoint([x-1.8,6.75,11.65]),root);
+    const cabinet=k.cabinet([0,0,0],controls);cabinet.scale.setScalar(.65);
   }
 }

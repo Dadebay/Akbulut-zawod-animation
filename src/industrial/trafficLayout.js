@@ -1,6 +1,7 @@
 import * as T from 'three';
 import {NEW_FACTORY_ENTRANCE as ENTRANCE} from './siteLayout.js';
 import {routeProfile} from './motionPath.js';
+import {TRUCK_SCALE} from './trucks.js';
 
 // Fixed site roads and vehicle manoeuvres. Metres in scene space.
 // Opposing diagonal rows leave the office-side passenger bays and their aisle clear.
@@ -45,13 +46,13 @@ const length=path.getLength(),count=Math.ceil(length/.20),samples=[];
 let trailerYaw=Math.PI,previousHitch;
 for(let i=0;i<=count;i++){
   const p=path.getPointAt(i/count),d=path.getTangentAt(i/count),yaw=-Math.atan2(d.z,d.x);
-  const hitch=v(p.x-2.6*Math.cos(yaw),p.z+2.6*Math.sin(yaw));
+  const hitch=v(p.x-2.6*TRUCK_SCALE*Math.cos(yaw),p.z+2.6*TRUCK_SCALE*Math.sin(yaw));
   if(previousHitch){
     // No lateral slip at the trailer axle: integrate the hitch displacement.
     // Axle group centre is 9.05 m behind the kingpin. Precompute once so seeking
     // and different frame rates always produce the same articulation.
     const dx=hitch.x-previousHitch.x,dz=hitch.z-previousHitch.z;
-    trailerYaw+=(-Math.sin(trailerYaw)*dx-Math.cos(trailerYaw)*dz)/9.05;
+    trailerYaw+=(-Math.sin(trailerYaw)*dx-Math.cos(trailerYaw)*dz)/(9.05*TRUCK_SCALE);
   }
   samples.push({x:p.x,z:p.z,yaw,trailerYaw,hitch});previousHitch=hitch;
 }
@@ -62,13 +63,13 @@ export function dispatchPose(progress){
 }
 
 export function truckFootprint(pose,padding=0){
-  const {x,z,yaw,trailerYaw}=pose,hx=x-2.6*Math.cos(yaw),hz=z+2.6*Math.sin(yaw);
+  const {x,z,yaw,trailerYaw}=pose,hx=x-2.6*TRUCK_SCALE*Math.cos(yaw),hz=z+2.6*TRUCK_SCALE*Math.sin(yaw);
   const rectangle=(cx,cz,angle,front,back,halfWidth)=>{
     const out=[];
     for(const [along,side] of [[front,halfWidth],[back,halfWidth],[back,-halfWidth],[front,-halfWidth]])out.push([cx+along*Math.cos(angle)+side*Math.sin(angle),cz-along*Math.sin(angle)+side*Math.cos(angle)]);
     return out;
   };
-  return [rectangle(x,z,yaw,2.6+padding,-3.6-padding,1.35+padding),rectangle(hx,hz,trailerYaw,1.3+padding,-12.4-padding,1.33+padding)];
+  return [rectangle(x,z,yaw,2.6*TRUCK_SCALE+padding,-3.6*TRUCK_SCALE-padding,1.35*TRUCK_SCALE+padding),rectangle(hx,hz,trailerYaw,1.3*TRUCK_SCALE+padding,-12.4*TRUCK_SCALE-padding,1.33*TRUCK_SCALE+padding)];
 }
 
 // Straight industrial roads with square junction aprons. The vehicle turns

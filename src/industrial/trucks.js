@@ -7,6 +7,8 @@ export const TRUCK_LAYOUT={
   kingpinX:-2.6,trailerOffsetX:-5.5,deckHeight:1.36,cargoZ:.40,
   cargoXs:[-5.2,-3.2,-1.2,.8,2.8,4.4],
 };
+// All trucks were reduced by a further 20% (.84 -> .672).
+export const TRUCK_SCALE=.672;
 
 export function createTruckBuilder(k,pallet){
   const {m,box,cyl,ring,rod,group,mesh,material,textPlate}=k,records=[];
@@ -56,7 +58,7 @@ export function createTruckBuilder(k,pallet){
     for(const y of [-.85,.15])box(1.03,.045,.015,[0,y,z>0?.14:-.14],frame,folded);
   }
   function build(pos,angle=0,active=false){
-    const g=group(pos,k.scene,true);g.rotation.y=angle;
+    const g=group(pos,k.scene,true);g.rotation.y=angle;g.scale.setScalar(TRUCK_SCALE);
     const ws=[],steering=[];
     for(const z of [-1.07,1.07]){const front=steeredWheel(g,.55,z,.535);ws.push(front.wheel);steering.push(front.pivot);}
     // The scanned cab is installed asynchronously. The chassis stays editable so
@@ -88,9 +90,10 @@ export function createTruckBuilder(k,pallet){
       for(const y of [.62,.84])box(5.6,.09,.06,[.8,y,z*.91],alloy,trailer);
       for(const x of [-1.3,2.7])box(.08,.64,.08,[x,.83,z*.91],frame,trailer);
     }
-    // Taut roof with bows; open sides and folded curtains make every pallet visible.
-    box(13.6,.07,2.55,[0,4.08,0],curtain,trailer,.025);
-    for(let x=-6.4;x<6.6;x+=1.05)box(.045,.06,2.48,[x,3.96,0],alloy,trailer);
+    // Keep the roof as a visibility owner through both optimization passes.
+    const roof=group([0,0,0],trailer,true);roof.name='truck-trailer-roof';
+    box(13.6,.07,2.55,[0,4.08,0],curtain,roof,.025);
+    for(let x=-6.4;x<6.6;x+=1.05)box(.045,.06,2.48,[x,3.96,0],alloy,roof);
     box(.10,2.62,2.5,[6.7,2.69,0],paint,trailer);
     for(const z of [-.62,.62]){
       box(.10,2.58,1.22,[-6.75,2.68,z],paint,trailer);
@@ -122,10 +125,10 @@ export function createTruckBuilder(k,pallet){
       brakes.visible=!motion||motion.speed<.04||motion.braking;
       const turn=motion?.curvature||0;
       signals.forEach((lamp,i)=>{lamp.visible=Math.abs(turn)>.004&&((turn>0)===(i===1))&&Math.floor(time*2.5)%2===0;});
-      driver.update(time,{steer:Math.atan(3.4*turn)});
+      driver.update(time,{steer:Math.atan(3.4*TRUCK_SCALE*turn)});
     }
     updateLights(null,0);
-    const record={g,ws,steering,cargo,hinge,trailer,cabMount,updateLights};records.push(record);return record;
+    const record={g,ws,steering,cargo,hinge,trailer,roof,cabMount,updateLights};records.push(record);return record;
   }
   function load(onLoaded){
     let cancelled=false;
@@ -173,5 +176,6 @@ export function createTruckBuilder(k,pallet){
   }
   // Share the existing scan and materials with the quarry's rigid tipper.
   function mountCab(parent,pos=[0,0,0],scale=1){const cabMount=group(pos,parent,true);cabMount.scale.setScalar(scale);records.push({cabMount});k.vehicleLights.push({root:cabMount,front:2.12,width:.86,height:.94,length:26});return cabMount;}
-  return {build,load,mountCab,wheel,steeredWheel};
+  function setInteriorVisible(visible){records.forEach(record=>{if(record.roof)record.roof.visible=!visible;});}
+  return {build,load,mountCab,wheel,steeredWheel,setInteriorVisible};
 }
