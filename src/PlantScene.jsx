@@ -26,7 +26,7 @@ import {createRenderClock,profilePixelRatio} from './renderBudget.js';
 import {POND,OLD_ENTRANCE,OLD_PAVILION,OLD_RAIL_DORMITORY as DORM,OLD_WORK_OFFICE as OFFICE,RAIL_ACCESS_CROSSING as RAIL_GATE,PRODUCTION_ENTRANCE as ENTRY} from './industrial/siteLayout.js';
 import {quarryPoint} from './industrial/quarryLayout.js';
 
-// Normal browser/TV presentation uses full detail. Only the dedicated tablet
+// Normal desktop browser rendering uses full detail. Only the dedicated tablet
 // build opts into lighter geometry and baked AO. No quality controls on screen.
 const TABLET=import.meta.env.VITE_RENDER_PROFILE==='tablet';
 
