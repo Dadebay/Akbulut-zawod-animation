@@ -59,9 +59,9 @@ const SITE_VIEWS=[
   {name:'ÝATAKHANA',anchor:[DORM.x,3,DORM.z],position:[DORM.x-8,20,DORM.z-22],target:[DORM.x,0,DORM.z]},
   {name:'NAHARHANA · OFIS',anchor:[OLD_PAVILION.hall.x-7,4,OLD_PAVILION.hall.z],position:[OLD_PAVILION.hall.x-15,21,OLD_PAVILION.hall.z-24],target:[OLD_PAVILION.hall.x-6,1.3,OLD_PAVILION.hall.z]},
 ];
-export default function PlantScene({machines,selected,onSelect,view='perspective',area='site',equipmentFocus='BS',cameraRequest=0,roof=true,night=false,eco=false,paused=false,follow=false,speed=1,loopStep=null,journeyRequest,onJourney,onManualCamera,onProcess}){
+export default function PlantScene({machines,selected,onSelect,view='perspective',area='site',equipmentFocus='BS',cameraRequest=0,roof=true,night=false,eco=false,paused=false,follow=false,speed=1,loopStep=null,journeyRequest,onJourney,onManualCamera}){
   const host=useRef(),labels=useRef(),api=useRef(),state=useRef();
-  const [failed,setFailed]=useState(false);state.current={eco,machines,selected,paused,roof,night,area,follow,speed,loopStep,journeyRequest,onJourney,onManualCamera,onProcess};
+  const [failed,setFailed]=useState(false);state.current={eco,machines,selected,paused,roof,night,area,follow,speed,loopStep,journeyRequest,onJourney,onManualCamera};
   // Only an explicit view selection restores a preset. Leaving the tour retains the user's camera.
   useEffect(()=>{api.current?.setCamera(area,view,equipmentFocus);},[area,view,equipmentFocus,cameraRequest]);
   useEffect(()=>{
@@ -69,7 +69,7 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
     // Millimetre-separated roof seams and paving need stable depth at campus distances.
     try{renderer=new T.WebGLRenderer({antialias:false,alpha:true,powerPreference:'high-performance',logarithmicDepthBuffer:true});}catch{setFailed(true);return;}
     renderer.setPixelRatio(profilePixelRatio(devicePixelRatio));renderer.shadowMap.enabled=true;renderer.shadowMap.autoUpdate=!TABLET;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=.93;container.appendChild(renderer.domElement);
-    let dirty=true,previousView='',lastSimulationTime=-1,lastLabelTime=0,lastProcessNotify=0;
+    let dirty=true,previousView='',lastSimulationTime=-1,lastLabelTime=0;
     const scene=new T.Scene();scene.background=new T.Color('#dce4eb');scene.fog=new T.FogExp2('#dce4eb',.00075);
     const camera=new T.PerspectiveCamera(36,1,.5,2800);camera.position.set(...(PRESETS[state.current.area]||PRESETS.site).position);
     const pipeline=createRenderPipeline(renderer,scene,camera,{ambientOcclusion:!TABLET});
@@ -210,11 +210,6 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
       if(!animateMotion&&!ventilationMoving&&!transition&&!cameraMoved&&!dirty&&!changed)return;
       if(cameraMoved||dirty||changed||animateMotion)k.updateDetailVisibility(camera);
       production.updateMotion(animateMotion?dt*s.speed:0,{preview:equipmentPreview,stage:journey.index,active,showInterior,showLines:s.area==='lines'&&showInterior});
-      if(showInterior&&(now-lastProcessNotify>500||changed)){
-        const boards=production.products.filter(p=>p.kind==='panel'&&p.object.visible&&p.batch);
-        const sample=boards.find(p=>p.object.userData.materialState==='set-damp-board')||boards[0];
-        s.onProcess?.({...production.physics.state,batch:sample?.batch?{...sample.batch}:null});lastProcessNotify=now;
-      }
       // Ambient life has its own continuous clock: seeking or wrapping the
       // production tour must not teleport pedestrians, fish or the service car.
       logistics.humans.forEach(h=>{if(h.walking||active.get(h.zone)?.status==='running')h.update(ambientClock);});

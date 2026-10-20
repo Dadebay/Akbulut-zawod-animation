@@ -124,11 +124,6 @@
 .equipment-picker button>span {font-size:9px;letter-spacing:.5px;color:#8498aa;}
 .equipment-picker button.active {background:#e1edf8;color:#185e9e;}
 .equipment-picker button.active>span {color:#377ab5;}
-.process-physics-readout {position:absolute;left:18px;top:112px;z-index:7;max-width:260px;padding:10px 13px;border:1px solid #d4dfe7;border-radius:8px;background:#fffffff2;color:#47647b;font-size:11px;box-shadow:0 3px 15px #17365612;}
-.process-physics-readout summary {cursor:pointer;font-weight:600;}
-.process-physics-readout p {line-height:1.65;margin:9px 0;}
-.process-physics-readout small {display:block;line-height:1.5;color:#718494;}
-@media(max-width:800px){.process-physics-readout{top:151px;left:12px;max-width:220px;font-size:10px;}}
 @media(max-width:800px){.equipment-picker{bottom:131px}.equipment-picker button{padding:8px;font-size:10px;}}
 
 /* Compact scene toolbar; the removed title card no longer reserves canvas space. */
