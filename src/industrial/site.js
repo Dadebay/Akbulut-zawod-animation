@@ -206,7 +206,8 @@ export function buildSite(k){
     const officeGlass=singleRoof?material('#315b68',.45,.29):material('#436876',.48,.31);
     const canteenFrame=singleRoof?material('#667075',.28,.48):trim;
     const reflectedGlass=material(singleRoof?'#879697':'#879da8',.24,.37);
-    const upperFront=w/2-3.1,upperDepth=3.1,upperHeight=2.45,upperTop=h+upperHeight;
+    // End the office terraces at the hall facade, before its pitched roof begins.
+    const terraceInset=singleRoof?0:1.15,terraceWidth=w-terraceInset;
     const roofWell=(cx,cz,width,depth,height)=>{
       box(width,.14,depth,[cx,height-.07,cz],white,g);
       box(width-.65,.06,depth-.65,[cx,height+.03,cz],roofFinish,g);
@@ -220,34 +221,12 @@ export function buildSite(k){
       const roofRib=material('#e0e3e1',.12,.72);
       for(let zz=-d/2+.42;zz<d/2-.4;zz+=.19)
         box(w-.68,.012,.018,[0,h+.066,zz],roofRib,g);
-    }else{
-      // The reference has a full upper storey set back behind both terraces.
-      // Its white roof band runs across the width above the glazed elevation.
-      const upperX=upperFront+upperDepth/2;
-      box(upperDepth,upperHeight,d,[upperX,h+upperHeight/2,0],white,g);
-      box(upperDepth+.32,.18,d+.34,[upperX,upperTop+.09,0],white,g);
-      box(.20,.22,d+.36,[upperFront-.10,upperTop+.04,0],white,g);
-      box(upperDepth-.22,.04,d-.30,[upperX,upperTop+.20,0],material('#c7cdce',.1,.84),g);
-      // Glaze the upper front wall on both sides of the entrance terrace.
-      for(const side of [-1,1])for(const offset of [4.15,7.25,10.35]){
-        const zz=side*offset,windowY=h+1.55;
-        box(.07,1.30,1.78,[upperFront-.035,windowY,zz],trim,g);
-        box(.045,1.14,1.62,[upperFront-.09,windowY,zz],officeGlass,g);
-        box(.055,1.17,.045,[upperFront-.12,windowY,zz],trim,g);
-        box(.16,.075,1.90,[upperFront-.08,h+.93,zz],white,g);
-      }
-      for(const side of [-1,1]){
-        box(1.65,1.65,.055,[upperX,h+1.145,side*(d/2+.04)],officeGlass,g);
-        for(const xx of [upperX-.84,upperX,upperX+.84])
-          box(.045,1.72,.09,[xx,h+1.145,side*(d/2+.075)],trim,g);
-        for(const yy of [h+.30,h+1.99])
-          box(1.78,.065,.10,[upperX,yy,side*(d/2+.075)],white,g);
-      }
     }
+    // The office ends in open roof terraces, directly against the hall.
     for(const side of [-1,1]){
       const cz=side*(entranceWidth/2+wingDepth/2);
       box(w,h,wingDepth,[0,h/2,cz],white,g);
-      if(!singleRoof)roofWell(0,cz,w,wingDepth,h);
+      if(!singleRoof)roofWell(-terraceInset/2,cz,terraceWidth,wingDepth,h);
       // Deep white reveals and narrow vertical glazing, not a continuous curtain wall.
       const count=4;
       const pitch=(wingDepth-1.15)/count;
@@ -291,7 +270,7 @@ export function buildSite(k){
     const recess=.85,entryHeight=h+(singleRoof?0:1.35),entryFront=front+recess;
     box(w-recess,entryHeight,entranceWidth,[recess/2,entryHeight/2,0],white,g);
     if(singleRoof)roofWell(0,0,w,d,h);
-    else roofWell(recess/2,0,w-recess,entranceWidth,entryHeight);
+    else roofWell((recess-terraceInset)/2,0,terraceWidth-recess,entranceWidth,entryHeight);
     const glazingHeight=entryHeight-(singleRoof?.67:.87);
     const glazingY=singleRoof?.31+glazingHeight/2:.32+glazingHeight/2;
     box(.07,glazingHeight,entranceWidth-1.2,[entryFront-.04,glazingY,0],officeGlass,g);
@@ -315,8 +294,8 @@ export function buildSite(k){
       box(.72,.10,entranceWidth-.55,[front-.33,.05,0],m.concrete,g);
       // A raised, open rectangular parapet crowns the central terrace.
       for(const zz of [-entranceWidth/2+.17,entranceWidth/2-.17])
-        box(w-recess,.65,.28,[recess/2,entryHeight+.43,zz],white,g);
-      box(.28,.65,entranceWidth,[w/2-.08,entryHeight+.43,0],white,g);
+        box(terraceWidth-recess,.65,.28,[(recess-terraceInset)/2,entryHeight+.43,zz],white,g);
+      box(.28,.65,entranceWidth,[w/2-terraceInset-.08,entryHeight+.43,0],white,g);
       box(.40,.78,entranceWidth,[front+.12,entryHeight+.40,0],white,g);
       box(.46,.09,entranceWidth+.12,[front+.12,entryHeight+.84,0],trim,g);
       const sign=textPlate('EDARA BINASY',entranceWidth-.58,.54,[front-.095,entryHeight+.43,0],g,'#a17b37','#e1e4e8');
