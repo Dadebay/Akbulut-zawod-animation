@@ -1,3 +1,4 @@
+import * as T from 'three';
 import {PROCESS_BUILDINGS as L} from './siteLayout.js';
 
 // White courtyard building, based on the four supplied exterior views.
@@ -83,6 +84,18 @@ export function buildCourtyardWing(k,roofs,structures){
   box(1.68,3.20,.03,[0,1.85,.035],wall,door);
   box(.018,3.15,.02,[0,1.85,.06],joint,door);
   for(const x of [-.09,.09])box(.025,.25,.035,[x,1.65,.08],frame,door);
+  // Gold facade lettering above the end entrance, matching the supplied view.
+  const sign=group([0,0,.055],door);sign.name='calcite-crusher-entrance-sign';
+  for(const [text,width,y] of [['KALSIT DAŞY',2.15,4.35],['DÖWÜJI BINASY',2.6,3.96]]){
+    const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=192;
+    const ctx=canvas.getContext('2d');ctx.font='700 144px Arial';
+    ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineWidth=5;
+    ctx.strokeStyle='#f2f1df';ctx.strokeText(text,512,102,998);
+    ctx.fillStyle='#c6a346';ctx.fillText(text,512,102,998);
+    const map=k.trackTexture(new T.CanvasTexture(canvas));map.colorSpace=T.SRGBColorSpace;
+    const letters=k.mesh(new T.PlaneGeometry(width,.38),material('#ffffff',.38,.44,{map,alphaTest:.15}),[0,y,0],sign);
+    letters.castShadow=false;
+  }
   const ramp=box(2.6,.08,2.25,[end-1.3,.05,long.z],k.m.concrete,shell);
   ramp.rotation.z=Math.atan2(.18,2.6);
 }
