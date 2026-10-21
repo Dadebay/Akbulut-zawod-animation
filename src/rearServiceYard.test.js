@@ -42,15 +42,19 @@ test('all thirteen reference parts remain distinct, with exposed stepped roofs i
   assert.ok(bridge.intersectsBox(bounds(scene.getObjectByName('rear-south-block'))),'bridge meets the new long block');
   assert.ok(bridge.intersectsBox(bounds(scene.getObjectByName('gypsum-corner-silo-tower'))),'bridge meets the silo tower');
 },buildProcessingBuildings));
-test('aligned main facades leave the marked opening beside the extended front tower',()=>fixture(({scene})=>{
+test('the narrower front tower and small rear annex share a low base beside the open passage',()=>fixture(({scene})=>{
   const fronts=['process-high-roof-block','process-front-roof-block','process-low-shoulder'].map(name=>bounds(scene.getObjectByName(name)).min.x);
   for(const x of fronts)assert.ok(Math.abs(x-fronts[0])<.001,'no setback between the three front walls');
   const tower=bounds(scene.getObjectByName('processing-leftCore'));
   const base=bounds(scene.getObjectByName('processing-leftBase'));
-  assert.ok(tower.min.x>=base.min.x-.1&&Math.abs(tower.max.x-base.max.x)<.1,'both floors finish at the same right edge');
+  assert.ok(tower.min.x>=base.min.x-.1&&tower.max.x<base.max.x-2,'the tower leaves a visible strip of the base on its right');
+  const widthRatio=(tower.max.x-tower.min.x)/(base.max.x-base.min.x);
+  assert.ok(widthRatio>.78&&widthRatio<.86,'part 1 is narrower than part 2 in the reference');
   const annex=bounds(scene.getObjectByName('processing-leftLink'));
   assert.ok(annex.intersectsBox(tower),'the small part 3 joins the tower');
   assert.ok(annex.max.x-annex.min.x<3&&annex.max.z<tower.min.z+3,'part 3 stays compact at the rear corner');
+  assert.ok(annex.min.x>=base.min.x&&annex.max.x<base.max.x&&annex.min.z>=base.min.z&&annex.max.z<base.max.z,'part 3 fits entirely on part 2');
+  assert.ok(Math.abs(annex.min.y-base.max.y)<.001,'part 3 starts on top of part 2, without a separate ground-level wall');
   assert.ok(annex.max.y<tower.max.y&&annex.max.y>10,'part 3 roof is below the tower roof');
   const ray=new T.Raycaster(new T.Vector3(),new T.Vector3(0,-1,0),0,45);
   for(const x of [-33.8,-32.5,-31.3])for(const z of [-9.5,-8,-6,0]){

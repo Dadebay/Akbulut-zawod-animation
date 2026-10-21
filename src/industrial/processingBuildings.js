@@ -16,7 +16,7 @@ export function buildProcessingBuildings(k,roofs,structures){
     const g=group([b.x,0,b.z],structures),r=group([b.x,0,b.z],roofs);
     g.name=`processing-${name}`;bodies[name]=g;
     if(name==='leftCore')g.userData.referencePart=13;
-    const bottom=name==='leftCore'?L.leftBase.height:0;
+    const bottom=name==='leftCore'||name==='leftLink'?L.leftBase.height:0;
     box(b.width,b.height-bottom,b.depth,[0,(b.height+bottom)/2,0],wall,g);
     if(!bottom)box(b.width+.06,.24,b.depth+.06,[0,.12,0],coping,g);
     // Quiet cladding joints leave the slender window strips legible from a distance.
