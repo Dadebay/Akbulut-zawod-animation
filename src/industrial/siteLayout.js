@@ -122,10 +122,11 @@ export const GYPSUM_SILO_TOWER={x:-13.6,z:25.3,width:5.2,depth:5.6,height:14.8};
 // follows the October 21 photographs in rearServiceYard.js; its cutaway is separate.
 export const PROCESS_BUILDINGS={
   main:{x:-29,z:5,width:17,depth:29,height:27},
-  // Flush with the tower front, leaving a passage beside the entrance steps.
-  leftBase:{x:-44.7,z:-4.4,width:14,depth:11.8,height:3.2},
-  leftCore:{x:-45.7,z:-6,width:12,depth:8.6,height:13.2},
-  leftLink:{x:-38.75,z:-5,width:2.5,depth:8,height:4.2},
+  // Both floors end at the marked x=-36.4 edge, beside a compact rear annex.
+  // Keep the west facade fixed so the entrance-step passage remains clear.
+  leftBase:{x:-44.05,z:-4.4,width:15.3,depth:11.8,height:3.2},
+  leftCore:{x:-44.05,z:-6,width:15.3,depth:8.6,height:13.2},
+  leftLink:{x:-35.3,z:-9,width:2.2,depth:2.6,height:10.7},
   rightCore:{x:-39.55,z:24,width:5.4,depth:7.5,height:20.5},
   // This short main-block link must not bridge the open passage beside the L wing.
   rightLink:{x:-29.35,z:21.7,width:3.3,depth:4.4,height:6.2},

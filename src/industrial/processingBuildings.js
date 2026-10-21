@@ -36,20 +36,15 @@ export function buildProcessingBuildings(k,roofs,structures){
       box(.22,.045,b.depth+.08,[x,b.height+.575,0],coping,r);
     }
   }
-  const customVolumes=new Set(['main','leftLink','rightCore','rightLink','rightWing','outerWing','outerService','rear','buffer']);
+  const customVolumes=new Set(['main','rightCore','rightLink','rightWing','outerWing','outerService','rear','buffer']);
   Object.entries(L).filter(([name])=>!customVolumes.has(name)).forEach(([name,b])=>volume(name,b));
-  // Front-view part 3 is a narrow, raised connector behind the smaller tower.
-  // Its two ends meet the tower and the newly aligned main facade.
-  const linkWest=L.leftCore.x+L.leftCore.width/2,linkDepth=2.8;
-  volume('leftLink',{x:(linkWest+frontX)/2,z:L.leftCore.z-L.leftCore.depth/2+linkDepth/2,
-    width:frontX-linkWest,depth:linkDepth,height:L.leftCore.height-2.5});
   // Keep the facade's local coordinates, but build its mass from reference
   // parts 3 and 5. The old 17 x 29 solid concealed all the stepped roof levels.
   bodies.main=group([L.main.x,0,L.main.z],structures);bodies.main.name='processing-main-facade';
   buildCourtyardWing(k,roofs,structures);
   buildRearServiceYard(k,roofs,structures);
 
-  // Only the exposed L-shaped part of the lower floor has a roof. The front
+  // Only the exposed part of the lower floor has a roof. The front
   // wall continues straight into the tower, without a terrace or parapet ledge.
   const base=L.leftBase,core=L.leftCore,baseRoof=group([0,0,0],roofs);
   baseRoof.name='processing-left-base-roof';
@@ -59,6 +54,7 @@ export function buildProcessingBuildings(k,roofs,structures){
     [base.x,(towerSouth+south)/2,base.width,south-towerSouth],
     [(towerEast+east)/2,core.z,east-towerEast,core.depth],
   ]){
+    if(w<=.04||d<=.04)continue;
     box(w,.10,d,[x,base.height+.05,z],wall,baseRoof);
     box(w-.04,.035,d-.04,[x,base.height+.112,z],roof,baseRoof);
   }

@@ -42,18 +42,22 @@ test('all thirteen reference parts remain distinct, with exposed stepped roofs i
   assert.ok(bridge.intersectsBox(bounds(scene.getObjectByName('rear-south-block'))),'bridge meets the new long block');
   assert.ok(bridge.intersectsBox(bounds(scene.getObjectByName('gypsum-corner-silo-tower'))),'bridge meets the silo tower');
 },buildProcessingBuildings));
-test('front-view parts 4, 6 and 8 share a facade and part 3 connects behind the smaller tower',()=>fixture(({scene})=>{
+test('aligned main facades leave the marked opening beside the extended front tower',()=>fixture(({scene})=>{
   const fronts=['process-high-roof-block','process-front-roof-block','process-low-shoulder'].map(name=>bounds(scene.getObjectByName(name)).min.x);
   for(const x of fronts)assert.ok(Math.abs(x-fronts[0])<.001,'no setback between the three front walls');
-  const link=bounds(scene.getObjectByName('processing-leftLink'));
   const tower=bounds(scene.getObjectByName('processing-leftCore'));
-  const main=bounds(scene.getObjectByName('process-high-roof-block'));
-  assert.ok(link.intersectsBox(tower)&&link.intersectsBox(main),'raised connector touches both buildings');
-  assert.ok(link.max.z<tower.min.z+3,'connector stays on the back of the tower');
-  assert.ok(link.max.y>10&&link.max.y<tower.max.y,'connector is raised below the tower roof');
-  assert.ok(tower.max.x-tower.min.x>link.max.x-link.min.x,'part 1 stays wider than its connecting part 3');
   const base=bounds(scene.getObjectByName('processing-leftBase'));
-  assert.ok(tower.min.x>=base.min.x-.1&&tower.max.x<base.max.x,'the widened tower remains supported by part 2');
+  assert.ok(tower.min.x>=base.min.x-.1&&Math.abs(tower.max.x-base.max.x)<.1,'both floors finish at the same right edge');
+  const annex=bounds(scene.getObjectByName('processing-leftLink'));
+  assert.ok(annex.intersectsBox(tower),'the small part 3 joins the tower');
+  assert.ok(annex.max.x-annex.min.x<3&&annex.max.z<tower.min.z+3,'part 3 stays compact at the rear corner');
+  assert.ok(annex.max.y<tower.max.y&&annex.max.y>10,'part 3 roof is below the tower roof');
+  const ray=new T.Raycaster(new T.Vector3(),new T.Vector3(0,-1,0),0,45);
+  for(const x of [-33.8,-32.5,-31.3])for(const z of [-9.5,-8,-6,0]){
+    ray.ray.origin.set(x,40,z);
+    const hit=ray.intersectObjects(scene.children,true)[0];
+    assert.ok(!hit||hit.point.y<.2,`open passage beside the compact rear annex at ${x}, ${z}`);
+  }
   for(let i=1;i<=3;i++){
     const door=bounds(scene.getObjectByName(`processing-service-door-${i}`));
     assert.ok(door.min.x>base.min.x&&door.max.x<base.max.x,'all three doors stay inside the widened base facade');
