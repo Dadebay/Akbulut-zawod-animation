@@ -25,6 +25,18 @@ function clearSegment(a,b,meshes,label){
   assert.equal(ray.intersectObjects(meshes,false).length,0,label);
 }
 
+test('enclosed calcite equipment keeps its world position and follows cutaway visibility after optimization',()=>fixture((scene,k)=>{
+  const flow=buildMaterialFlow(k,{pallet:(parent,pos)=>k.group(pos,parent,true)});
+  const before=new T.Box3().setFromObject(flow.enclosed);
+  const interior=k.group([8,0,-25],scene,true);interior.attach(flow.enclosed);
+  k.optimize({preserveRepeated:true});scene.updateMatrixWorld(true);
+  const after=new T.Box3().setFromObject(flow.enclosed);
+  assert.ok(before.min.distanceTo(after.min)<.001&&before.max.distanceTo(after.max)<.001,'cutaway parenting does not move the process connections');
+  const visibleMeshes=()=>{let count=0;interior.traverseVisible(o=>{if(o.isMesh)count++;});return count;};
+  interior.visible=false;assert.equal(visibleMeshes(),0,'no enclosed feed protrudes through the exterior facade');
+  interior.visible=true;assert.ok(visibleMeshes()>0,'the feed remains available in the interior view');
+}));
+
 test('silo approach leaves clearance around the full conveyor and its material',()=>fixture(scene=>{
   const solids=solidMeshes(scene),start=new T.Vector3(...GYPSUM_LIFT[0]),end=new T.Vector3(...GYPSUM_LIFT[1]);
   const d=end.clone().sub(start),side=new T.Vector3(-d.z,0,d.x).normalize();

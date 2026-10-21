@@ -9,6 +9,8 @@ export function buildProcessingBuildings(k,roofs,structures){
   const roof=material('#abb3b5',.08,.85),coping=material('#d8dcda',.24,.61);
   const glass=material('#304a52',.45,.28),frame=material('#c4cdcb',.32,.57);
   const bodies={};
+  const high=REAR_SERVICE_YARD.buildings.find(b=>b.name==='process-high-roof-block');
+  const frontX=high.x-high.width/2;
 
   function volume(name,b){
     const g=group([b.x,0,b.z],structures),r=group([b.x,0,b.z],roofs);
@@ -34,8 +36,13 @@ export function buildProcessingBuildings(k,roofs,structures){
       box(.22,.045,b.depth+.08,[x,b.height+.575,0],coping,r);
     }
   }
-  const customVolumes=new Set(['main','rightCore','rightLink','rightWing','outerWing','outerService','rear','buffer']);
+  const customVolumes=new Set(['main','leftLink','rightCore','rightLink','rightWing','outerWing','outerService','rear','buffer']);
   Object.entries(L).filter(([name])=>!customVolumes.has(name)).forEach(([name,b])=>volume(name,b));
+  // Front-view part 3 is a narrow, raised connector behind the smaller tower.
+  // Its two ends meet the tower and the newly aligned main facade.
+  const linkWest=L.leftCore.x+L.leftCore.width/2,linkDepth=2.8;
+  volume('leftLink',{x:(linkWest+frontX)/2,z:L.leftCore.z-L.leftCore.depth/2+linkDepth/2,
+    width:frontX-linkWest,depth:linkDepth,height:L.leftCore.height-2.5});
   // Keep the facade's local coordinates, but build its mass from reference
   // parts 3 and 5. The old 17 x 29 solid concealed all the stepped roof levels.
   bodies.main=group([L.main.x,0,L.main.z],structures);bodies.main.name='processing-main-facade';
@@ -73,7 +80,7 @@ export function buildProcessingBuildings(k,roofs,structures){
   }
 
   function slit(name,z,bottom,top,width=.32,divided=true){
-    const b=L[name],g=bodies[name],front=-b.width/2,y=(bottom+top)/2,zz=z-b.z;
+    const b=L[name],g=bodies[name],front=name==='main'?frontX-b.x:-b.width/2,y=(bottom+top)/2,zz=z-b.z;
     box(.035,top-bottom+.12,width+.13,[front-.025,y,zz],frame,g);
     box(.032,top-bottom,width,[front-.062,y,zz],glass,g);
     if(divided)for(let yy=bottom+2.8;yy<top-.4;yy+=3.1)
@@ -83,7 +90,6 @@ export function buildProcessingBuildings(k,roofs,structures){
   // Two uninterrupted panes on the smaller front tower.
   for(const z of [-8.3,-3.7])slit('leftCore',z,1.05,11.8,.62,false);
   for(const z of [-7.6,-3,1.6,6.2,10.8])slit('main',z,2.9,z<1.5?26.9:25.3,.32);
-  const high=REAR_SERVICE_YARD.buildings.find(b=>b.reference===5);
-  const label=textPlate('TÜRKMEN GIPS',6.4,.46,[L.main.x-L.main.width/2-.065,high.height-.7,high.z],structures,'#5593a6','#f4f5f3');
+  const label=textPlate('TÜRKMEN GIPS',6.4,.46,[frontX-.065,high.height-.7,high.z],structures,'#5593a6','#f4f5f3');
   label.rotation.y=-Math.PI/2;
 }

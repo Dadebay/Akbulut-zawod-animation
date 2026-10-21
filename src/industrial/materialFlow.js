@@ -8,6 +8,7 @@ import {rubbleAssets} from './rubble.js';
 export function buildMaterialFlow(k,logistics){
   const {m,box,cyl,group,mesh,rod}=k;
   const infeed=buildRawInfeed(k),rubble=rubbleAssets(k);
+  const enclosed=group([0,0,0],k.scene,true);enclosed.name='calcite-enclosed-feed';
   const makeCurve=routeCurve;
   function belt(points,width=1.4,supports=true,railMaterial=m.blue){
     const path=points.map(p=>new T.Vector3(...p)).filter((p,i,all)=>!i||p.distanceToSquared(all[i-1])>1e-8);
@@ -55,21 +56,21 @@ export function buildMaterialFlow(k,logistics){
       if(supports)for(let t=.05;t<1;t+=Math.min(.5,5/length)){const p=a.clone().lerp(b,t);for(const side of [-1,1]){const n=new T.Vector3(-d.z,0,d.x).normalize().multiplyScalar(side*width*.6);rod([p.x+n.x,0,p.z+n.z],[p.x+n.x,p.y-.2,p.z+n.z],.065,m.steel);}}
     }
   }
-  function duct(points){
+  function duct(points,parent=k.scene){
     const up=new T.Vector3(0,1,0);
     for(let i=1;i<points.length;i++){
       const a=new T.Vector3(...points[i-1]),b=new T.Vector3(...points[i]),direction=b.clone().sub(a).normalize();
-      rod(a.toArray(),b.toArray(),.28,m.white);
+      rod(a.toArray(),b.toArray(),.28,m.white,parent);
       if(b.y>a.y+.5&&Math.hypot(b.x-a.x,b.z-a.z)<.1){
-        box(.8,b.y-a.y,.8,[(a.x+b.x)/2,(a.y+b.y)/2,(a.z+b.z)/2],m.white);
-        k.motor([b.x+.55,b.y-.4,b.z],k.scene,.55);
+        box(.8,b.y-a.y,.8,[(a.x+b.x)/2,(a.y+b.y)/2,(a.z+b.z)/2],m.white,parent);
+        k.motor([b.x+.55,b.y-.4,b.z],parent,.55);
       }else if(a.distanceTo(b)>2){
-        const drive=group(a.clone().lerp(b,.85).toArray());drive.rotation.y=-Math.atan2(b.z-a.z,b.x-a.x);
+        const drive=group(a.clone().lerp(b,.85).toArray(),parent);drive.rotation.y=-Math.atan2(b.z-a.z,b.x-a.x);
         k.motor([0,-.15,.5],drive,.45);
       }
-      for(const point of [a,b]){const flange=cyl(.36,.09,point.toArray(),m.blue);flange.quaternion.setFromUnitVectors(up,direction);}
-      if(i<points.length-1)k.sphere(.285,b.toArray(),m.white);
-      if(Math.abs(a.y-b.y)<.1&&a.distanceTo(b)>3){const p=a.clone().lerp(b,.5);rod([p.x,0,p.z],[p.x,p.y-.25,p.z],.07,m.steel);}
+      for(const point of [a,b]){const flange=cyl(.36,.09,point.toArray(),m.blue,parent);flange.quaternion.setFromUnitVectors(up,direction);}
+      if(i<points.length-1)k.sphere(.285,b.toArray(),m.white,parent);
+      if(Math.abs(a.y-b.y)<.1&&a.distanceTo(b)>3){const p=a.clone().lerp(b,.5);rod([p.x,0,p.z],[p.x,p.y-.25,p.z],.07,m.steel,parent);}
     }
   }
   // The exterior calcite belt, intake and facade pipe have been removed.
@@ -81,7 +82,7 @@ export function buildMaterialFlow(k,logistics){
     const coarse=line.id==='gypsum'&&points===line.points;
     // buildCornerSilo owns the hollow receiving chute at the lift head.
     if(coarse){belt(points.slice(1,3),1.35);belt(points.slice(3,6),1.35);belt(points.slice(5,7),1.35,false,m.steel);}
-    else duct(points);
+    else duct(points,line.id==='calcite'?enclosed:k.scene);
     const path=makeCurve(points),length=path.getLength(),objects=[];
     const coarseUntil=coarse?path.curves[0].getLength()+path.curves[1].getLength():0;
     for(let i=0;i<(coarse?18:0);i++){
@@ -101,7 +102,7 @@ export function buildMaterialFlow(k,logistics){
     return {line,path,length,objects,coarseUntil,exposed};
   });
   // Preserve the enclosed calcite receiver, lift and buffer silo.
-  const calcite=PROCESS_LINES.find(line=>line.id==='calcite'),last=calcite.points.at(-1),previous=calcite.points.at(-2),receiver=group([last[0],0,last[2]]);
+  const calcite=PROCESS_LINES.find(line=>line.id==='calcite'),last=calcite.points.at(-1),previous=calcite.points.at(-2),receiver=group([last[0],0,last[2]],enclosed);
   receiver.rotation.y=-Math.atan2(last[2]-previous[2],last[0]-previous[0]);
   box(4.8,.22,3.1,[0,.11,0],m.concrete,receiver);
   for(const z of [-1.4,1.4]){box(4.4,1.85,.12,[0,1.72,z],m.white,receiver);box(4.4,.18,.18,[0,.78,z],m.blue,receiver);}
@@ -158,7 +159,7 @@ export function buildMaterialFlow(k,logistics){
   });
   const falling=[];for(let i=0;i<26;i++){const rock=group([0,0,0],k.scene,true),chunk=mesh(rubble.geometries[i%4],rubble.material,[0,0,0],rock);chunk.scale.setScalar(.24+(i%3)*.045);falling.push(rock);}
   const drop=new T.Vector3(),loadSurface=new T.Vector3(),dustOrigin=new T.Vector3(),dust=createDust(k);
-  return {loader:infeed.loader,update(j,landscape,{showLines=false,showInterior=false,active}={}){
+  return {enclosed,loader:infeed.loader,update(j,landscape,{showLines=false,showInterior=false,active}={}){
     const isRunning=zone=>!active||active.get(zone)?.status==='running';
     traces.visible=showLines;
     traceLines.forEach(({line,path,arrows})=>{arrows.visible=isRunning(line.zone);if(!showLines)return;for(let i=0;i<arrows.count;i++){const t=(j.time*.035+i/arrows.count)%1;arrowPose.position.copy(path.getPointAt(t));arrowPose.quaternion.setFromUnitVectors(up,path.getTangentAt(t).normalize());arrowPose.updateMatrix();arrows.setMatrixAt(i,arrowPose.matrix);}arrows.instanceMatrix.needsUpdate=true;});

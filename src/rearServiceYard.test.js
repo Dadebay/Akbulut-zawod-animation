@@ -27,7 +27,7 @@ test('all thirteen reference parts remain distinct, with exposed stepped roofs i
   // Rays hit the actual assembled roof, so an old solid or roof cannot hide
   // either the low shoulder (2) or the split high roofs (3, 4 and 5).
   assert.ok(height(-29,16)>12&&height(-29,16)<14,'part 2 stays below the long block');
-  assert.ok(height(-34,2)>26&&height(-34,2)<28,'part 3 is the front pitched roof');
+  assert.ok(height(-28,2)>26&&height(-28,2)<28,'part 3 is the front pitched roof');
   assert.ok(height(-18,2)>25&&height(-18,2)<26.5,'part 4 is a separate lower pitched roof');
   assert.ok(height(-29,-6)>28&&height(-29,-6)<29,'part 5 has its own high flat roof');
   assert.ok(height(-17,-2)>29,'part 6 remains the taller shaft');
@@ -41,6 +41,16 @@ test('all thirteen reference parts remain distinct, with exposed stepped roofs i
   const bridge=bounds(scene.getObjectByName('rear-silo-maintenance-bridge'));
   assert.ok(bridge.intersectsBox(bounds(scene.getObjectByName('rear-south-block'))),'bridge meets the new long block');
   assert.ok(bridge.intersectsBox(bounds(scene.getObjectByName('gypsum-corner-silo-tower'))),'bridge meets the silo tower');
+},buildProcessingBuildings));
+test('front-view parts 4, 6 and 8 share a facade and part 3 connects behind the smaller tower',()=>fixture(({scene})=>{
+  const fronts=['process-high-roof-block','process-front-roof-block','process-low-shoulder'].map(name=>bounds(scene.getObjectByName(name)).min.x);
+  for(const x of fronts)assert.ok(Math.abs(x-fronts[0])<.001,'no setback between the three front walls');
+  const link=bounds(scene.getObjectByName('processing-leftLink'));
+  const tower=bounds(scene.getObjectByName('processing-leftCore'));
+  const main=bounds(scene.getObjectByName('process-high-roof-block'));
+  assert.ok(link.intersectsBox(tower)&&link.intersectsBox(main),'raised connector touches both buildings');
+  assert.ok(link.max.z<tower.min.z+3,'connector stays on the back of the tower');
+  assert.ok(link.max.y>10&&link.max.y<tower.max.y,'connector is raised below the tower roof');
 },buildProcessingBuildings));
 test('the L-shaped courtyard wing has an open ground-level passage beside the rear blocks',()=>fixture(({scene})=>{
   const ray=new T.Raycaster(new T.Vector3(),new T.Vector3(0,-1,0),0,40);

@@ -82,6 +82,8 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
     const sun=new T.DirectionalLight('#fff5e9',2.4);sun.castShadow=true;sun.shadow.mapSize.set(TABLET?2048:4096,TABLET?2048:4096);scene.add(sun,sun.target);
     const fill=new T.DirectionalLight('#b7d4f1',.45);fill.position.set(30,30,-30);scene.add(fill);
     const k=createKit(scene,{tablet:TABLET});const production=buildProduction(k);production.root.position.set(8,0,-25);const logistics=buildLogistics(k,production.operators.map(o=>({...o,pos:[o.pos[0]+8,o.pos[1],o.pos[2]-25]})));const site=buildSite(k);const landscape=buildLandscape(k);const materialFlow=buildMaterialFlow(k,logistics),moveLogistics=createJourneyMotion(logistics,landscape.vehicleSurface);
+    // Enclosed feeds follow the cutaway even when exterior building widths change.
+    production.root.attach(materialFlow.enclosed);
     const oldInterior=buildOldCampusInterior(k,logistics.pallet);
     const birds=buildBirds(k),services=buildFactoryServices(k,production);
     const lighting=buildCampusLighting(k,{logistics,loader:materialFlow.loader,production,excavator:landscape});
