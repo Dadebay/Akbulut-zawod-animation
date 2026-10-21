@@ -72,10 +72,10 @@ export function buildMaterialFlow(k,logistics){
       if(Math.abs(a.y-b.y)<.1&&a.distanceTo(b)>3){const p=a.clone().lerp(b,.5);rod([p.x,0,p.z],[p.x,p.y-.25,p.z],.07,m.steel);}
     }
   }
-  // The exterior calcite belt and its intake have been removed. Keep only
-  // the enclosed process connection, including in the line-view overlay.
+  // The exterior calcite belt, intake and facade pipe have been removed.
+  // Keep the connection inside the building, including in the line-view overlay.
   const rawRoutes=PROCESS_LINES.slice(0,2).flatMap(line=>[line.points,...(line.branches||[])].map(points=>({
-    line,points:line.id==='calcite'?points.slice(3):points,
+    line,points:line.id==='calcite'?points.slice(5):points,
   })));
   const rawLines=rawRoutes.map(({line,points})=>{
     const coarse=line.id==='gypsum'&&points===line.points;
