@@ -213,17 +213,23 @@ export function buildRail(k,pallet){
       buildTurkmenLocomotive(k,g,{z:0,bogie,coupling,sectionCentres:[0],frontTowardsPositiveX:true});
     }else{
       bogie(g,-3.6);bogie(g,3.6);box(13.4,.25,2.8,[0,1.42,0],blue,g);
-      box(13.2,.08,2.65,[0,1.58,0],m.wood,g);
+      box(13.2,.08,2.65,[0,1.58,0],blue,g);
       for(const side of [-1,1]){
         box(13.3,.82,.08,[0,2.01,side*1.4],blue,g);
         for(let x=-5.6;x<6;x+=2.8)box(.10,.86,.12,[x,2.01,side*1.43],steel,g);
       }
       for(const x of [-6.6,6.6])box(.08,.82,2.85,[x,2.01,0],blue,g);
       const rawLoad=group([0,1.68,0],g);rawLoad.name='incoming-gypsum-stone-load';
-      // Heaped to the brim: a fuller bed under overlapping, taller piles along the whole wagon.
-      box(12.6,.74,2.52,[0,.37,0],material('#dedbd0',0,.96),rawLoad,.08);
-      const spots=Array.from({length:15},(_,n)=>[-5.6+n*.8,n%2?-.14:.14,1.32,1.05+(n%3)*.12]);
-      buildBoulderPiles(k,spots,{parent:rawLoad,seed:283+i*31,depthScale:.9});
+      // Blue-painted interior remains visible between stones, matching the wagon.
+      box(12.6,.74,2.52,[0,.37,0],blue,rawLoad,.08);
+      // Raise the overlapping heaps above the rim, filling the whole wagon.
+      // Taper the end piles and keep their width inside the side boards.
+      const heap=group([0,.5,0],rawLoad);
+      const spots=Array.from({length:21},(_,n)=>{
+        const x=-5.4+n*.54;
+        return [x,n%2?-.04:.04,Math.min(1.35,6.25-Math.abs(x)),1.50+(n%3)*.10];
+      });
+      buildBoulderPiles(k,spots,{parent:heap,seed:283+i*31,depthScale:.74});
       for(const x of [-6.9,6.9])coupling(g,x,Math.sign(x));
     }
   }
