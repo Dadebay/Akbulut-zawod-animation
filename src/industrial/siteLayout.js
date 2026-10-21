@@ -117,8 +117,9 @@ export const RAW_STOCK=[
 ];
 export const RAW_STOP=[RAW_STOCK[0]-5.5,0,RAW_STOCK[2]];
 // Tall white auxiliary tower directly beside the exposed corner silo.
-export const GYPSUM_SILO_TOWER={x:-13.6,z:25.3,width:5.2,depth:5.6,height:19.8};
-// Stepped processing volumes read from the architectural view of the new plant.
+export const GYPSUM_SILO_TOWER={x:-13.6,z:25.3,width:5.2,depth:5.6,height:14.8};
+// Main/courtyard volumes and illustrative interior envelopes. The rear exterior
+// follows the October 21 photographs in rearServiceYard.js; its cutaway is separate.
 export const PROCESS_BUILDINGS={
   main:{x:-29,z:5,width:17,depth:29,height:27},
   // Flush with the tower front, leaving a passage beside the entrance steps.

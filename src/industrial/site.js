@@ -17,7 +17,7 @@ import {buildGypsumReceivingHall} from './gypsumReceivingHall.js';
 import {buildBoulderPiles} from './rubble.js';
 import {buildWeighbridge} from './weighbridge.js';
 import {MAIN_ROAD_X} from './trafficLayout.js';
-import {GYPSUM_STOCKYARD as STOCKYARD,GYPSUM_SILO_TOWER as SILO_TOWER,LOADER_STOCK,NEW_FACTORY_ENTRANCE as ENTRANCE,NEW_ENTRANCE_MEDIAN,OUTER_RAIL_Z,RAIL_ACCESS_CROSSING,RAIL_SIDE_LOADING as LOADING} from './siteLayout.js';
+import {GYPSUM_STOCKYARD as STOCKYARD,LOADER_STOCK,NEW_FACTORY_ENTRANCE as ENTRANCE,NEW_ENTRANCE_MEDIAN,OUTER_RAIL_Z,RAIL_ACCESS_CROSSING,RAIL_SIDE_LOADING as LOADING} from './siteLayout.js';
 
 // Proportions traced from user-supplied architectural renders 220–227.
 // These presentation dimensions are not survey measurements.
@@ -174,30 +174,6 @@ export function buildSite(k){
   loadingSign.name='rail-loading-sign';
   for(const z of [-40,-10])for(let x=-50;x<75;x+=18)cyl(.06,7.6,[x,3.8,z],trim,structures);
   buildProcessingBuildings(k,roofs,structures);
-  // Separate narrow tower visible beside the silo in the construction photo.
-  // Its footprint leaves the inclined conveyor and silo access unobstructed.
-  const auxiliary=cladding(SILO_TOWER.x,SILO_TOWER.z,SILO_TOWER.width,SILO_TOWER.depth,SILO_TOWER.height);
-  auxiliary.name='gypsum-corner-silo-tower';
-  const tw=SILO_TOWER.width,td=SILO_TOWER.depth,th=SILO_TOWER.height;
-  box(tw+.4,.22,td+.2,[SILO_TOWER.x,.01,SILO_TOWER.z],m.concrete);
-  box(tw-.30,.08,td-.30,[SILO_TOWER.x,th+.29,SILO_TOWER.z],roofDark,roofs);
-  for(const z of [SILO_TOWER.z-td/2,SILO_TOWER.z+td/2])box(tw+.12,.34,.16,[SILO_TOWER.x,th+.43,z],white,structures);
-  for(const x of [SILO_TOWER.x-tw/2,SILO_TOWER.x+tw/2])box(.16,.34,td+.12,[x,th+.43,SILO_TOWER.z],white,structures);
-  const towerFront=SILO_TOWER.z+td/2,doorX=SILO_TOWER.x-.65;
-  box(1.10,2.24,.08,[doorX,1.16,towerFront+.06],trim,structures);
-  box(.89,2.05,.04,[doorX,1.13,towerFront+.12],m.dark,structures);
-  box(.53,.43,.025,[doorX,1.76,towerFront+.15],glass,structures);
-  rod([doorX+.30,.97,towerFront+.18],[doorX+.30,1.25,towerFront+.18],.018,m.steel,structures);
-  box(1.6,.12,.70,[doorX,.06,towerFront+.46],m.concrete);
-  box(.28,.11,.20,[doorX,2.55,towerFront+.20],m.light,structures);
-  // Short upper access bridge joins the tower to the adjacent processing block.
-  const bridge=group([SILO_TOWER.x,14.4,22],structures);
-  box(1.5,.18,1.25,[0,0,0],m.steel,bridge);
-  for(const x of [-.7,.7]){
-    for(const z of [-.55,.55])rod([x,.08,z],[x,1.15,z],.035,m.steel,bridge);
-    for(const y of [.60,1.15])rod([x,y,-.6],[x,y,.6],.03,m.steel,bridge);
-  }
-  for(const z of [21.54,SILO_TOWER.z-td/2-.04])box(.95,2.0,.045,[SILO_TOWER.x,15.47,z],m.dark,structures);
   // Photo proportions: two low wings flank a recessed, taller entrance.
   // Keep these envelopes independent of the production hall and its equipment.
   function office(x,z,w,d,h,entranceWidth,singleRoof=false){

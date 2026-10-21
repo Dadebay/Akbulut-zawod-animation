@@ -1,9 +1,10 @@
 import {PROCESS_BUILDINGS as L} from './siteLayout.js';
 import {buildCourtyardWing} from './courtyardWing.js';
+import {buildRearServiceYard} from './rearServiceYard.js';
 
 // Architectural envelope only: the production equipment keeps its existing layout.
 export function buildProcessingBuildings(k,roofs,structures){
-  const {box,group,material,textPlate,m}=k;
+  const {box,group,material,textPlate}=k;
   const wall=material('#f4f5f3',.04,.82),seam=material('#cdd2cf',.10,.78);
   const roof=material('#abb3b5',.08,.85),coping=material('#d8dcda',.24,.61);
   const glass=material('#304a52',.45,.28),frame=material('#c4cdcb',.32,.57);
@@ -32,9 +33,10 @@ export function buildProcessingBuildings(k,roofs,structures){
       box(.22,.045,b.depth+.08,[x,b.height+.575,0],coping,r);
     }
   }
-  const courtyard=new Set(['rightCore','rightWing','outerWing','outerService']);
-  Object.entries(L).filter(([name])=>!courtyard.has(name)).forEach(([name,b])=>volume(name,b));
+  const customVolumes=new Set(['rightCore','rightWing','outerWing','outerService','rear','buffer']);
+  Object.entries(L).filter(([name])=>!customVolumes.has(name)).forEach(([name,b])=>volume(name,b));
   buildCourtyardWing(k,roofs,structures);
+  buildRearServiceYard(k,roofs,structures);
 
   // Only the exposed L-shaped part of the lower floor has a roof. The front
   // wall continues straight into the tower, without a terrace or parapet ledge.
@@ -97,21 +99,4 @@ export function buildProcessingBuildings(k,roofs,structures){
     k.cyl(.17,.19,[0,1.575,0],wall,vent);
     k.cyl(.20,.04,[0,1.69,0],coping,vent);
   }
-
-  // The broad blank rear building carries the service deck seen in the render.
-  const roofY=L.rear.height+.19,deck=group([L.rear.x+2,roofY,L.rear.z],roofs);
-  box(14,.10,12,[0,.05,0],coping,deck);
-  for(let x=-5.4;x<6;x+=3.6)for(let z=-4.4;z<5;z+=4.4){
-    box(.48,.12,.48,[x,.16,z],m.steel,deck);
-    k.cyl(.085,.42,[x,.43,z],coping,deck,undefined,12);
-  }
-  for(const [x,z] of [[-2.1,-1.7],[2.0,1.3]]){
-    box(1.30,.70,.82,[x,.45,z],material('#69977d',.08,.76),deck);
-    box(1.44,.10,.94,[x,.85,z],coping,deck);
-  }
-  const roofCabin=group([L.rear.x+8.8,roofY,L.rear.z-7],roofs);
-  box(3.4,2.4,3.8,[0,1.2,0],wall,roofCabin);
-  box(3.65,.18,4.05,[0,2.49,0],coping,roofCabin);
-  box(3.1,.045,3.5,[0,2.61,0],roof,roofCabin);
-  box(.045,1.9,.82,[-1.73,1.02,0],frame,roofCabin);
 }

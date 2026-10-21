@@ -11,13 +11,20 @@ const mixAngle=(a,b,t)=>a+Math.atan2(Math.sin(b-a),Math.cos(b-a))*clamp01(t);
 
 export function buildCornerSilo(k){
   const {box,cyl,rod,m}=k,silo=k.group(GYPSUM_CORNER_SILO),paint=k.material('#e8ecea',.24,.5);
+  silo.name='gypsum-corner-silo';
   const start=new T.Vector3(...GYPSUM_LIFT[0]),end=new T.Vector3(...GYPSUM_LIFT[1]);
   const direction=end.clone().sub(start),horizontal=Math.hypot(direction.x,direction.z);
   const yaw=-Math.atan2(direction.z,direction.x),inlet=k.group([0,0,0],silo);inlet.rotation.y=yaw;
-  box(5.2,.25,5.2,[0,.1,0],m.concrete,silo);k.frame(3.4,3.4,3.3,silo);
+  cyl(2.35,.18,[0,.09,0],m.concrete,silo,undefined,40);
+  for(const x of [-1.45,1.45])for(const z of [-1.45,1.45]){
+    box(.4,.12,.4,[x,.22,z],m.concrete,silo);
+    cyl(.085,3.15,[x,1.8,z],paint,silo);
+  }
   cyl(.3,2,[0,2.3,0],paint,silo,1.65);
   k.mesh(new T.CylinderGeometry(1.65,1.65,8,32,1,true),paint,[0,7.3,0],silo);
-  for(let y=3.3;y<=11.31;y+=1.33)k.ring(1.66,.045,[0,y,0],m.steel,silo);
+  for(let y=3.3;y<=11.31;y+=1.05)k.ring(1.66,.026,[0,y,0],paint,silo);
+  // Shallow conical crown, with an open centre for the working inlet.
+  k.mesh(new T.CylinderGeometry(.88,1.65,1.15,40,1,true),paint,[0,11.875,0],silo);
   // A real opening through the deck, not a solid lid underneath a pipe.
   const deck=new T.Shape();deck.absarc(0,0,1.72,0,Math.PI*2,false);
   const opening=new T.Path();opening.moveTo(-.62,-.78);opening.lineTo(-.62,.78);opening.lineTo(.62,.78);opening.lineTo(.62,-.78);opening.closePath();deck.holes.push(opening);
@@ -25,7 +32,7 @@ export function buildCornerSilo(k){
   k.mesh(deckGeometry,m.steel,[0,11.3,0],inlet);
   // Hollow receiver: the belt enters below the hood and discharges into the
   // vertical chute. The upstream wall stops below the carrying surface.
-  const top=end.y+.65,bottom=11,height=top-bottom;
+  const top=end.y+.65,bottom=12.2,height=top-bottom;
   for(const z of [-.82,.82])box(1.4,height,.08,[0,bottom+height/2,z],paint,inlet);
   box(.08,height,1.64,[.66,bottom+height/2,0],paint,inlet);
   box(.08,1.5,1.64,[-.66,11.75,0],paint,inlet);
@@ -34,18 +41,9 @@ export function buildCornerSilo(k){
   for(const z of [-.82,.82])box(1.55,.08,.12,[0,11.5,z],m.blue,inlet);
   for(const x of [-.68,.68])box(.12,.08,1.72,[x,11.5,0],m.blue,inlet);
   box(.9,.3,.9,[0,1.3,0],m.blue,silo);k.motor([.75,.9,0],silo,.65);
-  // Top access, safety cage and dust filter stay visible beside the left block.
-  k.ladder(11.4,-1.95,0,silo,true);
-  const railStart=Math.atan2(-direction.z,-direction.x)+.6,railArc=Math.PI*2-1.2;
-  for(let i=0;i<=9;i++){const a=railStart+i*railArc/9,x=Math.cos(a)*1.86,z=Math.sin(a)*1.86;rod([x,11.42,z],[x,12.4,z],.035,m.yellow,silo);}
-  for(const y of [11.5,11.93,12.4]){
-    const arc=new T.TorusGeometry(1.86,.035,6,48,railArc);arc.rotateX(Math.PI/2);arc.rotateY(-railStart);
-    k.mesh(arc,m.yellow,[0,y,0],silo);
-  }
-  cyl(.3,1.25,[.15,12.1,-1.3],paint,inlet);cyl(.36,.12,[.15,12.78,-1.3],m.blue,inlet);
-  k.textPlate('GIPS',1.5,.45,[0,7.8,1.67],silo);
-  // Stop the deep truss outside the silo wall. Only the belt head overhangs
-  // the deck; a last pair of columns supports it at the railing entrance.
+  k.ladder(11.4,0,-1.85,silo);
+  // Stop the deep truss outside the silo wall; only the belt head overhangs
+  // the open receiving deck.
   const trussEnd=1-2.5/horizontal,normal=new T.Vector3(-direction.z,0,direction.x).normalize().multiplyScalar(.85);
   const chord=(t,side,drop)=>start.clone().lerp(end,t).addScaledVector(normal,side).add(new T.Vector3(0,-drop,0)).toArray();
   const spans=Math.ceil(direction.length()/2.5);
@@ -57,10 +55,20 @@ export function buildCornerSilo(k){
       rod(chord(b,side,.95),chord(b,side,.2),.035,m.steel);
     }
   }
-  for(const t of [.12,.48,trussEnd]){
+  // Two separate concrete pads: a low portal and a taller four-leg trestle.
+  for(const t of [.27,.72]){
     const left=chord(t,-1,.95),right=chord(t,1,.95);
-    for(const p of [left,right]){box(.65,.18,.65,[p[0],.09,p[2]],m.concrete);rod([p[0],.18,p[2]],p,.085,m.steel);}
+    const pad=box(2.4,.18,2.5,[(left[0]+right[0])/2,.09,(left[2]+right[2])/2],m.concrete);pad.rotation.y=yaw;
+    for(const p of [left,right])rod([p[0],.18,p[2]],p,.085,m.steel);
     rod(left,right,.065,m.steel);rod([left[0],.25,left[2]],right,.04,m.steel);rod([right[0],.25,right[2]],left,.04,m.steel);
+    if(t>.5){
+      const along=direction.clone().setY(0).normalize();
+      for(const p of [left,right]){
+        const q=new T.Vector3(...p).addScaledVector(along,-1.25);
+        rod([q.x,.18,q.z],q.toArray(),.085,m.steel);rod(q.toArray(),p,.06,m.steel);
+        rod([q.x,.18,q.z],p,.045,m.steel);rod([p[0],.18,p[2]],q.toArray(),.045,m.steel);
+      }
+    }
   }
 }
 

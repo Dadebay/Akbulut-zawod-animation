@@ -9,7 +9,7 @@ export function buildMaterialFlow(k,logistics){
   const {m,box,cyl,group,mesh,rod}=k;
   const infeed=buildRawInfeed(k),rubble=rubbleAssets(k);
   const makeCurve=routeCurve;
-  function belt(points,width=1.4,supports=true){
+  function belt(points,width=1.4,supports=true,railMaterial=m.blue){
     const path=points.map(p=>new T.Vector3(...p)).filter((p,i,all)=>!i||p.distanceToSquared(all[i-1])>1e-8);
     if(path.length<2)return;
     const normals=path.slice(1).map((p,i)=>{
@@ -44,7 +44,7 @@ export function buildMaterialFlow(k,logistics){
       geometry.setIndex(indices);geometry.computeVertexNormals();mesh(geometry,mat);
     }
     strip(-width/2,width/2,-.13,0,m.rubber);
-    for(const side of [-1,1])strip(side*width/2-.05,side*width/2+.05,-.15,.01,m.blue);
+    for(const side of [-1,1])strip(side*width/2-.05,side*width/2+.05,-.15,.01,railMaterial);
     for(let i=0;i<path.length-1;i++){
       const a=path[i],b=path[i+1],d=b.clone().sub(a),length=d.length(),g=group(a.clone().add(b).multiplyScalar(.5).toArray());
       // Keep the carrying face upright on westbound inclines as well.
@@ -80,7 +80,7 @@ export function buildMaterialFlow(k,logistics){
   const rawLines=rawRoutes.map(({line,points})=>{
     const coarse=line.id==='gypsum'&&points===line.points;
     // buildCornerSilo owns the hollow receiving chute at the lift head.
-    if(coarse){belt(points.slice(1,3),1.35);belt(points.slice(3,6),1.35);belt(points.slice(5,7),1.35,false);}
+    if(coarse){belt(points.slice(1,3),1.35);belt(points.slice(3,6),1.35);belt(points.slice(5,7),1.35,false,m.steel);}
     else duct(points);
     const path=makeCurve(points),length=path.getLength(),objects=[];
     const coarseUntil=coarse?path.curves[0].getLength()+path.curves[1].getLength():0;
