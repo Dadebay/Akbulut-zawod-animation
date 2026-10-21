@@ -51,6 +51,13 @@ test('front-view parts 4, 6 and 8 share a facade and part 3 connects behind the 
   assert.ok(link.intersectsBox(tower)&&link.intersectsBox(main),'raised connector touches both buildings');
   assert.ok(link.max.z<tower.min.z+3,'connector stays on the back of the tower');
   assert.ok(link.max.y>10&&link.max.y<tower.max.y,'connector is raised below the tower roof');
+  assert.ok(tower.max.x-tower.min.x>link.max.x-link.min.x,'part 1 stays wider than its connecting part 3');
+  const base=bounds(scene.getObjectByName('processing-leftBase'));
+  assert.ok(tower.min.x>=base.min.x-.1&&tower.max.x<base.max.x,'the widened tower remains supported by part 2');
+  for(let i=1;i<=3;i++){
+    const door=bounds(scene.getObjectByName(`processing-service-door-${i}`));
+    assert.ok(door.min.x>base.min.x&&door.max.x<base.max.x,'all three doors stay inside the widened base facade');
+  }
 },buildProcessingBuildings));
 test('the L-shaped courtyard wing has an open ground-level passage beside the rear blocks',()=>fixture(({scene})=>{
   const ray=new T.Raycaster(new T.Vector3(),new T.Vector3(0,-1,0),0,40);

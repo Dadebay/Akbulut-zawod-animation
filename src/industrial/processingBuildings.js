@@ -63,7 +63,8 @@ export function buildProcessingBuildings(k,roofs,structures){
     box(w-.04,.035,d-.04,[x,base.height+.112,z],roof,baseRoof);
   }
   const doorPanel=material('#f7f8f5',.08,.72),doorJoint=material('#d0d7d4',.12,.69);
-  for(const [index,x] of [-49.9,-46.6,-41.8].entries()){
+  for(const [index,fraction] of [.16,.44,.84].entries()){
+    const x=base.x-base.width/2+base.width*fraction;
     const door=group([x-base.x,0,base.depth/2+.025],bodies.leftBase);
     door.name=`processing-service-door-${index+1}`;
     const width=index===2?1.9:2.2,height=2.65;
