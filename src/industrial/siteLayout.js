@@ -124,10 +124,12 @@ export const PROCESS_BUILDINGS={
   leftBase:{x:-46.5,z:-5,width:13,depth:13,height:3.2},
   leftCore:{x:-48,z:-6,width:7.4,depth:8.6,height:13.2},
   leftLink:{x:-38.75,z:-5,width:2.5,depth:8,height:4.2},
-  rightCore:{x:-38.5,z:25,width:7.5,depth:9.5,height:20.5},
+  rightCore:{x:-39.55,z:24,width:5.4,depth:7.5,height:20.5},
   rightLink:{x:-32.6,z:21.7,width:9.8,depth:4.4,height:6.2},
-  rightWing:{x:-36.5,z:33,width:16,depth:12.6,height:7.2},
-  outerWing:{x:-57.25,z:37.8,width:25.5,depth:3,height:7.2},
+  // Narrow L-shaped courtyard building traced from the four exterior views.
+  rightWing:{x:-39.55,z:32.775,width:5.4,depth:10.05,height:10.2},
+  outerWing:{x:-56.125,z:35.9,width:27.75,depth:3.8,height:10.2},
+  outerService:{x:-64,z:38.4,width:8.2,depth:1.2,height:2.7},
   rear:{x:-9,z:11,width:23,depth:21,height:18.8},
   buffer:{x:-23,z:29,width:11,depth:9,height:11.8}
 };

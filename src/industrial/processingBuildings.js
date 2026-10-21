@@ -1,4 +1,5 @@
 import {PROCESS_BUILDINGS as L} from './siteLayout.js';
+import {buildCourtyardWing} from './courtyardWing.js';
 
 // Architectural envelope only: the production equipment keeps its existing layout.
 export function buildProcessingBuildings(k,roofs,structures){
@@ -25,16 +26,13 @@ export function buildProcessingBuildings(k,roofs,structures){
       box(b.width+.08,.045,.22,[0,b.height+.575,z],coping,r);
     }
     for(const x of [-b.width/2+.08,b.width/2-.08]){
-      // The two low wings share one L-shaped roof, without a parapet through the join.
-      if(name==='outerWing'&&x>0)continue;
-      const depth=name==='rightWing'&&x<0?b.depth-L.outerWing.depth:b.depth;
-      const z=(depth-b.depth)/2;
-      box(.16,.48,depth,[x,b.height+.31,z],wall,r);
-      box(.22,.045,depth+.08,[x,b.height+.575,z],coping,r);
+      box(.16,.48,b.depth,[x,b.height+.31,0],wall,r);
+      box(.22,.045,b.depth+.08,[x,b.height+.575,0],coping,r);
     }
   }
-  Object.entries(L).forEach(([name,b])=>volume(name,b));
-  box(.44,.055,L.outerWing.depth-.44,[L.rightWing.x-L.rightWing.width/2,L.rightWing.height+.15,L.outerWing.z],roof,roofs);
+  const courtyard=new Set(['rightCore','rightWing','outerWing','outerService']);
+  Object.entries(L).filter(([name])=>!courtyard.has(name)).forEach(([name,b])=>volume(name,b));
+  buildCourtyardWing(k,roofs,structures);
 
   function slit(name,z,bottom,top,width=.32,divided=true){
     const b=L[name],g=bodies[name],front=-b.width/2,y=(bottom+top)/2,zz=z-b.z;
@@ -47,8 +45,6 @@ export function buildProcessingBuildings(k,roofs,structures){
   // Two uninterrupted panes on the smaller front tower.
   for(const z of [-8.3,-3.7])slit('leftCore',z,3.9,11.2,.62,false);
   for(const z of [-6.2,-.6,5,10.6,16.2])slit('main',z,2.9,25.3,.32);
-  for(const z of [22.6,27.3])slit('rightCore',z,2.15,19.25,.31);
-  for(const z of [29.8,32.4,35.0])slit('rightWing',z,1.05,5.9,.34);
   const label=textPlate('TÜRKMEN GIPS',6.4,.46,[L.main.x-L.main.width/2-.065,26.12,-2.4],structures,'#5593a6','#f4f5f3');
   label.rotation.y=-Math.PI/2;
 
