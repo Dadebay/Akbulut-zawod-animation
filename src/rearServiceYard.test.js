@@ -16,6 +16,32 @@ function fixture(run,build=buildRearServiceYard){
   finally{k.dispose();globalThis.document=previous;}
 }
 const bounds=o=>new T.Box3().setFromObject(o);
+test('all thirteen reference parts remain distinct, with exposed stepped roofs instead of one large slab',()=>fixture(({scene})=>{
+  const parts=[];scene.traverse(o=>{if(o.userData.referencePart)parts.push(o.userData.referencePart);});
+  assert.deepEqual(parts.sort((a,b)=>a-b),Array.from({length:13},(_,i)=>i+1));
+  const ray=new T.Raycaster(new T.Vector3(),new T.Vector3(0,-1,0),0,45);
+  const height=(x,z)=>{
+    ray.ray.origin.set(x,40,z);
+    return ray.intersectObjects(scene.children,true)[0]?.point.y;
+  };
+  // Rays hit the actual assembled roof, so an old solid or roof cannot hide
+  // either the low shoulder (2) or the split high roofs (3, 4 and 5).
+  assert.ok(height(-29,16)>12&&height(-29,16)<14,'part 2 stays below the long block');
+  assert.ok(height(-34,2)>26&&height(-34,2)<28,'part 3 is the front pitched roof');
+  assert.ok(height(-18,2)>25&&height(-18,2)<26.5,'part 4 is a separate lower pitched roof');
+  assert.ok(height(-29,-6)>28&&height(-29,-6)<29,'part 5 has its own high flat roof');
+  assert.ok(height(-17,-2)>29,'part 6 remains the taller shaft');
+  for(const z of [15,22,28])assert.ok(height(-18,z)>18&&height(-18,z)<20,'continuous low silo-side roof');
+  for(const name of ['rear-service-room']){
+    const b=Y.buildings.find(v=>v.name===name),back=height(b.x-b.width/2+.35,b.z),front=height(b.x+b.width/2-.35,b.z);
+    assert.ok(back-front>.9,`${name}: roof falls toward the yard`);
+    const sideRay=new T.Raycaster(new T.Vector3(b.x-b.width/2+.5,b.height+.5,b.z+b.depth/2+1),new T.Vector3(0,0,-1),0,2);
+    assert.ok(sideRay.intersectObject(scene.getObjectByName(name),true).length,`${name}: no open triangular gap under the roof`);
+  }
+  const bridge=bounds(scene.getObjectByName('rear-silo-maintenance-bridge'));
+  assert.ok(bridge.intersectsBox(bounds(scene.getObjectByName('rear-south-block'))),'bridge meets the new long block');
+  assert.ok(bridge.intersectsBox(bounds(scene.getObjectByName('gypsum-corner-silo-tower'))),'bridge meets the silo tower');
+},buildProcessingBuildings));
 test('the L-shaped courtyard wing has an open ground-level passage beside the rear blocks',()=>fixture(({scene})=>{
   const ray=new T.Raycaster(new T.Vector3(),new T.Vector3(0,-1,0),0,40);
   // Sample the whole passage, including the short link, tower side and low annex.

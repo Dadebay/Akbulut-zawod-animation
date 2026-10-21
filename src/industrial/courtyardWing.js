@@ -17,6 +17,8 @@ export function buildCourtyardWing(k,roofs,structures){
 
   function body(name,b){
     const g=group([b.x,0,b.z],shell);g.name=`processing-${name}`;
+    if(name==='rightWing')g.userData.referencePart=10;
+    if(name==='rightCore')g.userData.referencePart=11;
     box(b.width,b.height,b.depth,[0,b.height/2,0],wall,g);
     box(b.width+.42,.18,b.depth+.42,[0,.09,0],coping,g,.04);
     return g;

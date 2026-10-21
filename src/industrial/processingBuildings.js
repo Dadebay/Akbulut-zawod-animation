@@ -1,6 +1,6 @@
 import {PROCESS_BUILDINGS as L} from './siteLayout.js';
 import {buildCourtyardWing} from './courtyardWing.js';
-import {buildRearServiceYard} from './rearServiceYard.js';
+import {buildRearServiceYard,REAR_SERVICE_YARD} from './rearServiceYard.js';
 
 // Architectural envelope only: the production equipment keeps its existing layout.
 export function buildProcessingBuildings(k,roofs,structures){
@@ -13,6 +13,7 @@ export function buildProcessingBuildings(k,roofs,structures){
   function volume(name,b){
     const g=group([b.x,0,b.z],structures),r=group([b.x,0,b.z],roofs);
     g.name=`processing-${name}`;bodies[name]=g;
+    if(name==='leftCore')g.userData.referencePart=13;
     const bottom=name==='leftCore'?L.leftBase.height:0;
     box(b.width,b.height-bottom,b.depth,[0,(b.height+bottom)/2,0],wall,g);
     if(!bottom)box(b.width+.06,.24,b.depth+.06,[0,.12,0],coping,g);
@@ -33,8 +34,11 @@ export function buildProcessingBuildings(k,roofs,structures){
       box(.22,.045,b.depth+.08,[x,b.height+.575,0],coping,r);
     }
   }
-  const customVolumes=new Set(['rightCore','rightWing','outerWing','outerService','rear','buffer']);
+  const customVolumes=new Set(['main','rightCore','rightLink','rightWing','outerWing','outerService','rear','buffer']);
   Object.entries(L).filter(([name])=>!customVolumes.has(name)).forEach(([name,b])=>volume(name,b));
+  // Keep the facade's local coordinates, but build its mass from reference
+  // parts 3 and 5. The old 17 x 29 solid concealed all the stepped roof levels.
+  bodies.main=group([L.main.x,0,L.main.z],structures);bodies.main.name='processing-main-facade';
   buildCourtyardWing(k,roofs,structures);
   buildRearServiceYard(k,roofs,structures);
 
@@ -78,25 +82,8 @@ export function buildProcessingBuildings(k,roofs,structures){
   }
   // Two uninterrupted panes on the smaller front tower.
   for(const z of [-8.3,-3.7])slit('leftCore',z,1.05,11.8,.62,false);
-  for(const z of [-6.2,-.6,5,10.6,16.2])slit('main',z,2.9,25.3,.32);
-  const label=textPlate('TÜRKMEN GIPS',6.4,.46,[L.main.x-L.main.width/2-.065,26.12,-2.4],structures,'#5593a6','#f4f5f3');
+  for(const z of [-7.6,-3,1.6,6.2,10.8])slit('main',z,2.9,z<1.5?26.9:25.3,.32);
+  const high=REAR_SERVICE_YARD.buildings.find(b=>b.reference===5);
+  const label=textPlate('TÜRKMEN GIPS',6.4,.46,[L.main.x-L.main.width/2-.065,high.height-.7,high.z],structures,'#5593a6','#f4f5f3');
   label.rotation.y=-Math.PI/2;
-
-  // A low set-back roof house replaces the extra full-height front slab.
-  const top=L.main.height,roofHouse=group([-27.0,top+.18,1.0],roofs);
-  box(8,2.65,6.2,[0,1.325,0],wall,roofHouse);
-  box(8.25,.16,6.45,[0,2.73,0],coping,roofHouse);
-  box(7.7,.055,5.9,[0,2.84,0],roof,roofHouse);
-  for(const z of [-2.4,2.4])box(.45,.32,.50,[3,3.01,z],coping,roofHouse);
-  // Two white vent stacks to the right of the roof house in the front elevation.
-  for(const z of [11.8,15.7]){
-    const vent=group([-32,top+.18,z],roofs);
-    box(.58,.08,.58,[0,.04,0],coping,vent);
-    k.cyl(.14,.75,[0,.455,0],wall,vent);
-    k.cyl(.14,.23,[0,.945,0],wall,vent,.30);
-    k.cyl(.30,.18,[0,1.15,0],wall,vent);
-    k.cyl(.30,.24,[0,1.36,0],wall,vent,.17);
-    k.cyl(.17,.19,[0,1.575,0],wall,vent);
-    k.cyl(.20,.04,[0,1.69,0],coping,vent);
-  }
 }

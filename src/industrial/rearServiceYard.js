@@ -9,14 +9,17 @@ export const REAR_SERVICE_YARD={
   cabin:{x:14,z:2.4,width:3.4,depth:3.2,height:2.55},
   cages:[{x:-3.6,z:18.9,width:4.8,depth:2.1},{x:14,z:-2.2,width:1.7,depth:1.65}],
   buildings:[
-    // The west faces stop at x=-31, leaving the L wing's open service passage.
-    // Keep the east faces fixed beside the silo and the rear utility yard.
-    {name:'rear-stepped-block',x:-22.5,z:11,width:17,depth:20,height:20.2},
-    {name:'rear-south-block',x:-23.75,z:26.3,width:14.5,depth:14.4,height:18.8},
-    {name:'rear-high-shaft',x:-17.65,z:-6.4,width:5.8,depth:6.2,height:29.3},
-    {name:'rear-hall-link',x:-10.8,z:-6.5,width:6.4,depth:8,height:6.4},
-    {name:'rear-service-room',x:-11.8,z:4.2,width:4.4,depth:9,height:4.5},
-    {name:'rear-low-annex',x:-25.75,z:35,width:10.5,depth:3,height:3.0},
+    // Numbers follow the user's marked 13-part reference. The main envelope is
+    // stepped in both directions; no full-height box sits beneath all its roofs.
+    {reference:1,name:'rear-south-block',x:-21.75,z:23.5,width:10.5,depth:20,height:18.8,roofRise:.65},
+    {reference:2,name:'process-low-shoulder',x:-29,z:20.65,width:4,depth:14.3,height:12.4,roofRise:.45},
+    {reference:3,name:'process-front-roof-block',x:-32.25,z:7.5,width:10.5,depth:12,height:26.4,roofRise:.7,roofDivider:true},
+    {reference:4,name:'rear-stepped-block',x:-20.875,z:7.5,width:12.25,depth:12,height:25.6,roofRise:.7,roofDivider:true},
+    {reference:5,name:'process-high-roof-block',x:-29.025,z:-4,width:16.95,depth:11,height:28.3},
+    {reference:6,name:'rear-high-shaft',x:-17.65,z:-1.6,width:5.8,depth:6.2,height:29.3},
+    {reference:8,name:'rear-hall-link',x:-10.8,z:-4.5,width:6.4,depth:12,height:6.4},
+    {reference:7,name:'rear-service-room',x:-12.175,z:7.5,width:5.15,depth:12,height:4.5,roofRise:1.2},
+    {reference:9,name:'rear-low-annex',x:-21.75,z:35,width:10.5,depth:3,height:3.0},
   ],
 };
 
@@ -26,11 +29,13 @@ export function buildRearServiceYard(k,roofs,structures){
   shell.name='rear-reference-buildings';cover.name='rear-reference-roofs';yard.name='rear-service-yard';
   const wall=material('#f4f5f3',.04,.82),joint=material('#cdd2cf',.1,.78);
   const coping=material('#d8dcda',.24,.61),roof=material('#b9bfbc',.16,.71);
+  const ribbedRoof=material('#9aa2a5',.20,.77,{surface:'roofSheet'});
   const glass=material('#304a52',.45,.28),frame=material('#b7c2bf',.32,.57);
 
   function building(b){
     const g=group([b.x,0,b.z],shell),r=group([b.x,0,b.z],cover);
     g.name=b.name;r.name=`${b.name}-roof`;
+    if(b.reference)g.userData.referencePart=b.reference;
     box(b.width,b.height,b.depth,[0,b.height/2,0],wall,g);
     box(b.width+.22,.18,b.depth+.22,[0,.09,0],coping,g);
     for(const side of [-1,1])for(let z=-b.depth/2+.65;z<b.depth/2-.2;z+=.7)
@@ -41,6 +46,25 @@ export function buildRearServiceYard(k,roofs,structures){
       for(const side of [-1,1])box(.018,.022,b.depth,[side*(b.width/2+.015),y,0],joint,g).castShadow=false;
       box(b.width,.022,.018,[0,y,b.depth/2+.015],joint,g).castShadow=false;
     }
+    if(b.roofRise){
+      // Closed lean-to roof: high against the process wall, low at the yard.
+      const w=b.width/2,d=b.depth/2,h=b.height,rise=b.roofRise;
+      const wedge=new T.BufferGeometry();
+      wedge.setAttribute('position',new T.Float32BufferAttribute([
+        -w,h,-d,w,h,-d,-w,h+rise,-d,-w,h,d,w,h,d,-w,h+rise,d,
+      ],3));
+      wedge.setIndex([2,4,1,2,5,4,0,5,2,0,3,5,0,2,1,3,4,5]);wedge.computeVertexNormals();
+      mesh(wedge,wall,[0,0,0],g);
+      const length=Math.hypot(b.width,rise),angle=-Math.atan2(rise,b.width);
+      const sheet=box(length+.12,.10,b.depth+.12,[0,h+rise/2+.06,0],ribbedRoof,r);
+      sheet.rotation.z=angle;
+      for(const z of [-d,d]){
+        const edge=box(length+.14,.13,.08,[0,h+rise/2+.07,z],coping,r);edge.rotation.z=angle;
+      }
+      box(.10,.16,b.depth+.16,[w,h+.02,0],coping,r);
+      if(b.roofDivider)box(.13,.7,b.depth,[w-.065,h+.35,0],wall,r);
+      return g;
+    }
     box(b.width,.12,b.depth,[0,b.height+.06,0],roof,r);
     for(let z=-b.depth/2+.4;z<b.depth/2-.2;z+=.7)
       box(b.width-.16,.018,.018,[0,b.height+.13,z],coping,r).castShadow=false;
@@ -49,26 +73,28 @@ export function buildRearServiceYard(k,roofs,structures){
     return g;
   }
   L.buildings.forEach(building);
-  const tower=building({...SILO,name:'gypsum-corner-silo-tower'});
+  const tower=building({...SILO,name:'gypsum-corner-silo-tower',reference:12});
   box(SILO.width+.1,2.8,SILO.depth+1.0,[0,1.4,.35],wall,tower);
   // Short maintenance bridge from the white shaft to the process block.
-  const bridge=group([SILO.x,10.7,21.8],shell);
-  box(1.3,.12,1.35,[0,0,0],m.steel,bridge);
-  for(const x of [-.61,.61]){
-    for(const z of [-.64,.64])rod([x,0,z],[x,1,z],.025,m.steel,bridge);
-    for(const y of [.5,1])rod([x,y,-.64],[x,y,.64],.025,m.steel,bridge);
+  const low=L.buildings.find(b=>b.name==='rear-south-block');
+  const bridgeWest=low.x+low.width/2,bridgeEast=SILO.x-SILO.width/2,span=bridgeEast-bridgeWest;
+  const bridge=group([(bridgeWest+bridgeEast)/2,10.7,SILO.z],shell);bridge.name='rear-silo-maintenance-bridge';
+  box(span+.08,.12,1.35,[0,0,0],m.steel,bridge);
+  for(const z of [-.64,.64]){
+    for(const x of [-span/2,span/2])rod([x,0,z],[x,1,z],.025,m.steel,bridge);
+    for(const y of [.5,1])rod([-span/2,y,z],[span/2,y,z],.025,m.steel,bridge);
   }
 
   // Doors, intake grilles and the small green window on the ground-level room.
   const room=L.buildings.find(b=>b.name==='rear-service-room'),face=room.x+room.width/2+.04;
   const detail=group([face,0,room.z],shell);detail.rotation.y=Math.PI/2;
-  for(const z of [-3.2,-.4,2.1]){
+  for(const z of [-4.2,.4,2.0,3.6]){
     box(.84,2.05,.045,[z,1.1,0],coping,detail);
     box(.70,1.92,.025,[z,1.1,.035],wall,detail);
   }
-  box(1.1,.64,.05,[2.7,3.25,0],frame,detail);
-  box(.96,.49,.025,[2.7,3.25,.04],glass,detail);
-  for(const x of [-2.7,-1.2,.3]){
+  box(1.1,.64,.05,[-4.2,3.25,0],frame,detail);
+  box(.96,.49,.025,[-4.2,3.25,.04],glass,detail);
+  for(const x of [.4,2.0,3.6]){
     box(1.18,.62,.05,[x,3.25,.01],frame,detail);
     for(let y=3.02;y<3.52;y+=.075)box(1.08,.034,.07,[x,y,.05],coping,detail);
   }
@@ -78,7 +104,10 @@ export function buildRearServiceYard(k,roofs,structures){
     box(1.6,2.3,.045,[x,1.27,annex.z+annex.depth/2+.025],frame,shell);
     box(1.46,2.16,.03,[x,1.27,annex.z+annex.depth/2+.06],wall,shell);
   }
-  for(const [x,z,y] of [[-26,29.7,18.8],[-20,12.8,20.2]]){
+  // Roof vents belong to their individual pitched sheets, not a shared flat roof.
+  for(const [part,x,z] of [[1,-24.5,30.5],[2,-29.3,23.7],[3,-33,7.4],[4,-20.7,10],[4,-19.8,10]]){
+    const b=L.buildings.find(b=>b.reference===part);
+    const y=b.height+(b.roofRise||0)*(b.x+b.width/2-x)/b.width;
     box(.48,.08,.48,[x,y+.17,z],coping,cover);
     cyl(.14,1.0,[x,y+.69,z],wall,cover);
     cyl(.22,.16,[x,y+1.26,z],coping,cover,.13);
