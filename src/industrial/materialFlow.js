@@ -1,7 +1,7 @@
 import {createDust} from './dust.js';
 import * as T from 'three';
 import {clamp01,JOURNEY_STAGE as S} from '../journey.js';
-import {PROCESS_LINES,CALCITE_INTAKE,BOARD_PALLET_OUT,BAG_PALLET_OUT,routeCurve} from './processPlan.js';
+import {PROCESS_LINES,BOARD_PALLET_OUT,BAG_PALLET_OUT,routeCurve} from './processPlan.js';
 import {buildRawInfeed} from './rawInfeed.js';
 import {rubbleAssets} from './rubble.js';
 
@@ -72,21 +72,19 @@ export function buildMaterialFlow(k,logistics){
       if(Math.abs(a.y-b.y)<.1&&a.distanceTo(b)>3){const p=a.clone().lerp(b,.5);rod([p.x,0,p.z],[p.x,p.y-.25,p.z],.07,m.steel);}
     }
   }
-  // Gypsum arrives in the loader bucket; calcite keeps its separate intake.
-  for(const position of [CALCITE_INTAKE]){
-    const intake=group([position[0],0,position[2]]);box(3.3,.2,3.3,[0,.1,0],m.concrete,intake);
-    for(const side of [-1,1]){box(2.9,1,.14,[0,.65,side*1.45],m.blue,intake);box(.14,1,2.9,[side*1.45,.65,0],m.blue,intake);}
-    box(2.7,.3,2.7,[0,.53,0],m.raw,intake);for(let z=-1.3;z<=1.3;z+=.3)box(2.7,.05,.035,[0,.74,z],m.steel,intake);
-  }
-  const rawLines=PROCESS_LINES.slice(0,2).flatMap(line=>[line.points,...(line.branches||[])].map(points=>{
+  // The exterior calcite belt and its intake have been removed. Keep only
+  // the enclosed process connection, including in the line-view overlay.
+  const rawRoutes=PROCESS_LINES.slice(0,2).flatMap(line=>[line.points,...(line.branches||[])].map(points=>({
+    line,points:line.id==='calcite'?points.slice(3):points,
+  })));
+  const rawLines=rawRoutes.map(({line,points})=>{
     const coarse=line.id==='gypsum'&&points===line.points;
     // buildCornerSilo owns the hollow receiving chute at the lift head.
     if(coarse){belt(points.slice(1,3),1.35);belt(points.slice(3,6),1.35);belt(points.slice(5,7),1.35,false);}
-    else if(line.id==='gypsum')duct(points);
-    else {belt(points.slice(0,4),1.35);duct(points.slice(3));}
+    else duct(points);
     const path=makeCurve(points),length=path.getLength(),objects=[];
     const coarseUntil=coarse?path.curves[0].getLength()+path.curves[1].getLength():0;
-    for(let i=0;i<18;i++){
+    for(let i=0;i<(coarse?18:0);i++){
       const g=group([0,0,0],k.scene,true);
       for(let n=0;n<3;n++){
         const rock=mesh(rubble.geometries[(i+n)%4],rubble.material,[(n-1)*.28,.28,(n%2-.5)*.30],g);
@@ -97,13 +95,12 @@ export function buildMaterialFlow(k,logistics){
     const exposed=[];let offset=0;
     path.curves.forEach((segment,index)=>{
       const end=offset+segment.getLength();
-      if(coarse?[0,1,3,4,5,6,7].includes(index):line.id==='calcite'&&index<3)exposed.push([offset,end]);
+      if(coarse&&[0,1,3,4,5,6,7].includes(index))exposed.push([offset,end]);
       offset=end;
     });
     return {line,path,length,objects,coarseUntil,exposed};
-  }));
-  // The calcite belt terminates inside an enclosed receiving/elevator unit.
-  // Its hopper, lift and buffer silo give the material a visible destination.
+  });
+  // Preserve the enclosed calcite receiver, lift and buffer silo.
   const calcite=PROCESS_LINES.find(line=>line.id==='calcite'),last=calcite.points.at(-1),previous=calcite.points.at(-2),receiver=group([last[0],0,last[2]]);
   receiver.rotation.y=-Math.atan2(last[2]-previous[2],last[0]-previous[0]);
   box(4.8,.22,3.1,[0,.11,0],m.concrete,receiver);
@@ -153,12 +150,12 @@ export function buildMaterialFlow(k,logistics){
   // A dedicated plan view carries the image's four colours; equipment stays
   // white and blue. Instanced arrows show direction without extra UI text.
   const traces=group([0,0,0],k.scene,true),arrowGeo=new T.ConeGeometry(.23,.8,6),arrowPose=new T.Object3D(),up=new T.Vector3(0,1,0);
-  const traceLines=PROCESS_LINES.slice(0,2).flatMap(line=>[line.points,...(line.branches||[])].map(points=>{
+  const traceLines=rawRoutes.map(({line,points})=>{
     const path=makeCurve(points.map(([x,y,z])=>[x,y+.65,z])),mat=k.material(line.color,.1,.5,{emissive:line.color,emissiveIntensity:.3,depthTest:false,depthWrite:false});
     const trace=mesh(new T.TubeGeometry(path,Math.max(36,Math.ceil(path.getLength())),.085,5,false),mat,[0,0,0],traces);trace.castShadow=false;trace.renderOrder=30;
     const arrows=k.instances(arrowGeo,mat,14,traces);arrows.castShadow=false;arrows.renderOrder=31;
     return {line,path,arrows};
-  }));
+  });
   const falling=[];for(let i=0;i<26;i++){const rock=group([0,0,0],k.scene,true),chunk=mesh(rubble.geometries[i%4],rubble.material,[0,0,0],rock);chunk.scale.setScalar(.24+(i%3)*.045);falling.push(rock);}
   const drop=new T.Vector3(),loadSurface=new T.Vector3(),dustOrigin=new T.Vector3(),dust=createDust(k);
   return {loader:infeed.loader,update(j,landscape,{showLines=false,showInterior=false,active}={}){
@@ -171,7 +168,6 @@ export function buildMaterialFlow(k,logistics){
       if(o.visible){
         const d=path.getTangentAt(t);o.position.copy(path.getPointAt(t));o.rotation.y=-Math.atan2(d.z,d.x);
         o.scale.setScalar(t*length<coarseUntil?1:.43);
-        if(line.id==='calcite')o.position.y-=clamp01(1-(1-t)*length/.8)*.6;
       }
     }));
     infeed.update(j,{showLines});
