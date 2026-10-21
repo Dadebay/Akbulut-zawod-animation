@@ -49,11 +49,22 @@ export function buildProcessingBuildings(k,roofs,structures){
   label.rotation.y=-Math.PI/2;
 
   // A low set-back roof house replaces the extra full-height front slab.
-  const top=L.main.height,roofHouse=group([-27.0,top+.18,-5.1],roofs);
+  const top=L.main.height,roofHouse=group([-27.0,top+.18,1.0],roofs);
   box(8,2.65,6.2,[0,1.325,0],wall,roofHouse);
   box(8.25,.16,6.45,[0,2.73,0],coping,roofHouse);
   box(7.7,.055,5.9,[0,2.84,0],roof,roofHouse);
   for(const z of [-2.4,2.4])box(.45,.32,.50,[3,3.01,z],coping,roofHouse);
+  // Two white vent stacks to the right of the roof house in the front elevation.
+  for(const z of [11.8,15.7]){
+    const vent=group([-32,top+.18,z],roofs);
+    box(.58,.08,.58,[0,.04,0],coping,vent);
+    k.cyl(.14,.75,[0,.455,0],wall,vent);
+    k.cyl(.14,.23,[0,.945,0],wall,vent,.30);
+    k.cyl(.30,.18,[0,1.15,0],wall,vent);
+    k.cyl(.30,.24,[0,1.36,0],wall,vent,.17);
+    k.cyl(.17,.19,[0,1.575,0],wall,vent);
+    k.cyl(.20,.04,[0,1.69,0],coping,vent);
+  }
 
   // The broad blank rear building carries the service deck seen in the render.
   const roofY=L.rear.height+.19,deck=group([L.rear.x+2,roofY,L.rear.z],roofs);
