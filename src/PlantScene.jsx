@@ -53,7 +53,7 @@ const SITE_VIEWS=[
   {name:'DEMIR ÝOL',anchor:[20,4,-53],position:[-40,54,-133],target:[-20,2,-53]},
   {name:'ÝÜKLEME NOKADY',anchor:[25,7.5,-46.4],position:[-9,35,-110],target:[25,2.7,-43]},
   {name:'ÖNÜMÇILIK BINASY',anchor:[ENTRY.x,6.3,ENTRY.z],position:[ENTRY.x-3,6.8,ENTRY.z+14],target:[ENTRY.x,2.9,ENTRY.z+.6]},
-  {name:'TIR MEÝDANÇASY',anchor:[-111,3,-25],position:[-158,56,14],target:[-111,1,-27]},
+  {name:'GIRIŞ MEÝDANÇASY',anchor:[-111,3,-25],position:[-158,56,14],target:[-111,1,-27]},
   {name:'ÇIG MAL',anchor:[45,5,14],position:[98,48,64],target:[48,1.5,14]},
   {name:'BALYK HOWUZY',anchor:[POND.x,2,POND.z],position:[POND.x-47,65,POND.z+49],target:[POND.x,0,POND.z]},
   {name:'ÝATAKHANA',anchor:[DORM.x,3,DORM.z],position:[DORM.x-8,20,DORM.z-22],target:[DORM.x,0,DORM.z]},

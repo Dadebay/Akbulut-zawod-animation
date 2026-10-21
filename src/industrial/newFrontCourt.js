@@ -1,8 +1,7 @@
 import * as T from 'three';
-import {PARKED_TRUCKS} from './trafficLayout.js';
 import {NEW_FACTORY_ENTRANCE as ENTRANCE} from './siteLayout.js';
 
-// Office frontage, passenger parking and truck court follow the same axis.
+// The entrance is an open paved forecourt with low planted strips, as in the exterior references.
 export function buildNewFrontCourt(k,plants){
   const {box,mesh,cyl,rod,group,material,m}=k;
   const asphalt=m.road,curb=material('#d3d7d3',.02,.90);
@@ -26,26 +25,6 @@ export function buildNewFrontCourt(k,plants){
   function roundedSurface(w,d,r,x,z,bottom,height,mat){
     const geo=new T.ExtrudeGeometry(outline(w,d,r),{depth:height,bevelEnabled:false,curveSegments:7});geo.rotateX(-Math.PI/2);
     return mesh(geo,mat,[x,bottom,z]);
-  }
-  function hatchedApron(points){
-    const angle=Math.PI/4,dx=Math.cos(angle),dz=Math.sin(angle),nx=-dz,nz=dx;
-    const offsets=points.map(([x,z])=>x*nx+z*nz);
-    for(let offset=Math.min(...offsets)+.25;offset<Math.max(...offsets)-.15;offset+=.36){
-      const hits=[];
-      for(let i=0;i<points.length;i++){
-        const a=points[i],b=points[(i+1)%points.length];
-        const start=a[0]*nx+a[1]*nz-offset,end=b[0]*nx+b[1]*nz-offset;
-        if(start*end>0||Math.abs(start-end)<1e-8)continue;
-        const t=start/(start-end),hit=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
-        if(!hits.some(p=>Math.hypot(p[0]-hit[0],p[1]-hit[1])<.04))hits.push(hit);
-      }
-      if(hits.length<2)continue;
-      hits.sort((a,b)=>(a[0]-b[0])*dx+(a[1]-b[1])*dz);
-      const a=hits[0],b=hits[hits.length-1],length=Math.hypot(b[0]-a[0],b[1]-a[1])-.24;
-      if(length<.2)continue;
-      const stripe=flatBox(length,.075,(a[0]+b[0])/2,(a[1]+b[1])/2,paint,.080);
-      stripe.rotation.y=-angle;
-    }
   }
   function bed(west,east,north,south,r=.75){
     const w=east-west,d=south-north,x=(west+east)/2,z=(north+south)/2;
@@ -99,8 +78,7 @@ export function buildNewFrontCourt(k,plants){
     fronds.setAttribute('position',new T.Float32BufferAttribute(vertices,3));fronds.computeVertexNormals();
     mesh(fronds,palmLeaf,[0,0,0],tree);
   }
-  // Cover the whole parking apron, including the former bare rectangular gap
-  // beside the planted strips. Keep one surface at a consistent height.
+  // Keep the forecourt and its perimeter roads on one continuous level.
   const paving=new T.Shape();
   [[ENTRANCE.southFenceX,-44.5],[-73.5,-44.5],[-73.5,3.5],[ENTRANCE.southFenceX,3.5]].forEach(([x,z],i)=>i?paving.lineTo(x,-z):paving.moveTo(x,-z));
   paving.closePath();const pavingGeo=new T.ShapeGeometry(paving);pavingGeo.rotateX(-Math.PI/2);
@@ -110,47 +88,44 @@ export function buildNewFrontCourt(k,plants){
   flatBox(54,.10,-109.5,-7.2,paint,.063);
   for(let x=-134;x<-82;x+=6.5)flatBox(2.5,.10,x,-2,paint,.063);
 
-  // Planted strips frame two facing passenger rows and their central drive aisle.
-  // Their centre break lines up with the main office entrance at z = -25.
-  const strips=[[-85.8,-82.2],[-102.5,-100.5]];
-  for(const [west,east] of strips)for(const [north,south] of [[-43.2,-27.15],[-22.85,-12.8]]){
-    bed(west,east,north,south,Math.min(.9,(east-west)/2));
-    let index=0;
-    for(let z=north+1.35;z<south-1;z+=2.35){
-      plants.plant((west+east)/2,z,.34+(index%3)*.025);
-      shrub(east-.55,z+.6,.30,index++);
-    }
-    for(let z=north+.5,i=0;z<south-.4;z+=.56,i++)
-      shrub((west+east)/2+(i%2)*.16,z,.25,i);
-  }
-  // Two rows of passenger bays face a clear 5.7 m aisle, as in the plan.
-  const passengerRows=[
-    {west:-100.5,east:-96.0,stop:-100.0},
-    {west:-90.3,east:-85.8,stop:-86.3},
-  ];
-  for(const [start,count] of [[-42.4,6],[-22.15,4]]){
-    const pitch=2.25;
-    for(const {west,east,stop} of passengerRows){
-      for(let i=0;i<=count;i++)flatBox(east-west,.085,(west+east)/2,start+i*pitch);
-      flatBox(.085,count*pitch,stop< -95?east:west,start+count*pitch/2);
-      for(let i=0;i<count;i++)box(.16,.10,1.55,[stop,.10,start+(i+.5)*pitch],curb);
-    }
-  }
-  // A flush pedestrian spine connects both landscaped strips to the office doors.
-  flatBox(20.4,3.6,-92.3,-25,pavers,.074);
-  flatBox(11.55,3.6,-70.425,-25,pavers,.065);
-  for(let x=-102.3;x<-82.2;x+=.75)flatBox(.025,3.6,x,-25,curb,.084);
-  for(let x=-76.1;x<-64.7;x+=.75)flatBox(.025,3.6,x,-25,curb,.075);
+  // Large grey paving panels replace every vehicle bay and exclusion marking.
+  // Flush joints keep the existing factory exit route unobstructed.
+  const courtFinish=material('#697176',0,.96),joint=material('#4b5357',0,1);
+  const courtWest=ENTRANCE.southFenceX+1.35,courtEast=-82.2;
+  const courtNorth=-43.2,courtSouth=-8.2;
+  flatBox(courtEast-courtWest,courtSouth-courtNorth,(courtWest+courtEast)/2,(courtNorth+courtSouth)/2,courtFinish,.052);
+  for(let x=courtWest+4.5;x<courtEast;x+=4.5)
+    flatBox(.035,courtSouth-courtNorth,x,(courtNorth+courtSouth)/2,joint,.066);
+  for(let z=courtNorth+4.5;z<courtSouth;z+=4.5)
+    flatBox(courtEast-courtWest,.035,(courtWest+courtEast)/2,z,joint,.066);
 
-  // Truck bays face a clear central manoeuvring lane, away from the passenger aisle.
-  for(const {position,angle,scale} of PARKED_TRUCKS){
-    const bay=group(position);bay.rotation.y=angle;
-    for(const side of [-1,1])box(18*scale,.012,.09,[-6.3*scale,paintY,side*1.8],paint,bay).castShadow=false;
-    box(.09,.012,3.6,[-15.3*scale,paintY,0],paint,bay).castShadow=false;
+  // Two low green strips, interrupted only by the office entrance walk.
+  // Dense groundcover replaces the little conifers and individual parking bays.
+  const strips=[[-85.8,-82.2],[-102.5,-100.5]];
+  const groundcover=material('#476239',0,.97);
+  for(const [west,east] of strips)for(const [north,south] of [[courtNorth,-27.15],[-22.85,courtSouth]]){
+    bed(west,east,north,south,Math.min(.9,(east-west)/2));
+    box(east-west-.65,.23,south-north-.65,[(west+east)/2,.25,(north+south)/2],groundcover,k.scene,.18);
+    for(let z=north+.5,i=0;z<south-.4;z+=.62,i++)
+      for(const x of [west+.38,east-.38])shrub(x,z,.22,i);
   }
-  // Triangular exclusion zones finish the two ends of the angled truck rows.
-  hatchedApron([[-135.8,-43.6],[-123.2,-43.6],[-135.8,-40.0]]);
-  hatchedApron([[-111.2,-12.9],[-102.7,-12.9],[-102.7,-16.7]]);
+  // A planted margin runs inside the entrance fence, clear of the gate opening.
+  bed(ENTRANCE.southFenceX+.35,ENTRANCE.southFenceX+1.65,-44.1,-15.0,.5);
+  for(let z=-43.5,i=0;z<-15.5;z+=.6,i++)
+    shrub(ENTRANCE.southFenceX+1,z,.30,i);
+
+  // White crossings join the flush paving through the green strips to the office.
+  const crossing=(west,east,z)=>{
+    for(let x=west+.14;x<east-.1;x+=.36)flatBox(.18,2.65,x,z,paint,.084);
+  };
+  flatBox(2.0,3.6,-101.5,-25,pavers,.074);
+  flatBox(3.6,3.6,-84,-25,pavers,.074);
+  flatBox(11.55,3.6,-70.425,-25,pavers,.065);
+  crossing(-100.5,-85.8,-25);
+  crossing(-82.2,-76.2,-25);
+  for(const x of [-101.5,-84])for(const [north,south] of [[-49.4,courtNorth],[courtSouth,3.0]])
+    for(let z=north+.14;z<south-.1;z+=.36)flatBox(2.65,.18,x,z,paint,.084);
+  for(let x=-76.1;x<-64.7;x+=.75)flatBox(.025,3.6,x,-25,curb,.075);
 
   // Planting beds frame both office entrances without covering their doors.
   for(const [north,south] of [[-36.9,-27.3],[-22.7,-11.1],[3.7,10.1],[15.5,21.9]]){

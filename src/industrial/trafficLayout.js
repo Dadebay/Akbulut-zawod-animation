@@ -4,11 +4,8 @@ import {routeProfile} from './motionPath.js';
 import {TRUCK_SCALE} from './trucks.js';
 
 // Fixed site roads and vehicle manoeuvres. Metres in scene space.
-// Opposing diagonal rows leave the office-side passenger bays and their aisle clear.
-export const PARKED_TRUCKS=[
-  ...[-29,-20.5,-12].map(z=>({position:[-127.4,0,z],angle:-1.1,scale:1})),
-  ...[[-114.4,-31],[-115.2,-25.5]].map(([x,z])=>({position:[x,0,z],angle:2.04,scale:1}))
-];
+// The new entrance forecourt is landscaped; no trucks wait here.
+export const PARKED_TRUCKS=[];
 export const MAIN_ROAD_X=-143;
 export const MAIN_ROAD_WIDTH=7.2;
 // The avenue runs along the plant fence from the railway southwards; the long outer road further west carries the northern traffic.
