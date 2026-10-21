@@ -36,19 +36,20 @@ export function buildProcessingBuildings(k,roofs,structures){
   Object.entries(L).forEach(([name,b])=>volume(name,b));
   box(.44,.055,L.outerWing.depth-.44,[L.rightWing.x-L.rightWing.width/2,L.rightWing.height+.15,L.outerWing.z],roof,roofs);
 
-  function slit(name,z,bottom,top,width=.32){
+  function slit(name,z,bottom,top,width=.32,divided=true){
     const b=L[name],g=bodies[name],front=-b.width/2,y=(bottom+top)/2,zz=z-b.z;
     box(.035,top-bottom+.12,width+.13,[front-.025,y,zz],frame,g);
     box(.032,top-bottom,width,[front-.062,y,zz],glass,g);
-    for(let yy=bottom+2.8;yy<top-.4;yy+=3.1)
+    if(divided)for(let yy=bottom+2.8;yy<top-.4;yy+=3.1)
       box(.042,.065,width+.02,[front-.083,yy,zz],coping,g);
     box(.11,.065,width+.18,[front-.06,bottom-.05,zz],coping,g);
   }
-  // Keep the process glazing on the main and right-hand volumes.
+  // Two uninterrupted panes on the smaller front tower.
+  for(const z of [-8.3,-3.7])slit('leftCore',z,3.9,11.2,.62,false);
   for(const z of [-6.2,-.6,5,10.6,16.2])slit('main',z,2.9,25.3,.32);
   for(const z of [22.6,27.3])slit('rightCore',z,2.15,19.25,.31);
   for(const z of [29.8,32.4,35.0])slit('rightWing',z,1.05,5.9,.34);
-  const label=textPlate('TÜRKMEN GIPS',6.4,.46,[L.main.x-L.main.width/2-.065,26.12,4.8],structures,'#5593a6','#f4f5f3');
+  const label=textPlate('TÜRKMEN GIPS',6.4,.46,[L.main.x-L.main.width/2-.065,26.12,-2.4],structures,'#5593a6','#f4f5f3');
   label.rotation.y=-Math.PI/2;
 
   // A low set-back roof house replaces the extra full-height front slab.
