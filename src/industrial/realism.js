@@ -2,6 +2,24 @@ import * as T from 'three';
 import {assetUrl} from '../assets.js';
 import {brightestSkyDirection,orientSkyToFront} from './lighting.js';
 import {HDRLoader} from 'three/addons/loaders/HDRLoader.js';
+import {Sky} from 'three/addons/objects/Sky.js';
+
+// Bake a cloudless midday sky once; its visible sun and reflections share
+// the same direction as the scene's direct light. No per-frame sky rendering.
+export function createSunnyEnvironment(renderer){
+  const sunDirection=new T.Vector3(-.38,.91,.21).normalize();
+  const skyScene=new T.Scene(),sky=new Sky();sky.scale.setScalar(10000);skyScene.add(sky);
+  const uniforms=sky.material.uniforms;
+  uniforms.turbidity.value=1.5;uniforms.rayleigh.value=1;
+  uniforms.mieCoefficient.value=.002;uniforms.mieDirectionalG.value=.8;
+  uniforms.sunPosition.value.copy(sunDirection).multiplyScalar(450000);
+  const background=new T.WebGLCubeRenderTarget(256,{type:T.HalfFloatType});
+  new T.CubeCamera(.1,20000,background).update(renderer,skyScene);
+  const pmrem=new T.PMREMGenerator(renderer),environment=pmrem.fromCubemap(background.texture);
+  pmrem.dispose();sky.geometry.dispose();sky.material.dispose();
+  return {background:background.texture,texture:environment.texture,sunDirection,
+    dispose(){background.dispose();environment.dispose();}};
+}
 
 // Sky image for reflections and ambient light. Returns the equirectangular
 // texture for use as a background, or null when it cannot be loaded.

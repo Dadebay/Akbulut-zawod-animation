@@ -1,11 +1,10 @@
 import {fitSunShadow} from './industrial/lighting.js';
 import {bakeStaticAO} from './industrial/staticAO.js';
 import {createRenderPipeline} from './industrial/renderPipeline.js';
-import {loadSkyEnvironment} from './industrial/realism.js';
+import {createSunnyEnvironment} from './industrial/realism.js';
 import {useEffect,useRef,useState} from 'react';
 import * as T from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 import {createKit} from './industrial/kit.js';
 import {buildProduction,STATIONS} from './industrial/production.js';
 import {buildLogistics} from './industrial/logistics.js';
@@ -70,16 +69,14 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
     try{renderer=new T.WebGLRenderer({antialias:false,alpha:true,powerPreference:'high-performance',logarithmicDepthBuffer:true});}catch{setFailed(true);return;}
     renderer.setPixelRatio(profilePixelRatio(devicePixelRatio));renderer.shadowMap.enabled=true;renderer.shadowMap.autoUpdate=!TABLET;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=.93;container.appendChild(renderer.domElement);
     let dirty=true,previousView='',lastSimulationTime=-1,lastLabelTime=0;
-    const scene=new T.Scene();scene.background=new T.Color('#dce4eb');scene.fog=new T.FogExp2('#dce4eb',.00075);
+    const scene=new T.Scene();scene.background=new T.Color('#acd3ef');scene.fog=new T.FogExp2('#acd3ef',.00022);
     const camera=new T.PerspectiveCamera(36,1,.5,2800);camera.position.set(...(PRESETS[state.current.area]||PRESETS.site).position);
     const pipeline=createRenderPipeline(renderer,scene,camera,{ambientOcclusion:!TABLET});
     const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(...(PRESETS[state.current.area]||PRESETS.site).target);controls.enableDamping=true;controls.dampingFactor=.08;controls.minDistance=8;controls.maxDistance=1150;controls.maxPolarAngle=Math.PI/2.08;controls.minPolarAngle=.05;controls.enablePan=true;controls.zoomToCursor=true;
-    const room=new RoomEnvironment(),pmrem=new T.PMREMGenerator(renderer),environment=pmrem.fromScene(room,.025);scene.environment=environment.texture;scene.environmentIntensity=.4;room.dispose();pmrem.dispose();
-    // A real sky photograph lights and reflects the scene once it has loaded.
-    let skyBackground=null,sunDirection=new T.Vector3(-.44,.82,.36).normalize();
-    const stopSky=loadSkyEnvironment(renderer,scene,(hdr,direction)=>{skyBackground=hdr;if(hdr)environment.dispose();if(direction)sunDirection.copy(direction);renderer.shadowMap.needsUpdate=true;if(hdr&&!lastNight){scene.background=hdr;scene.backgroundIntensity=.9;}dirty=true;});
+    const environment=createSunnyEnvironment(renderer);scene.environment=environment.texture;
+    const sunDirection=environment.sunDirection;
     const hemisphere=new T.HemisphereLight('#e9f2ff','#777467',.7);scene.add(hemisphere);
-    const sun=new T.DirectionalLight('#fff5e9',2.4);sun.castShadow=true;sun.shadow.mapSize.set(TABLET?2048:4096,TABLET?2048:4096);scene.add(sun,sun.target);
+    const sun=new T.DirectionalLight('#fff8ed',3.2);sun.castShadow=true;sun.shadow.mapSize.set(TABLET?2048:4096,TABLET?2048:4096);scene.add(sun,sun.target);
     const fill=new T.DirectionalLight('#b7d4f1',.45);fill.position.set(30,30,-30);scene.add(fill);
     const k=createKit(scene,{tablet:TABLET});const production=buildProduction(k);production.root.position.set(8,0,-25);const logistics=buildLogistics(k,production.operators.map(o=>({...o,pos:[o.pos[0]+8,o.pos[1],o.pos[2]-25]})));const site=buildSite(k);const landscape=buildLandscape(k);const materialFlow=buildMaterialFlow(k,logistics),moveLogistics=createJourneyMotion(logistics,landscape.vehicleSurface);
     // Enclosed feeds follow the cutaway even when exterior building widths change.
@@ -91,10 +88,11 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
     poolSurfaces(k);k.optimize({preserveRepeated:true});let updateBatches;
     let lastNight;
     function setTimeOfDay(night){
-      scene.background=night||!skyBackground?new T.Color(night?'#101c30':'#dce4eb'):skyBackground;scene.fog.color.set(night?'#101c30':'#dce4eb');
-      hemisphere.color.set(night?'#7e9dcb':'#e9f2ff');hemisphere.groundColor.set(night?'#2d3540':'#777467');hemisphere.intensity=night?.32:.3;
-      sun.color.set(night?'#91b1da':'#fff5e9');sun.intensity=night?.16:2.4;
-      fill.intensity=night?.12:.45;scene.environmentIntensity=night?.12:.45;renderer.toneMappingExposure=night?1.08:.86;
+      scene.background=night?new T.Color('#101c30'):environment.background;scene.backgroundIntensity=.45;
+      scene.fog.color.set(night?'#101c30':'#acd3ef');scene.fog.density=night?.00075:.00022;
+      hemisphere.color.set(night?'#7e9dcb':'#cce5ff');hemisphere.groundColor.set(night?'#2d3540':'#958b70');hemisphere.intensity=night?.32:.3;
+      sun.color.set(night?'#91b1da':'#fff8ed');sun.intensity=night?.16:3.2;
+      fill.intensity=night?.12:.18;scene.environmentIntensity=night?.12:.2;renderer.toneMappingExposure=night?1.08:.9;
       lighting.setNight(night);container.dataset.timeOfDay=night?'night':'day';lastNight=night;dirty=true;
     }
     if(TABLET){
@@ -228,7 +226,7 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
       pipeline.update(camera.position.distanceTo(controls.target),s.night);pipeline.render();dirty=false;
     }
     frame=requestAnimationFrame(animate);
-    return()=>{stopSky();stopTruckLoad();cancelAnimationFrame(frame);document.removeEventListener('visibilitychange',resetClock);observer.disconnect();controls.removeEventListener('start',stopTransition);controls.dispose();k.dispose();environment.dispose();sun.shadow.dispose();pipeline.dispose();renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();anchors.forEach(a=>a.label.remove());api.current=null;};
+    return()=>{stopTruckLoad();cancelAnimationFrame(frame);document.removeEventListener('visibilitychange',resetClock);observer.disconnect();controls.removeEventListener('start',stopTransition);controls.dispose();k.dispose();environment.dispose();sun.shadow.dispose();pipeline.dispose();renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();anchors.forEach(a=>a.label.remove());api.current=null;};
   },[]);
   return <div className="plant-scene" ref={host}><div className="scene-labels" ref={labels}/>{failed&&<div className="scene-fallback"><span>3D görnüş bu brauzerde elýeterli däl.</span><div>{ZONES.map(z=><button key={z.id} onClick={()=>onSelect(`AKB-${z.id}-001`)}>{z.name}<strong>120 enjam</strong></button>)}</div></div>}</div>;
 }
