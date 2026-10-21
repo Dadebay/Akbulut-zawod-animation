@@ -48,7 +48,7 @@
 .factory-controls .icon-button.active { color:#1465ab;background:#dceaf6; }
 .visual-factory .industrial-label { font-size:9px;padding:5px 8px;background:#ffffffed;border-color:#aebfce;box-shadow:0 2px 6px #132d4a12; }
 .scene-site-label { position:absolute;left:0;top:0;font:600 10px -apple-system,sans-serif;color:#315572;letter-spacing:1.5px;white-space:nowrap;padding:5px 8px;background:#ffffffd9;border:1px solid #b7c7d6;border-radius:3px; }
-.scene-site-link { pointer-events:auto;cursor:zoom-in;min-height:30px;touch-action:manipulation;transition:background-color 150ms ease,border-color 150ms ease,color 150ms ease; }
+.scene-site-link { pointer-events:auto;cursor:zoom-in;min-height:22px;padding:3px 6px;font-size:8px;letter-spacing:1px;touch-action:manipulation;transition:background-color 150ms ease,border-color 150ms ease,color 150ms ease; }
 .scene-site-link:focus-visible { outline:2px solid #2577bd;outline-offset:3px;background:#fff; }
 .scene-site-link:active { background:#dcecf9;border-color:#4e8cbf; }
 @media (hover:hover) and (pointer:fine) { .scene-site-link:hover { background:#fff;border-color:#4e8cbf;color:#175f9e; } }
