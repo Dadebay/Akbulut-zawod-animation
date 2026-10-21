@@ -3,18 +3,29 @@ import assert from 'node:assert/strict';
 import * as T from 'three';
 import {createKit} from './industrial/kit.js';
 import {buildRearServiceYard,REAR_SERVICE_YARD as Y} from './industrial/rearServiceYard.js';
+import {buildProcessingBuildings} from './industrial/processingBuildings.js';
 import {GYPSUM_STOCKYARD,GYPSUM_SILO_TOWER} from './industrial/siteLayout.js';
 import {GYPSUM_CORNER_SILO} from './industrial/processPlan.js';
 
-function fixture(run){
+function fixture(run,build=buildRearServiceYard){
   const previous=globalThis.document;
   globalThis.document={createElement:()=>({getContext:()=>new Proxy({},{get:()=>()=>{}})})};
   const scene=new T.Scene(),k=createKit(scene,{tablet:true});
   const structures=k.group([0,0,0],scene,true),roofs=k.group([0,0,0],scene,true);
-  try{const result=buildRearServiceYard(k,roofs,structures);scene.updateMatrixWorld(true);run({scene,k,structures,roofs,...result});}
+  try{const result=build(k,roofs,structures);scene.updateMatrixWorld(true);run({scene,k,structures,roofs,...result});}
   finally{k.dispose();globalThis.document=previous;}
 }
 const bounds=o=>new T.Box3().setFromObject(o);
+test('the L-shaped courtyard wing has an open ground-level passage beside the rear blocks',()=>fixture(({scene})=>{
+  const ray=new T.Raycaster(new T.Vector3(),new T.Vector3(0,-1,0),0,40);
+  // Sample the whole passage, including the short link, tower side and low annex.
+  // No wall, roof, coping or leftover doorway may bridge this strip of paving.
+  for(const x of [-36.4,-35,-33.5,-31.5])for(let z=20.4;z<38;z+=.6){
+    ray.ray.origin.set(x,35,z);
+    const hit=ray.intersectObjects(scene.children,true)[0];
+    assert.ok(hit&&hit.point.y<.2&&hit.point.y>-.1,`open paved passage at ${x}, ${z}; hit height ${hit?.point.y}`);
+  }
+},buildProcessingBuildings));
 test('rear reference utilities stand on the ground and remain separate from the stockyard and silo',()=>fixture(({yard,scene})=>{
   const field=bounds(scene.getObjectByName('rear-gravel-field'));
   assert.ok(field.max.y<.1,'the gravel field must not return to a building roof');

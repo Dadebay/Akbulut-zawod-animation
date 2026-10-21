@@ -127,7 +127,8 @@ export const PROCESS_BUILDINGS={
   leftCore:{x:-48,z:-6,width:7.4,depth:8.6,height:13.2},
   leftLink:{x:-38.75,z:-5,width:2.5,depth:8,height:4.2},
   rightCore:{x:-39.55,z:24,width:5.4,depth:7.5,height:20.5},
-  rightLink:{x:-32.6,z:21.7,width:9.8,depth:4.4,height:6.2},
+  // This short main-block link must not bridge the open passage beside the L wing.
+  rightLink:{x:-29.35,z:21.7,width:3.3,depth:4.4,height:6.2},
   // Narrow L-shaped courtyard building traced from the four exterior views.
   rightWing:{x:-39.55,z:32.775,width:5.4,depth:10.05,height:10.2},
   outerWing:{x:-56.125,z:35.9,width:27.75,depth:3.8,height:10.2},
