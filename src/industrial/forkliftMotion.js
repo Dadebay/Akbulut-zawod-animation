@@ -23,20 +23,23 @@ function turn(x,z,direction){
 function path(...parts){const p=new T.CurvePath();parts.forEach(part=>p.add(part));return p;}
 function heading(route,t){const d=route.getTangentAt(clamp(t));return -Math.atan2(d.z,d.x);}
 
-function makeTrip(source,target,laneZ,{pickupClearance=F.emptyHeight,carryHeight=F.carryHeight,park,base=0}={}){
+function makeTrip(source,target,laneZ,{pickupClearance=F.emptyHeight,carryHeight=F.carryHeight,park,base=0,entry}={}){
   const r=F.turnRadius,staging=[source[0]-r,laneZ],pickupZ=source[2]-F.cargoX+F.frontAxleX;
   const direction=target.rail?-1:1,alignZ=laneZ+direction*r;
   const dockZ=target.z-direction*(F.cargoX-F.frontAxleX);
   const pickupTurn=path(turn(source[0],laneZ,1));
   const pickupStraight=path(line([source[0],laneZ+r],[source[0],pickupZ]));
   const pickup=path(...pickupTurn.curves,...pickupStraight.curves);
-  const approach=path(line(staging,[target.x-r,laneZ]),turn(target.x,laneZ,direction));
+  const westbound=target.x<source[0];
+  const approach=westbound?null:path(line(staging,[target.x-r,laneZ]),turn(target.x,laneZ,direction));
+  const westLine=westbound?path(line([target.x-r,laneZ],staging)):null;
+  const targetTurn=westbound?path(turn(target.x,laneZ,direction)):null;
   const insertion=path(line([target.x,alignZ],[target.x,dockZ]));
   // Fork heights are measured from the floor the forklift stands on.
   const contactHeight=source[1]-base-F.palletOffsetY,dropHeight=target.y-base-F.palletOffsetY;
   const insertionHeight=Math.max(F.emptyHeight,contactHeight-.07);
   const turnHeight=Math.max(pickupClearance,insertionHeight);
-  const phases=[];let time=0,travel=0,wheelTravel=FORKLIFT_WHEELS.map(()=>0),bend=0,pose={x:staging[0]-F.frontAxleX,z:staging[1],yaw:0},height=F.emptyHeight,tilt=0,carrying=false,picked=false;
+  const phases=[];let time=0,travel=0,wheelTravel=FORKLIFT_WHEELS.map(()=>0),bend=0,pose={x:(entry?.[0]??staging[0])-F.frontAxleX,z:staging[1],yaw:0},height=F.emptyHeight,tilt=0,carrying=false,picked=false;
   function add(duration,options={}){
     const phase={start:time,duration,travel,wheelTravel:[...wheelTravel],bend,pose:{...pose},height,tilt,carrying,picked,...options};
     phases.push(phase);time+=duration;
@@ -56,6 +59,17 @@ function makeTrip(source,target,laneZ,{pickupClearance=F.emptyHeight,carryHeight
     if(Math.abs(initialBend-bend)>.03)add(.4,{toBend:initialBend,lookBack:reverse});
     add(profile.duration,{route,profile,reverse});
   }
+  function driveApproach(reverse=false){
+    if(!westbound){drive(approach,1.8,reverse);return;}
+    // Back along the deck when a wagon lies west of its stock bay, keeping
+    // the chassis facing the pallet before turning toward the rail.
+    if(reverse){drive(targetTurn,.8,true);drive(westLine,1.2);}
+    else {drive(westLine,1.2,true);drive(targetTurn,.8);}
+  }
+  if(entry&&Math.abs(entry[0]-staging[0])>.01){
+    const east=entry[0]<staging[0];
+    drive(path(line(east?entry:staging,east?staging:entry)),1.5,!east);
+  }
   if(turnHeight>F.emptyHeight){
     // Approach a raised pallet at its fork pockets, keeping the chassis on
     // the lower apron and the tines above the concrete dock edge.
@@ -66,14 +80,14 @@ function makeTrip(source,target,laneZ,{pickupClearance=F.emptyHeight,carryHeight
   }else drive(pickup,.85);
   add(.45);
   add(.6,{toHeight:contactHeight});
-  picked=true;carrying=true;
+  picked=true;carrying=true;const pickupAt=time;
   add(Math.max(1.35,(carryHeight-contactHeight)/.5),{toHeight:carryHeight});
   add(.65,{toTilt:.055,lookBack:true});
   drive(pickup,1.25,true);
   add(.6);
-  drive(approach,1.8);
+  driveApproach();
   add(.65,{toTilt:0});
-  add((dropHeight+.10-carryHeight)/.50,{toHeight:dropHeight+.10});
+  add(Math.abs(dropHeight+.10-carryHeight)/.50,{toHeight:dropHeight+.10});
   drive(insertion,.55);
   add(.9,{toHeight:dropHeight});
   const depositAt=time;
@@ -81,7 +95,7 @@ function makeTrip(source,target,laneZ,{pickupClearance=F.emptyHeight,carryHeight
   add(.55,{toHeight:dropHeight-.035,lookBack:true});
   drive(insertion,.65,true);
   add((dropHeight-.035-F.emptyHeight)/.55,{toHeight:F.emptyHeight,lookBack:true});
-  drive(approach,1.8,true);
+  driveApproach(true);
   if(park){
     const [px,pz]=park,entry=px-2*r,k=.5522847498307936*r;
     // Finish all loading before vacating the dispatch lane into a parallel bay.
@@ -92,11 +106,15 @@ function makeTrip(source,target,laneZ,{pickupClearance=F.emptyHeight,carryHeight
     drive(parking,.8);
   }
   add(.7);
-  return {phases,duration:time,depositAt,source,target,staging};
+  return {phases,duration:time,pickupAt,depositAt,source,target,staging};
 }
 function job(source,laneZ,targets,options={}){
-  let time=0;
-  const trips=targets.map((target,i)=>{const trip=makeTrip(source,target,laneZ,{...options,park:i===targets.length-1?options.park:undefined});trip.start=time;time+=trip.duration;return trip;});
+  let time=options.startDelay||0,previous=source;
+  const trips=targets.map((target,i)=>{
+    const pickup=target.source||source;
+    const trip=makeTrip(pickup,target,laneZ,{...options,entry:i?[previous[0]-F.turnRadius,laneZ]:options.entry,park:i===targets.length-1?options.park:undefined});
+    trip.start=time=Math.max(time,target.readyAt||0);time+=trip.duration;previous=pickup;return trip;
+  });
   return {source,trips,duration:time,base:options.base||0};
 }
 // The rail forklifts work on the raised deck; the truck is loaded on the ground.
@@ -109,10 +127,12 @@ const railTargets=RAIL_LAYOUT.wagonCentres.flatMap((x,n)=>RAIL_LAYOUT.cargoXs.ma
   x:RAIL_LAYOUT.offsetX+(x+offset)*RAIL_LAYOUT.scale,y:RAIL_LAYOUT.deckHeight*RAIL_LAYOUT.scale,z:RAIL_LAYOUT.z+RAIL_LAYOUT.cargoZ,
   kind:n%2?'bags':'panel',index:n*2+i,rail:true,
 })));
+const greenSources=LOADING.panelBays.map(({x})=>[x,DECK+.06,LOADING.panelRows[0]]);
+const trainJob=job(greenSources[0],-48.8,railTargets.map((target,i)=>({...target,kind:'green',source:greenSources[i]})),{park:[40,-41.2],base:DECK});
+const refillJob=job([3,DECK+.06,-41.2],-46.7,greenSources.map(([x,y,z],i)=>({x,y,z,kind:'green',index:i,rail:false,readyAt:trainJob.trips[i].start+trainJob.trips[i].pickupAt+2})),{park:[47.4,-41.2],base:DECK,startDelay:60,entry:[36,-46.7]});
 export const FORKLIFT_JOBS=[
   job([61.2,.06,-43],-48.4,truckTargets,{park:[78,-43.2]}),
-  job([-1.1,DECK+.06,-41.7],-46.7,railTargets.slice(0,4),{park:[1.6,-41.2],base:DECK}),
-  job([11.5,DECK+.06,-44.7],-48.3,railTargets.slice(4),{park:[47.4,-41.2],base:DECK}),
+  trainJob,refillJob,
 ];
 export function forkliftFootprint({x,z,yaw},padding=0){
   return [[-1.45-padding,-.8-padding],[2.85+padding,-.8-padding],[2.85+padding,.8+padding],[-1.45-padding,.8+padding]]
@@ -121,7 +141,7 @@ export function forkliftFootprint({x,z,yaw},padding=0){
 export const LOADING_DURATION=Math.ceil(Math.max(...FORKLIFT_JOBS.map(j=>j.duration))+2);
 export function loadingCounts(elapsed){
   const counts=FORKLIFT_JOBS.map(j=>j.trips.filter(t=>elapsed>=t.start+t.depositAt).length);
-  return {truck:counts[0],rail:counts.slice(1),train:counts[1]+counts[2]};
+  return {truck:counts[0],train:counts[1],refilled:counts[2]};
 }
 
 export function sampleForklift(job,elapsed){

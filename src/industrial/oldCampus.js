@@ -5,7 +5,7 @@ import {buildOldWarehouseCourt} from './oldWarehouseCourt.js';
 import {buildOldFrontCourt} from './oldFrontCourt.js';
 import {buildOldSideLoading} from './oldSideLoading.js';
 import {buildOldRearBoundary} from './oldRearBoundary.js';
-import {OLD_LEFT_CAMPUS as LEFT,OLD_SIDE_LOADING as LOADING,OLD_PAVILION,OLD_RAIL_DORMITORY,OLD_WORK_OFFICE as OFFICE,OLD_REAR_BOUNDARY,RAIL_ACCESS_CROSSING} from './siteLayout.js';
+import {OLD_LEFT_CAMPUS as LEFT,OLD_WAREHOUSE_DOORS,OLD_SIDE_LOADING as LOADING,OLD_PAVILION,OLD_RAIL_DORMITORY,OLD_WORK_OFFICE as OFFICE,OLD_REAR_BOUNDARY,RAIL_ACCESS_CROSSING} from './siteLayout.js';
 
 // Proportions and facade details follow the user's close aerial photograph.
 // These are visual estimates; the site has not been surveyed.
@@ -26,16 +26,22 @@ export function buildOldCampus(k,plants){
   // Run the court paving beneath the rear boundary wall so no soil strip shows.
   const courtWest=-28,courtEast=OLD_REAR_BOUNDARY.x+.2;
   box(courtEast-courtWest,.14,79,[(courtWest+courtEast)/2,-.20,-110.5],paving,k.scene,2.5);
-  function ridgeHall(x,z,w,d,h,bays=1,frontLoading=true,sideLoading=null){
+  function ridgeHall(x,z,w,d,h,bays=1,frontLoading=true,sideLoading=null,southDoors=[]){
     const g=group([x,0,z],k.scene,true);shells.push(g);
-    const openingX=sideLoading?sideLoading.x-x:0,openingWidth=sideLoading?.interiorWidth||0;
+    const openings=sideLoading?[{x:sideLoading.x,width:sideLoading.interiorWidth,height:sideLoading.clearHeight,bottom:0}]:southDoors;
+    const inOpening=(localX,margin=0)=>openings.some(o=>Math.abs(localX+x-o.x)<o.width/2+margin);
     box(w,.12,d,[x,-.03,z],m.floor);
     for(const side of [-1,1])box(.24,h,d,[side*w/2,h/2,0],wall,g);
     box(w,h,.24,[0,h/2,-d/2],wall,g);
-    if(sideLoading){
-      for(const [a,b] of [[-w/2,openingX-openingWidth/2],[openingX+openingWidth/2,w/2]])box(b-a,h,.24,[(a+b)/2,h/2,d/2],wall,g);
-      box(openingWidth,h-sideLoading.clearHeight,.24,[openingX,(h+sideLoading.clearHeight)/2,d/2],wall,g);
-    }else box(w,h,.24,[0,h/2,d/2],wall,g);
+    let edge=-w/2;
+    for(const opening of openings){
+      const cx=opening.x-x,left=cx-opening.width/2,top=opening.bottom+opening.height;
+      if(left>edge)box(left-edge,h,.24,[(edge+left)/2,h/2,d/2],wall,g);
+      box(opening.width,h-top,.24,[cx,(h+top)/2,d/2],wall,g);
+      if(opening.bottom>0)box(opening.width,opening.bottom,.24,[cx,opening.bottom/2,d/2],wall,g);
+      edge=cx+opening.width/2;
+    }
+    if(edge<w/2)box(w/2-edge,h,.24,[(edge+w/2)/2,h/2,d/2],wall,g);
     const bay=d/bays,rise=1.05;
     for(let b=0;b<bays;b++){
       const zz=-d/2+bay*(b+.5),slope=Math.atan2(rise,bay/2),length=Math.hypot(bay/2,rise)+.42;
@@ -51,12 +57,12 @@ export function buildOldCampus(k,plants){
     }
     for(const side of [-1,1]){
       const zz=side*(d/2+.12);box(w+.6,.18,.20,[0,h+.01,zz],trim,g);
-      for(let xx=-w/2+3;xx<w/2;xx+=8){if(sideLoading&&side===1&&Math.abs(xx-openingX)<openingWidth/2+.4)continue;cyl(.07,h,[xx,h/2,zz+.15*side],trim,g,undefined,16);box(.25,.15,.32,[xx,.2,zz+.22*side],base,g);}
+      for(let xx=-w/2+3;xx<w/2;xx+=8){if(side===1&&inOpening(xx,.4))continue;cyl(.07,h,[xx,h/2,zz+.15*side],trim,g,undefined,16);box(.25,.15,.32,[xx,.2,zz+.22*side],base,g);}
       // Continuous clerestory strips with the closely spaced panes in the photo.
       box(w-1.1,.76,.045,[0,h-.68,zz],glass,g);
       for(let xx=-w/2+.55;xx<=w/2-.5;xx+=.62)box(.055,.83,.085,[xx,h-.68,zz+.035*side],wall,g);
       for(const y of [h-1.1,h-.26])box(w-1,.07,.13,[0,y,zz+.045*side],trim,g);
-      for(let xx=-w/2+1;xx<w/2;xx+=1.1){if(sideLoading&&side===1&&Math.abs(xx-openingX)<openingWidth/2+.1)continue;box(.015,h-.6,.012,[xx,h/2+.25,side*(d/2+.015)],base,g);}
+      for(let xx=-w/2+1;xx<w/2;xx+=1.1){if(side===1&&inOpening(xx,.1))continue;box(.015,h-.6,.012,[xx,h/2+.25,side*(d/2+.015)],base,g);}
     }
     box(.04,.65,d-1.2,[-w/2-.075,h-.63,0],glass,g);
     for(let zz=-d/2+.6;zz<d/2-.4;zz+=.62)box(.07,.73,.055,[-w/2-.11,h-.63,zz],wall,g);
@@ -80,11 +86,10 @@ export function buildOldCampus(k,plants){
     box(3.7,.08,1.65,[-8.85,.01,z],m.concrete);
   }
   const warehouse=LEFT.warehouse;
-  ridgeHall(warehouse.x,warehouse.z,warehouse.width,warehouse.depth,warehouse.height,1,false);
+  ridgeHall(warehouse.x,warehouse.z,warehouse.width,warehouse.depth,warehouse.height,1,false,null,OLD_WAREHOUSE_DOORS);
   const warehouseSign=textPlate('AMMAR · ÖNÜMÇILIK',5.6,.36,[-7.14,6.10,warehouse.z],k.scene,'#917627','#dfe2db');warehouseSign.rotation.y=-Math.PI/2;
   // Loading openings along the separate long shed's yard-facing wall.
-  for(const x of [4,24,49]){
-    box(4.8,3.8,.065,[x,1.98,-131.93],dark);
+  for(const {x} of OLD_WAREHOUSE_DOORS){
     box(5.1,.3,.18,[x,4.04,-131.84],wall);
     box(5.6,.12,3.8,[x,.02,-130.1],m.concrete);
     for(const dx of [-2.55,2.55])cyl(.06,.85,[x+dx,.43,-131.4],m.yellow);
@@ -113,8 +118,6 @@ export function buildOldCampus(k,plants){
   // End the glazing at the main hall: its white wall must stay ungridded.
   const glazedCornerWest=-13.7,glazedCornerEast=-7.15;
   curtainWall((glazedCornerWest+glazedCornerEast)/2,.34,-86.94,glazedCornerEast-glazedCornerWest,4.76,0,officeShell);
-  box(27.8,.26,.42,[0,5.44,-86.87],wall,officeShell);
-  box(27.8,.10,1.05,[0,5.62,-86.65],roof,officeShell);
   const entry=group([-13.87,0,OFFICE.entryZ]);
   const officeCanopy=group([0,0,0],entry,true);officeCanopy.name='old-work-office-entrance';shells.push(officeCanopy);
   box(.075,2.4,2.2,[0,1.38,0],glass,officeCanopy);

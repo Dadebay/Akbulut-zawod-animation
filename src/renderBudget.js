@@ -16,14 +16,14 @@ export function createRenderClock(fps=Infinity){
 
 // Lower pixel fill only after sustained pressure, recovering slowly to avoid
 // oscillation. Geometry and the sharp HTML interface are independent of scale.
-export function createResolutionBudget(targetFPS=60){
+export function createResolutionBudget(targetFPS=60,minScale=.7){
   let scale=1,seconds=0,frames=0,fastWindows=0;
   return {sample(dt){
     if(dt<=0)return null;
     seconds+=dt;frames++;
     if(seconds<2)return null;
     const fps=frames/seconds;seconds=0;frames=0;const previous=scale;
-    if(fps<targetFPS*.8){scale=Math.max(.7,scale-.1);fastWindows=0;}
+    if(fps<targetFPS*.8){scale=Math.max(minScale,scale-.1);fastWindows=0;}
     else if(fps>targetFPS*.95){if(++fastWindows>=3){scale=Math.min(1,scale+.05);fastWindows=0;}}
     else fastWindows=0;
     scale=Math.round(scale*100)/100;
@@ -31,11 +31,10 @@ export function createResolutionBudget(targetFPS=60){
   },reset(){seconds=0;frames=0;fastWindows=0;}};
 }
 
-// Retain a final contrast filter for subpixel roof ribs and road markings even at 1×.
-export const antialiasMode=pixelRatio=>({samples:pixelRatio<1?0:4,useFXAA:true});
+// Retain FXAA for roof ribs and road markings while keeping MSAA affordable.
+export const antialiasMode=pixelRatio=>({samples:pixelRatio<1?0:2,useFXAA:true});
 
-// Keep scene pixels stable while orbiting or zooming out. A large viewport or
-// a slow frame must never lower the chosen display density.
+// Cap the base display density; the tablet Eco budget may lower wide views.
 // Cap supersampling at 2× for very high-DPI screens, in both render profiles.
 export function profilePixelRatio(deviceRatio){
   return Math.min(2,Math.max(1,deviceRatio));

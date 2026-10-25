@@ -5,6 +5,7 @@ import {HAUL_PROFILE} from './industrial/haulMotion.js';
 import {RAW_STOCK} from './industrial/siteLayout.js';
 import {DISPATCH_PROFILE} from './industrial/trafficLayout.js';
 import {JOURNEY_STAGE} from './journeyStages.js';
+import {BOARD_END} from './industrial/processPlan.js';
 export {JOURNEY_STAGE} from './journeyStages.js';
 
 // One deterministic, compressed presentation cycle. Durations are not plant timings.
@@ -20,7 +21,7 @@ const definitions=[
   ['calcine','Bişirme','Bişirmek we sowatmak','Taýýarlanan gips bişirme bölüminden geçýär.',14,'BS',true,[-55,30,44],[-29,3,8]],
   ['mix','Gury garyndy','Gury gurluşyk garyndylary','Aýratyn dozirleme, garyşdyrma we haltalama liniýasy.',16,'GR',true,[-78,31,-57],[-44,3,-25]],
   ['form','Gipsokarton','Gipsokarton önümçiligi','Suw bilen garyşdyrmak → şekil bermek → gatamak → kesmek → guratmak → gaplamak.',24,'GK',true,[49,65,-76],[8,2,-19]],
-  ['pack','Gaplama','Palet taýýarlamak','Robot taýýar önümleri palete ýerleşdirýär.',14,'GP',true,[17,24,-61],[-7,2,-30]],
+  ['pack','Gaplama','Palet taýýarlamak','Iki robot taýýar önümleri iki palete ýerleşdirýär.',24,'GP',true,[BOARD_END[0]+22,24,BOARD_END[2]-32],[BOARD_END[0],2,BOARD_END[2]-3]],
   ['load','Ýükleme','TIR we wagon ýüklemek','Forkliftler paletleri ammardan ulaglara geçirýär.',LOADING_DURATION,'GP',true,[101,54,-112],[31,1,-46]],
   ['dispatch','Ugratmak','Ýükli ulaglar ugraýar','TIR derwezeden çykýar; otly demir ýol bilen gidýär.',DISPATCH_PROFILE.duration,'GP',false,[-244,133,146],[-93,0,-37]],
 ];

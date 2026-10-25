@@ -1,4 +1,4 @@
-import {localPoint,BOARD_START,PALLET_ROBOT_BASE} from './processPlan.js';
+import {localPoint,BOARD_START,CEILING_LINES,CEILING_LINE_Z,PROCESS_AISLE_Z,PALLET_ROBOT_BASE,GYPSUM_STORAGE} from './processPlan.js';
 import {machinePort} from './equipmentConnections.js';
 import {buildProcessTower} from './processTower.js';
 import {JOURNEY_STAGE as S} from '../journey.js';
@@ -7,13 +7,13 @@ import {buildProcessBuildingEquipment} from './processBuildingEquipment.js';
 import {createCeilingPanelStyles} from './ceilingPanelStyles.js';
 
 // The first leg takes a dry sheet off the supply pallet into the finishing magazine.
-export const CEILING_ROUTE=[[5,1.18,-25.6],[5,1.18,-23],[14,1.18,-23],[28,1.18,-23],[40,1.18,-23],[53,1.18,-23],[69,1.18,-23],[69,1.18,-33.5],[58,1.18,-33.5],[40,1.18,-33.5],[26,1.18,-33.5],[20,1.18,-33.5]];
+export const CEILING_ROUTE=CEILING_LINES[0].route;
 export const INTERIOR_VIEWS=[
-  {id:'ceiling',name:'Potolok panelleri',zone:'GK',position:[-4,14,-39],target:[6,1.3,-27]},
+  {id:'ceiling',name:'Potolok panelleri',zone:'GK',position:[10,126,36],target:[10,1.3,-25]},
   {id:'dosing',name:'Köp gatly önümçilik binasy',zone:'BS',position:[-73,40,58],target:[-23,11,7]},
-  {id:'bagging',name:'Haltalama enjamlary',zone:'GR',position:[-47,17,-53],target:[-31,2.2,-31]},
+  {id:'bagging',name:'Haltalama enjamlary',zone:'GR',position:[-47,17,-40],target:[-35,2.2,-20]},
   {id:'utilities',name:'Silo, süzgüç we sowadyş binasy',zone:'BS',position:[32,35,51],target:[-8,8,11]},
-  {id:'finishing',name:'Gaplama we paletleme',zone:'GP',position:[57,20,-52],target:[43,2,-31]},
+  {id:'finishing',name:'Gaplama we paletleme',zone:'GP',position:[57,20,-41],target:[43,2,-22]},
 ];
 
 // Reference numbers match docs/equipment-reference-map.json (sorted archive PNGs).
@@ -57,7 +57,7 @@ export function buildInteriorEquipment(k,{root,equipment,machines,network}){
     for(const xx of [-w/2,w/2])box(.85,.14,d,[xx,y,0],dark,g);
     k.ladder(y,-w/2-.5,d/2,g,true);return g;
   }
-  function label(text,x,y,z,width=3){k.textPlate(text,width,.34,localPoint([x,y,z]),root,'#344f5c','#e4e9e7');}
+  function label(text,x,y,z,width=3){return k.textPlate(text,width,.34,localPoint([x,y,z]),root,'#344f5c','#e4e9e7');}
   function pallet(x,z,w=2.4,d=1.4,layers=14,finish=null){
     const g=group(localPoint([x,0,z]),root);
     for(const zz of [-d*.35,0,d*.35])box(w,.14,.18,[0,.12,zz],m.wood,g);
@@ -77,8 +77,8 @@ export function buildInteriorEquipment(k,{root,equipment,machines,network}){
     for(let xx=x-w/2+3;xx<x+w/2;xx+=3)box(.018,.008,d,localPoint([xx,.065,z]),steel,root);
   }
   // Keep a clear longitudinal pedestrian aisle between the board and finishing lines.
-  for(const z of [-19.7,-18.3])box(124,.012,.07,localPoint([8,.075,z]),m.yellow,root);
-  for(const x of [-55,-20,4,71])box(.07,.012,26,localPoint([x,.076,-25]),m.yellow,root);
+  for(const z of [PROCESS_AISLE_Z-.7,PROCESS_AISLE_Z+.7])box(124,.012,.07,localPoint([8,.075,z]),m.yellow,root);
+  for(const x of [-55,-20,4,71])box(.07,.012,18.8,localPoint([x,.076,-20]),m.yellow,root);
 
   // Preparation tower: elevated day bin, weighing hopper, screws and separator.
   buildProcessTower(k,root);
@@ -135,7 +135,7 @@ export function buildInteriorEquipment(k,{root,equipment,machines,network}){
   install('thermal-burner','burner','BS',[-37.2,1.87,8],{},[32],0,.65);
   install('thermal-vessel','hopper','BS',[-25.4,6.15,14],{height:4.3,width:3,depth:2.7,weigh:true},[38]);
   install('thermal-screw','screw','BS',[-29,12.15,14],{length:9,closed:true,yellowCover:true},[6]);
-  install('gypsum-magnetic-trap','magneticTrap','CR',[-31.5,.2,30.2],{},[26,48]);
+  install('gypsum-magnetic-trap','magneticTrap','CR',[GYPSUM_STORAGE.x-5.9,.2,GYPSUM_STORAGE.z],{},[26,48]);
   install('gypsum-diverter','diverter','CR',[-29.6,7.5,27.5],{},[60]);
   install('hammer-mill','mill','TY',[-39.5,.1,34],{},[54,62]);
   install('twin-roll-feed','mill','TY',[-49.5,.1,34],{},[63],0,.75);
@@ -150,13 +150,12 @@ export function buildInteriorEquipment(k,{root,equipment,machines,network}){
   install('additive-pan','mixer','GR',[officeClearX,.1,-24.5],{pan:true},[58],0,.8);
   install('ribbon-mixer','mixer','GR',[-35.5,.1,-24.5],{},[47]);
   install('vibrating-classifier','screen','GR',[-29,.1,-25],{round:true},[57],0,.85);
-  install('manual-bag-dump','bagDump','GR',[officeClearX,.1,-29],{},[31,49]);
-  install('bulk-bag-filler','bagStation','GR',[officeClearX,.1,-35],{bulk:true},[42]);
-  install('rotary-packer','bagStation','GR',[-23.5,.1,-34],{rotary:true},[53]);
+  install('manual-bag-dump','bagDump','GR',[officeClearX,.1,-27.5],{},[31,49]);
+  install('bulk-bag-filler','bagStation','GR',[-54.5,.1,-26.5],{bulk:true},[42]);
+  install('rotary-packer','bagStation','GR',[-40,.1,-14.5],{rotary:true},[53]);
   install('bag-magazine','palletizer','GR',[-23.5,.1,-26.5],{},[64,70],0,.72);
-  install('bag-discharge-belt','belt','GR',[-28,.1,-34],{length:4.2,width:.85},[45]);
-  install('bag-spout','telescopic','GR',[-43,1.3,-32.5],{},[55],0,.5);
-  label('HALTALAMA',-25,5.5,-37.2,4);
+  install('bag-spout','telescopic','GR',[-35,1.3,-16],{},[55],0,.5);
+  label('HALTALAMA',-35,5.5,-19,4);
 
   deck(-46,-8.5,4.5,4.5,2);
   install('board-slurry-mixer','mixer','GK',[-46,2.1,-8.5],{pan:true,wet:true},[58]);
@@ -172,57 +171,53 @@ export function buildInteriorEquipment(k,{root,equipment,machines,network}){
   }
   inventory.push({id:'liner-paper-reels',kind:'paper-unwind',zone:'GK',position:[-51,.1,-13],references:[78,82]});
 
-  // Ceiling-panel finishing line: coating / lamination, guillotine, perforation,
-  // inspection tunnel and receiver, with a continuous real roller bed underneath.
-  install('panel-lamination','tunnel','GK',[14,0,-23],{length:5,width:3,withBelt:false},[52]);
-  install('panel-crosscut','table','GK',[28,0,-23],{kind:'cut',withBed:false,synchronized:true},[46]);
-  install('panel-perforation','table','GK',[40,0,-23],{kind:'press',length:4.6,withBed:false,synchronized:true},[43]);
-  install('panel-inspection','tunnel','GK',[53,0,-23],{length:5.5,width:3,withBelt:false},[52,77]);
-  install('panel-stack-lift','table','GP',[17,0,-33.5],{kind:'lift',length:3.5},[43]);
-  // The moving panels disappear inside a covered receiving pocket, then leave
-  // as the visible stacks next to its lift instead of vanishing over bare floor.
-  const receiver=group(localPoint([20,0,-33.5]),root);
-  receiver.rotation.y=Math.PI;
-  for(const z of [-1.4,1.4])box(3.6,.85,.10,[0,1.55,z],panel,receiver);
-  box(3.7,.12,2.9,[0,2,0],steel,receiver);box(.12,.85,2.9,[1.8,1.55,0],panel,receiver);
-  pallet(5,-26.5,2.4,1.4,22).name='ceiling-supply-pallet';
-  // Drive motors, suspended metal detector and connected dust extraction.
-  for(const x of [14,28,40,53]){
-    const drive=group(localPoint([x,.1,-25.4]),root);equipment.gearmotor([0,0,0],drive,.75);
-    inventory.push({id:`panel-drive-${x}`,kind:'motor',zone:'GK',position:[x,.1,-25.4],references:[72]});
+  // Two separate, straight ceiling-panel lines in the occupied roof bays.
+  // Each has its own blank feed, tools and covered packing receiver.
+  for(const line of CEILING_LINES){
+    const {id,number,z,start,laminate,cut,press,inspect,pack,end}=line;
+    install(`${id}-lamination`,'tunnel','GK',[laminate,0,z],{length:4,width:3,withBelt:false},[52]);
+    install(`${id}-crosscut`,'table','GK',[cut,0,z],{kind:'cut',length:3.6,withBed:false,synchronized:true},[46]);
+    install(`${id}-perforation`,'table','GK',[press,0,z],{kind:'press',length:3.8,withBed:false,synchronized:true},[43]);
+    install(`${id}-inspection`,'tunnel','GK',[inspect,0,z],{length:4,width:3,withBelt:false},[52,77]);
+    // The strapping tool spans the same sheet route and shares its dwell clock.
+    const packer=group(localPoint([pack,0,z]),root);packer.name=`interior-${id}-packer`;
+    for(const zz of [-1.5,1.5])box(.18,2.8,.18,[0,1.4,zz],panel,packer);
+    box(.22,.2,3.2,[0,2.8,0],panel,packer);
+    const head=group([0,2.2,0],packer,true);box(.24,.14,2.75,[0,0,0],dark,head);
+    packer.userData.processTool={object:head,base:2.2,travel:.8};units[`${id}-packer`]=packer;
+    const receiver=group(localPoint([end,0,z]),root);receiver.name=`${id}-finished-receiver`;
+    for(const zz of [-1.4,1.4])box(3.6,.85,.10,[0,1.55,zz],panel,receiver);
+    box(3.7,.12,2.9,[0,2,0],steel,receiver);box(.12,.85,2.9,[1.8,1.55,0],panel,receiver);
+    pallet(start,z-3.5,2.4,1.4,22).name=id==='panel'?'ceiling-supply-pallet':`${id}-supply-pallet`;
+    for(const x of [laminate,cut,press,inspect]){
+      const drive=group(localPoint([x,.1,z-2.4]),root);equipment.gearmotor([0,0,0],drive,.65);
+      inventory.push({id:`${id}-drive-${x}`,kind:'motor',zone:'GK',position:[x,.1,z-2.4],references:[72]});
+    }
+    const magnet=group(localPoint([(laminate+cut)/2,2.55,z]),root);
+    box(1.4,.6,2.3,[0,0,0],dark,magnet);
+    for(const x of [-.5,.5])for(const zz of [-1,1])rod([x,.3,zz],[x,1.8,zz],.025,steel,magnet);
+    for(const name of ['crosscut','perforation'])machinePort(k,units[`${id}-${name}`],'air',[0,3.1,0],[0,1,0],.17,'air',{nozzle:.3});
+    const mark=label(`${number} · POTOLOK HATY`,(start+end)/2,.095,z+2.8,11);mark.rotation.x=-Math.PI/2;
+    for(const [x,title] of [[laminate,'ÖRTÜK'],[cut,'KESME'],[press,'NAGYŞ'],[inspect,'HIL'],[pack,'GAPLAMA']])label(title,x,3.4,z+1.5,2.8);
   }
-  const magnet=group(localPoint([21,2.55,-23]),root);
-  box(2,.6,2.3,[0,0,0],dark,magnet);
-  for(const x of [-.8,.8])for(const z of [-1,1])rod([x,.3,z],[x,1.8,z],.025,steel,magnet);
-  inventory.push({id:'panel-metal-detector',kind:'suspended-magnet',zone:'GK',position:[21,2.55,-23],references:[27]});
-  install('panel-dust-collector','filter','GK',[48,.1,-29],{height:4.6},[15]);
-  for(const id of ['panel-crosscut','panel-perforation'])machinePort(k,units[id],'air',[0,3.1,0],[0,1,0],.17,'air',{nozzle:.3});
-  label('POTOLOK PANELLERI',30,3.6,-26.5,5.5);
-
-  // Pallet/packing cells keep clear of the loading entrance at x=14.2.
-  install('board-palletizer','palletizer','GP',[26,.1,-33.5],{inline:true},[70]);
-  install('final-pack-tunnel','tunnel','GP',[40,0,-33.5],{length:4,width:2.8,withBelt:false},[52]);
-  install('package-lift','table','GP',[55,.1,-36.5],{kind:'lift',length:3},[43]);
-  for(const [finish,[x,z]] of [[33,-36],[45,-36],[59,-36],[64,-37]].entries())pallet(x,z,2.4,1.4,14,finish+1);
-  for(const [finish,x] of [22,30,38,54,62].entries())pallet(x,-29,1.5,1.3,8,finish);
-  // The robot shares the live board receiver and fills the output pallet.
+  install('panel-dust-collector','filter','GK',[54,.1,-28],{height:4.6},[15]);
+  // Finished stock and controls remain at the east end of the occupied bays.
+  for(const [finish,z] of [-14.2,-17,-19.6,-24,-27].entries())pallet(72.4,z,1.5,1.3,8,finish);
   inventory.push({id:'existing-robot-cell',kind:'robot',zone:'GP',position:PALLET_ROBOT_BASE,references:[41,59]});
   inventory.push({id:'existing-jaw-crusher',kind:'jaw-crusher',zone:'CR',position:[60,0,34.8],references:[40]});
-  inventory.push({id:'existing-storage-silos',kind:'silo',zone:'CR',position:[-25.6,0,30.2],references:[2,84]});
-  // Reference 73: repeated electrical cabinets and a seated control desk.
-  for(let x=63;x<=70;x+=1){const cab=k.cabinet(localPoint([x,.1,-37.8]),root);cab.scale.set(1,1.3,1);}
-  const desk=group(localPoint([62,.1,-33]),root);
+  inventory.push({id:'existing-storage-silos',kind:'silo',zone:'CR',position:[GYPSUM_STORAGE.x,0,GYPSUM_STORAGE.z],references:[2,84]});
+  for(let x=32;x<=38;x+=1){const cab=k.cabinet(localPoint([x,.1,-28.7]),root);cab.scale.set(1,1.3,1);}
+  const desk=group(localPoint([44,.1,-28.7]),root);
   box(3,.10,1.1,[0,1.05,0],panel,desk);for(const x of [-1.3,1.3])box(.12,1.05,.8,[x,.52,0],dark,desk);
   for(const x of [-.8,0,.8]){box(.66,.45,.05,[x,1.5,-.15],dark,desk);box(.56,.35,.01,[x,1.5,-.115],m.blueLight,desk);rod([x,1.05,-.15],[x,1.4,-.15],.025,steel,desk);}
-  inventory.push({id:'electrical-control-bank',kind:'control-cabinets',zone:'GP',position:[66,.1,-37.8],references:[73,75]});
-  label('GAPLAMA',42,4.5,-37.8,4);
+  inventory.push({id:'electrical-control-bank',kind:'control-cabinets',zone:'GP',position:[35,.1,-28.7],references:[73,75]});
 
   // Material circuits share the same mouths as the equipment meshes. Air and
   // water never reuse a powder port; vertical powder movement has an elevator.
   const port=(id,name)=>units[id]?.userData.ports?.[name];
-  function join(a,out,b,input,via=[],kind='mechanical',material='powder',zone='BS'){
+  function join(a,out,b,input,via=[],kind='mechanical',material='powder',zone='BS',support={}){
     const stages=zone==='GR'?[S.mix,S.form,S.pack]:zone==='GK'?[S.form,S.pack]:[S.calcine,S.mix];
-    return network.connect(port(a,out),port(b,input),{via:via.map(localPoint),kind,material,zone,stages});
+    return network.connect(port(a,out),port(b,input),{via:via.map(localPoint),kind,material,zone,stages,...support});
   }
   machinePort(k,units['vertical-mill'],'in2',[-1.35,2.9,.7],[-1,0,0],.28,'solid',{nozzle:.4});
   machinePort(k,units['tower-day-bin'],'recovered',[.8,4.5,0],[0,1,0],.22,'solid',{open:true});
@@ -276,16 +271,16 @@ export function buildInteriorEquipment(k,{root,equipment,machines,network}){
     [-45.5,.65,22.5],[-40,.65,22.5],[-40,8.2,22.5],[-40,8.2,-25.25],[-41.6,8.2,-25.25]
   ],'mechanical','powder','GR');
   join('GR','out','bagging','in',[
-    [-39,1.7,-22.3],[-38.5,1.7,-27.5],[-38.5,6.5,-27.5],[-44.3,6.5,-27.5],[-44.3,6.5,-32.5]
+    [-39,1.7,-22.3],[-38.5,1.7,-21],[-38.5,6.5,-21],[-36.3,6.5,-21],[-36.3,6.5,-16]
   ],'mechanical','powder','GR');
   join('manual-bag-dump','out','ribbon-mixer','in',[
-    [officeClearX,.35,-29],[officeClearX,.35,-27],[officeClearX,4.2,-27],[-35.5,4.2,-27],[-35.5,4.2,-24.5]
+    [officeClearX,.35,-27.5],[officeClearX,.35,-27],[officeClearX,4.2,-27],[-35.5,4.2,-27],[-35.5,4.2,-24.5]
   ],'mechanical','powder','GR');
   join('ribbon-mixer','out','vibrating-classifier','in',[
     [-35.5,.4,-24.5],[-32,.4,-24.5],[-32,3.8,-24.5],[-29,3.8,-25]
   ],'mechanical','powder','GR');
   join('vibrating-classifier','out','rotary-packer','in',[
-    [-26.8,1.222,-25],[-26.8,5.2,-25],[-23.5,5.2,-25],[-23.5,5.2,-34]
+    [-26.8,1.222,-25],[-26.8,5.2,-25],[-40,5.2,-25],[-40,5.2,-14.5]
   ],'mechanical','powder','GR');
 
   // Pumped water enters only the wet board mixer. Finished dry-mix stays dry.
@@ -335,19 +330,21 @@ export function buildInteriorEquipment(k,{root,equipment,machines,network}){
 
   join('air-compressor','out','air-branch-valve','in',[[2.7,.75,12.5],[2.7,.75,11],[-.6,.75,11],[-.6,1.6,11],[-.6,1.6,13]],'duct','air');
   join('air-branch-valve','out','air-receiver','in',[],'duct','air');
-  // Dust extraction for the ceiling finishing tools has a supported manifold.
-  const manifold=group(localPoint([34,5.5,-27]),root);
+  // Both ceiling lines share a roof-hung extraction manifold inside the
+  // occupied bays. Nothing crosses into the empty railway-side bay.
+  const manifold=group(localPoint([45,5.5,-20]),root);
   cyl(.3,.7,[0,0,0],steel,manifold);
-  for(const [name,p,n] of [['cut',[-.35,0,0],[-1,0,0]],['press',[.35,0,0],[1,0,0]],['out',[0,0,-.45],[0,0,-1]]])machinePort(k,manifold,name,p,n,.22,'air',{nozzle:.4});
-  units['finishing-manifold']=manifold;
-  join('panel-crosscut','air','finishing-manifold','cut',[[28,5.5,-23],[28,5.5,-27]],'duct','air','GK');
-  join('panel-perforation','air','finishing-manifold','press',[[40,5.5,-23],[40,5.5,-27]],'duct','air','GK');
-  join('finishing-manifold','out','panel-dust-collector','in',[[34,5.5,-28],[51,5.5,-28],[51,2.7,-29]],'duct','air','GK');
-  install('finishing-extraction-fan','fan','GK',[51,.1,-31.5],{},[9]);
-  const finishingVent=group(localPoint([54,4,-31.5]),root);cyl(.3,3.8,[0,1.9,0],steel,finishingVent);
+  for(const [i,line] of CEILING_LINES.entries())for(const [j,name] of ['crosscut','perforation'].entries())
+    machinePort(k,manifold,`${line.id}-${name}`,[(j-.5)*.7,0,(i-.5)*.7],[0,0,i? -1:1],.17,'air',{nozzle:.3});
+  machinePort(k,manifold,'out',[.45,0,0],[1,0,0],.22,'air',{nozzle:.3});units['finishing-manifold']=manifold;
+  for(const line of CEILING_LINES)for(const [name,x] of [['crosscut',line.cut],['perforation',line.press]])
+    join(`${line.id}-${name}`,'air','finishing-manifold',`${line.id}-${name}`,[[x,5.5,line.z],[x,5.5,-20]],'duct','air','GK',{hangerY:7.7});
+  join('finishing-manifold','out','panel-dust-collector','in',[[48,5.5,-20],[57,5.5,-20],[57,2.7,-28]],'duct','air','GK',{hangerY:7.7});
+  install('finishing-extraction-fan','fan','GK',[59,.1,-28],{},[9]);
+  const finishingVent=group(localPoint([62,4,-28]),root);cyl(.3,3.8,[0,1.9,0],steel,finishingVent);
   machinePort(k,finishingVent,'in',[0,0,0],[0,-1,0],.3,'air');units['finishing-vent']=finishingVent;
-  join('panel-dust-collector','air','finishing-extraction-fan','in',[[48,4.2,-31],[48,1.2,-30.3],[50.6,1.2,-30.3]],'duct','air','GK');
-  join('finishing-extraction-fan','out','finishing-vent','in',[[51.25,3.2,-31.5],[54,3.2,-31.5]],'duct','air','GK');
+  join('panel-dust-collector','air','finishing-extraction-fan','in',[[54,4.2,-28],[54,1.2,-27],[58.6,1.2,-27]],'duct','air','GK');
+  join('finishing-extraction-fan','out','finishing-vent','in',[[59.25,3.2,-28],[62,3.2,-28]],'duct','air','GK');
   machinePort(k,units['pulse-filter'],'cleaningAir',[1.65,7.65,.7],[1,0,0],.09,'air',{nozzle:.15});
   join('air-receiver','out','pulse-filter','cleaningAir',[[-1.1,2.7,13],[-1.1,4.9,13],[-20,4.9,13],[-20,25.155,13],[-20,25.155,9.59]],'duct','air');
 

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as T from 'three';
 import {createKit} from './industrial/kit.js';
 import {buildProduction} from './industrial/production.js';
+import {JOURNEY_STAGE as S} from './journey.js';
 
 test('receiver fence clears the supply pallet and both moving product streams',()=>{
   const previous=globalThis.document;
@@ -10,6 +11,8 @@ test('receiver fence clears the supply pallet and both moving product streams',(
   const scene=new T.Scene(),kit=createKit(scene,{tablet:true});
   try{
     const production=buildProduction(kit);scene.updateMatrixWorld(true);
+    const station=production.root.getObjectByName('machine-GP');
+    assert.ok(new T.Box3().setFromObject(station).max.y<3,'receiver has no four-post portal around the arms');
     const fence=production.root.getObjectByName('GP-receiver-guards'),barriers=[];
     fence.traverse(o=>{if(o.isMesh)barriers.push(new T.Box3().setFromObject(o));});
     const clear=(bounds,label,margin=.12)=>{
@@ -33,16 +36,36 @@ test('receiver fence clears the supply pallet and both moving product streams',(
       }
     }
     assert.ok(carried&&feed,'exercise robot handling and the ceiling feed');
+    const arms=production.palletizing.arms;
+    assert.equal(arms.length,2,'two independent palletizing arms share the receiver');
+    for(const arm of arms){
+      assert.ok(arm.status.stackCount>0,'each arm fills its own pallet');
+      assert.equal(arm.layers.filter(layer=>layer.visible).length,arm.status.stackCount,'each placed sheet has one visible layer');
+    }
+    assert.equal(production.palletizing.status.stackCount,arms.reduce((sum,arm)=>sum+arm.status.stackCount,0));
   }finally{kit.dispose();globalThis.document=previous;}
 });
 
-test('main ceiling line produces every finish and has matching finished stock',()=>{
+test('packing chapter shows both pallets filling from arriving boards',()=>{
+  const previous=globalThis.document;
+  globalThis.document={createElement:()=>({getContext:()=>new Proxy({createImageData:(w,h)=>({data:new Uint8ClampedArray(w*h*4)})},{get:(o,key)=>o[key]??(()=>{})})})};
+  const kit=createKit(new T.Scene(),{tablet:true});
+  try{
+    const production=buildProduction(kit);
+    const active=new Map(['CR','TY','BS','GR','GK','GP'].map(id=>[id,{status:'running'}]));
+    for(let second=0;second<24;second++)production.updateMotion(1,{preview:false,stage:S.pack,active,showInterior:true});
+    assert.ok(production.palletizing.arms.every(arm=>arm.status.stackCount>0));
+  }finally{kit.dispose();globalThis.document=previous;}
+});
+
+test('both ceiling lines produce every finish and have matching finished stock',()=>{
   const previous=globalThis.document;
   globalThis.document={createElement:()=>({getContext:()=>new Proxy({createImageData:(w,h)=>({data:new Uint8ClampedArray(w*h*4)})},{get:(o,key)=>o[key]??(()=>{})})})};
   const scene=new T.Scene(),kit=createKit(scene,{tablet:true});
   try{
     const production=buildProduction(kit);
-    const expected=new Set(['white','green','yellow','metal','plastic']),stock=new Set(),seen=new Set();
+    const expected=new Set(['white','green','yellow','metal','plastic']),stock=new Set();
+    const seen=new Map(production.ceilingLines.map(({layout})=>[layout.id,new Set()]));
     production.root.traverse(o=>{if(o.userData.panelType&&!o.userData.dynamic)stock.add(o.userData.panelType);});
     assert.deepEqual(stock,expected);
     const active=new Map(['CR','TY','BS','GR','GK','GP'].map(id=>[id,{status:'running'}]));
@@ -50,11 +73,11 @@ test('main ceiling line produces every finish and has matching finished stock',(
       production.updateMotion(1,{preview:true,active,showInterior:true});
       for(const p of production.products){
         if(p.kind!=='ceiling'||!p.object.visible||!p.variants.holes.visible)continue;
-        seen.add(p.object.userData.panelType);
+        seen.get(p.lineId).add(p.object.userData.panelType);
         assert.equal(p.variants.cut.visible,false,'plain and decorated sheets cannot overlap');
         assert.equal(p.variants.finish.variants.filter(g=>g.visible).length,1);
       }
     }
-    assert.deepEqual(seen,expected);
+    for(const [id,finishes] of seen)assert.deepEqual(finishes,expected,`${id} makes every ceiling finish`);
   }finally{kit.dispose();globalThis.document=previous;}
 });

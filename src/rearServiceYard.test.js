@@ -16,6 +16,21 @@ function fixture(run,build=buildRearServiceYard){
   finally{k.dispose();globalThis.document=previous;}
 }
 const bounds=o=>new T.Box3().setFromObject(o);
+test('flat roof finishes do not share an exterior face with the parapet',()=>fixture(({scene})=>{
+  for(const b of Y.buildings.filter(b=>!b.roofRise)){
+    const roof=scene.getObjectByName(`${b.name}-roof`);
+    for(const [axis,span] of [['x',b.width],['z',b.depth]])for(const side of [-1,1])for(const dy of [.03,.06,.09]){
+      const origin=new T.Vector3(b.x,b.height+dy,b.z),direction=new T.Vector3();
+      origin[axis]+=side*(span/2+1);direction[axis]=-side;
+      const ray=new T.Raycaster(origin,direction,0,1.01);
+      const faces=new Set(ray.intersectObject(roof,true).map(hit=>hit.object));
+      assert.equal(faces.size,1,`${b.name}: one exterior roof-edge surface on ${axis} ${side} at ${dy}`);
+    }
+    const ray=new T.Raycaster(new T.Vector3(b.x,b.height+1,b.z),new T.Vector3(0,-1,0));
+    const hit=ray.intersectObject(roof,true)[0];
+    assert.ok(hit&&Math.abs(hit.point.y-b.height-.12)<.025,`${b.name}: roof deck remains closed`);
+  }
+}));
 test('all thirteen reference parts remain distinct, with exposed stepped roofs instead of one large slab',()=>fixture(({scene})=>{
   const parts=[];scene.traverse(o=>{if(o.userData.referencePart)parts.push(o.userData.referencePart);});
   assert.deepEqual(parts.sort((a,b)=>a-b),Array.from({length:13},(_,i)=>i+1));

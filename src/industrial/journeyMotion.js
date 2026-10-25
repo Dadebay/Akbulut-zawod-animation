@@ -16,7 +16,7 @@ function placeOnDeck(g,x,z,yaw){
   g.position.y=loadingDeckHeight(x,z);g.rotation.z=Math.atan2(front-rear,ahead+behind);
 }
 export function createJourneyMotion(logistics,vehicleSurface){
-  const {hauler,dispatchTruck,train,trainCargo,railWheels,truckFork,railForkA,railForkB,stock}=logistics;
+  const {hauler,dispatchTruck,train,trainCargo,railWheels,truckFork,railForkA,railForkB,stock,greenStock=[]}=logistics;
   const forks=[truckFork,railForkA,railForkB];
   // Use the three actual axles and both wheel tracks, including the middle
   // rear axle. Sampling only the centreline missed the bank under one side.
@@ -61,8 +61,12 @@ export function createJourneyMotion(logistics,vehicleSurface){
       const job=FORKLIFT_JOBS[i],elapsed=j.index===S.load?j.elapsed:j.index>S.load?job.duration:-1;
       const pose=sampleForklift(job,elapsed);fork.update(pose,j.time);
       const supply=stock[i];
-      supply.g.visible=(j.index===S.pack&&j.progress>.95)||(j.index===S.load&&pose.stockVisible);
-      supply.panel.visible=pose.kind==='panel';supply.bags.visible=pose.kind==='bags';
+      supply.g.visible=i!==1&&((j.index===S.pack&&j.progress>.95)||(j.index===S.load&&pose.stockVisible));
+      supply.panel.visible=pose.kind!=='bags';supply.bags.visible=pose.kind==='bags';
+    });
+    greenStock.forEach((p,i)=>{
+      const removed=FORKLIFT_JOBS[1].trips[i],restored=FORKLIFT_JOBS[2].trips[i];
+      p.visible=j.index!==S.load||j.elapsed<removed.start+removed.pickupAt||j.elapsed>=restored.start+restored.depositAt;
     });
   }
   return function update(j){
@@ -80,8 +84,8 @@ export function createJourneyMotion(logistics,vehicleSurface){
     const haulTravel=hauling?.travel??(index===S.receive?HAUL_PROFILE.length:0);
     hauler.ws.forEach(w=>{w.rotation.z=-haulTravel/(w.userData.radius||.562);});
     dispatchTruck.cargo.forEach((p,i)=>p.visible=i<j.truckLoads);
-    const railLoads=index===S.load?loadingCounts(j.elapsed).rail:index>S.load?[4,4]:[0,0];
-    trainCargo.forEach((p,i)=>p.visible=i%4<railLoads[Math.floor(i/4)]);
+    const railLoads=index===S.load?loadingCounts(j.elapsed).train:index>S.load?8:0;
+    trainCargo.forEach((p,i)=>p.visible=i<railLoads);
     updateForks(j);
     logistics.updateArrival?.(j.time);
     const trainRun=index===S.dispatch?-470*Math.pow(j.depart,1.5):0;

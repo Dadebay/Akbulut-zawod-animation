@@ -62,20 +62,29 @@ function overlaps(a,b){
   return true;
 }
 
-test('loading canopy guards and low panel bundles leave forklift routes clear',()=>{
+test('loading canopy guards and pallet stacks leave forklift chassis clear',()=>{
   const guards=LOADING.columnXs.map(x=>rectangle(x,LOADING.columnZ,LOADING.guardWidth,LOADING.guardWidth));
   const bundles=LOADING.panelBays.flatMap(({x,width})=>LOADING.panelRows.map(z=>rectangle(x,z,width,LOADING.panelDepth)));
   for(const [index,job] of FORKLIFT_JOBS.entries())for(let t=0;t<=job.duration;t+=.1){
     const pose=sampleForklift(job,t),full=forkliftFootprint(pose,.12);
     for(const guard of guards)assert.equal(overlaps(full,guard),false,`guard: forklift ${index} at ${t}`);
-    // Raised tines can pass over the low stock; the chassis must always clear it.
+    // Fork tines enter a green pallet to lift it; the chassis stays clear.
     const body=rectangle(-.25,0,2.4,1.6).map(([along,side])=>[
       pose.x+along*Math.cos(pose.yaw)+side*Math.sin(pose.yaw),
       pose.z-along*Math.sin(pose.yaw)+side*Math.cos(pose.yaw),
     ]);
-    const lowPart=pose.height-.15>LOADING.panelTop?body:forkliftFootprint(pose);
-    for(const bundle of bundles)assert.equal(overlaps(lowPart,bundle),false,`panel: forklift ${index} at ${t}`);
+    for(const bundle of bundles)assert.equal(overlaps(body,bundle),false,`panel: forklift ${index} at ${t}`);
   }
+});
+
+test('the two rail forklifts keep separate aisles while stock is emptied and refilled',()=>{
+  const body=pose=>rectangle(-.25,0,2.4,1.6).map(([along,side])=>[
+    pose.x+along*Math.cos(pose.yaw)+side*Math.sin(pose.yaw),
+    pose.z-along*Math.sin(pose.yaw)+side*Math.cos(pose.yaw),
+  ]);
+  const [train,refill]=FORKLIFT_JOBS.slice(1);
+  for(let t=0;t<=Math.max(train.duration,refill.duration);t+=.1)
+    assert.equal(overlaps(body(sampleForklift(train,t)),body(sampleForklift(refill,t))),false,`rail forklifts collide at ${t}`);
 });
 
 test('rail forklifts work on the raised deck; the truck forklift stays off it',()=>{

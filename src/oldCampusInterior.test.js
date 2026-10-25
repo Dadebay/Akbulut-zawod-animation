@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as T from 'three';
 import {createKit} from './industrial/kit.js';
 import {buildOldCampusInterior,OLD_CEILING_LINE} from './industrial/oldCampusInterior.js';
+import {buildSite} from './industrial/site.js';
 import {OLD_SECOND_CEILING_LINE} from './industrial/oldSecondCeilingLine.js';
 import {OLD_LEFT_CAMPUS,OLD_RAIL_DORMITORY} from './industrial/siteLayout.js';
 import {OLD_HALL_WALKS,oldForkMotion} from './industrial/campusLife.js';
@@ -11,7 +12,7 @@ import {poolSurfaces,batchAssemblies} from './industrial/surfaceBatching.js';
 
 function fixture(run){
   const previous=globalThis.document;
-  globalThis.document={createElement:()=>({getContext:()=>new Proxy({createImageData:(w,h)=>({data:new Uint8ClampedArray(w*h*4)})},{get:(o,key)=>o[key]??(()=>{})})})};
+  globalThis.document={createElement:()=>({getContext:()=>new Proxy({measureText:()=>({width:100}),createRadialGradient:()=>({addColorStop(){}}),createLinearGradient:()=>({addColorStop(){}}),createImageData:(w,h)=>({data:new Uint8ClampedArray(w*h*4)})},{get:(o,key)=>o[key]??(()=>{})})})};
   const scene=new T.Scene(),k=createKit(scene,{tablet:true});
   // Conservative envelope of logistics.pallet, including its bindings/deck.
   const pallet=(parent,position)=>{
@@ -27,6 +28,29 @@ function overlap(a,b){
     if(Math.max(...aa)<=Math.min(...bb)||Math.max(...bb)<=Math.min(...aa))return false;
   }return true;
 }
+
+test('raised warehouse shutters expose the interior with the exterior shell visible',()=>fixture((interior,scene,k)=>{
+  buildSite(k);
+  interior.root.visible=false;
+  scene.updateMatrixWorld(true);
+  const meshes=[];scene.traverseVisible(o=>{if(o.isMesh)meshes.push(o);});
+  const ray=new T.Raycaster(new T.Vector3(),new T.Vector3(0,0,-1),0,20);
+  for(const x of [4,24,49]){
+    for(const dx of [-2,0,2])for(const y of [.7,1.6,2.8]){
+      ray.ray.origin.set(x+dx,y,-130);
+      const hit=ray.intersectObjects(meshes,false)[0];
+      assert.ok(hit&&hit.point.z< -132.5,`open bay at ${x+dx}, ${y}; first surface ${hit?.point.z}`);
+    }
+    for(const dx of [-2.7,2.7]){
+      ray.ray.origin.set(x+dx,1.6,-130);
+      const hit=ray.intersectObjects(meshes,false)[0];
+      assert.ok(hit&&hit.point.z> -132.2,'wall beside the opening remains closed');
+    }
+  }
+  let stockVisible=false;
+  scene.traverseVisible(o=>{if(o===interior.warehouse)stockVisible=true;});
+  assert.ok(stockVisible,'warehouse stock remains visible without the cutaway');
+}));
 
 test('old hangar stock stays within its walls and leaves the aisle and loading doors open',()=>fixture(interior=>{
   const h=OLD_LEFT_CAMPUS.warehouse,stock=interior.stock.filter(p=>p.parent===interior.warehouse);
@@ -86,17 +110,50 @@ test('old hall pedestrian paths and forklift sweep clear the added machinery and
   interior.root.traverse(mesh=>{
     if(!mesh.isMesh)return;
     const b=new T.Box3().setFromObject(mesh);
-    if(b.max.y>.25&&b.min.y<2.3)obstacles.push(rectangle(b));
+    if(b.max.y>.25&&b.min.y<2.3){
+      let owner=mesh;while(owner&&!owner.name)owner=owner.parent;
+      obstacles.push({polygon:rectangle(b),label:`${owner?.name}: ${b.min.toArray()} / ${b.max.toArray()}`});
+    }
   });
   for(const {bounds:[x0,x1,z0,z1]} of OLD_HALL_WALKS){
     const body=[[x0-.45,z0-.45],[x1+.45,z0-.45],[x1+.45,z1+.45],[x0-.45,z1+.45]];
-    for(const obstacle of obstacles)assert.equal(overlap(body,obstacle),false,'pedestrian aisle');
+    for(const obstacle of obstacles)assert.equal(overlap(body,obstacle.polygon),false,`pedestrian aisle: ${obstacle.label}`);
   }
   const fork=oldForkMotion();
   for(let time=0;time<180;time+=.2){
     const body=forkliftFootprint(fork(time),.3);
-    for(const obstacle of obstacles)assert.equal(overlap(body,obstacle),false,`forklift aisle at ${time}`);
+    for(const obstacle of obstacles)assert.equal(overlap(body,obstacle.polygon),false,`forklift aisle at ${time}: ${obstacle.label}`);
   }
+}));
+
+test('additional process equipment fits beneath the roof and leaves both panel routes clear',()=>fixture((interior,scene)=>{
+  const {processDetails}=interior;
+  scene.updateMatrixWorld(true);
+  const bounds=[];
+  processDetails.root.traverse(o=>{
+    if(!o.isMesh)return;
+    const b=new T.Box3().setFromObject(o);bounds.push(b);
+    assert.ok(b.min.x>=-6&&b.max.x<=68&&b.min.z>=-116.5&&b.max.z<=-87.5,'added equipment stays within the hall');
+    assert.ok(b.max.y<6.2,'services and machines fit below the roof');
+    if(b.min.y<5&&b.max.y>.25)
+      assert.equal(overlap(rectangle(b),[[37.8,-99],[50.2,-99],[50.2,-87],[37.8,-87]]),false,'loading entrance stays open');
+  });
+  for(const line of [OLD_CEILING_LINE,OLD_SECOND_CEILING_LINE]){
+    const west=line.west??line.start,east=line.east??line.end;
+    const sheetSweep=new T.Box3(new T.Vector3(west-.66,line.top+.002,line.z-.66),new T.Vector3(east+.66,line.top+.035,line.z+.66));
+    for(const b of bounds)assert.equal(b.intersectsBox(sheetSweep),false,`sheet route remains open at ${line.z}: ${b.min.toArray()} / ${b.max.toArray()}`);
+  }
+}));
+
+test('added brushes, trimming heads and cooling fans animate after batching and freeze on pause',()=>fixture((interior,scene,k)=>{
+  const {rotors}=interior.processDetails;
+  assert.ok(rotors.length>0);
+  poolSurfaces(k);k.optimize({preserveRepeated:true});const refresh=batchAssemblies(k);
+  interior.update(1);refresh();const before=rotors.map(o=>o.quaternion.clone());
+  interior.update(1.4);refresh();
+  rotors.forEach((o,i)=>assert.ok(o.quaternion.angleTo(before[i])>.01,'each added drive rotates'));
+  const paused=rotors.map(o=>o.quaternion.toArray());
+  interior.update(1.4);refresh();assert.deepEqual(rotors.map(o=>o.quaternion.toArray()),paused);
 }));
 
 test('second production line fits beside the first with supported, separated sheets and a clear loading entrance',()=>fixture((interior,scene)=>{

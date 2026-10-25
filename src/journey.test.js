@@ -33,12 +33,12 @@ test('the truck unloads to stock and only the loader fills the indoor hopper',()
 test('freight only appears when a forklift deposits it and vehicles depart after all loads',()=>{
   const loading=JOURNEY_STEPS[S.load].start;
   const firstTruck=FORKLIFT_JOBS[0].trips[0].depositAt;
-  const firstRail=FORKLIFT_JOBS.slice(1).map(job=>job.trips[0].depositAt);
+  const firstRail=FORKLIFT_JOBS[1].trips[0].depositAt;
   assert.equal(journeyAt(loading).truckLoads,0);
   assert.equal(journeyAt(loading+firstTruck-.01).truckLoads,0);
   assert.equal(journeyAt(loading+firstTruck+.01).truckLoads,1);
-  assert.equal(journeyAt(loading+Math.min(...firstRail)-.01).trainLoads,0);
-  assert.equal(journeyAt(loading+Math.max(...firstRail)+.01).trainLoads,2);
+  assert.equal(journeyAt(loading+firstRail-.01).trainLoads,0);
+  assert.equal(journeyAt(loading+firstRail+.01).trainLoads,1);
   for(let t=0;t<JOURNEY_STEPS[S.dispatch].start;t+=.25)assert.equal(journeyAt(t).depart,0);
   const departing=journeyAt(JOURNEY_STEPS[S.dispatch].start+1);assert.equal(departing.truckLoads,6);assert.equal(departing.trainLoads,8);assert.ok(departing.depart>0);
 });
@@ -56,12 +56,12 @@ test('forklift loads meet the truck and rail decks without a vertical or lateral
     return {g,fork:lift,cargo,bagCargo,ws:[],update(pose){
       g.position.set(pose.x,pose.y||0,pose.z);g.rotation.y=pose.yaw;
       lift.position.y=pose.height-F.mastBaseY;mast.rotation.z=pose.tilt;
-      cargo.visible=pose.carrying&&pose.kind==='panel';bagCargo.visible=pose.carrying&&pose.kind==='bags';
+      cargo.visible=pose.carrying&&pose.kind!=='bags';bagCargo.visible=pose.carrying&&pose.kind==='bags';
     }};
   };
   const truckFork=fork(),railForkA=fork(),railForkB=fork();
   const dispatchTruck={g:new T.Group(),hinge:new T.Group(),ws:[],cargo:Array.from({length:6},()=>new T.Group())};
-  const logistics={truckFork,railForkA,railForkB,dispatchTruck,hauler:{g:new T.Group(),cargo:new T.Group(),bed:new T.Group(),tailgate:new T.Group(),ws:[]},train:new T.Group(),trainCargo:Array.from({length:8},()=>new T.Group()),railWheels:[],stock:Array.from({length:3},()=>({g:new T.Group(),panel:new T.Group(),bags:new T.Group()}))};
+  const logistics={truckFork,railForkA,railForkB,dispatchTruck,hauler:{g:new T.Group(),cargo:new T.Group(),bed:new T.Group(),tailgate:new T.Group(),ws:[]},train:new T.Group(),trainCargo:Array.from({length:8},()=>new T.Group()),railWheels:[],stock:Array.from({length:3},()=>({g:new T.Group(),panel:new T.Group(),bags:new T.Group()})),greenStock:Array.from({length:8},()=>new T.Group())};
   const move=createJourneyMotion(logistics),start=JOURNEY_STEPS[S.load].start;
   move(journeyAt(start+FORKLIFT_JOBS[0].trips[0].depositAt-.001));
   const truckPoint=truckFork.cargo.getWorldPosition(new T.Vector3());
@@ -76,8 +76,16 @@ test('forklift loads meet the truck and rail decks without a vertical or lateral
     const cargo=trip.target.kind==='bags'?activeFork.bagCargo:activeFork.cargo;
     const pickup=trip.phases.find(phase=>phase.carrying);
     move(journeyAt(start+trip.start+pickup.start+.0001));
-    assert.ok(cargo.getWorldPosition(new T.Vector3()).distanceTo(new T.Vector3(...job.source))<.01,'pallet lifts from its actual dock height');
+    assert.ok(cargo.getWorldPosition(new T.Vector3()).distanceTo(new T.Vector3(...trip.source))<.01,'pallet lifts from its actual dock height');
     move(journeyAt(start+trip.start+trip.depositAt-.0001));
     assert.ok(cargo.getWorldPosition(new T.Vector3()).distanceTo(new T.Vector3(trip.target.x,trip.target.y,trip.target.z))<.01,'raised pickup still deposits on the vehicle deck');
   }
+  FORKLIFT_JOBS[1].trips.forEach((removed,i)=>{
+    const restored=FORKLIFT_JOBS[2].trips[i];
+    assert.ok(restored.start+restored.depositAt>removed.start+removed.pickupAt);
+    move(journeyAt(start+removed.start+removed.pickupAt-.001));assert.equal(logistics.greenStock[i].visible,true);
+    move(journeyAt(start+removed.start+removed.pickupAt+.001));assert.equal(logistics.greenStock[i].visible,false);
+    move(journeyAt(start+restored.start+restored.depositAt-.001));assert.equal(logistics.greenStock[i].visible,false);
+    move(journeyAt(start+restored.start+restored.depositAt+.001));assert.equal(logistics.greenStock[i].visible,true);
+  });
 });

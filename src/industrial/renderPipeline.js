@@ -69,7 +69,9 @@ export function createRenderPipeline(renderer,scene,camera,{ambientOcclusion=fal
   renderer.info.autoReset=false;
   let previousSamples=-1;
   function resize(width,height){
-    const ratio=renderer.getPixelRatio(),samples=ambientOcclusion?0:Math.min(4,renderer.capabilities.maxSamples);
+    // FXAA remains active in the light profile; 2× MSAA avoids the large
+    // 4× colour/depth buffers that stall integrated GPUs at desktop sizes.
+    const ratio=renderer.getPixelRatio(),samples=ambientOcclusion?0:Math.min(2,renderer.capabilities.maxSamples);
     if(samples!==previousSamples){
       for(const target of [composer.renderTarget1,composer.renderTarget2]){target.dispose();target.samples=samples;}
       previousSamples=samples;

@@ -112,17 +112,8 @@ export function createEquipmentModels(k,rotors){
     // Open mouths: a real tunnel around the moving boards, not a solid end cap.
     for(const x of [-9.8,7.8]){for(const z of [-1.7,1.7])box(.2,2.3,.22,[x,2.24,z],blue,g);box(.2,.30,3.6,[x,3.25,0],blue,g);for(let z=-1.45;z<1.5;z+=.3)box(.035,.52,.24,[x,2.97,z],gasket,g);}
   }
-  function GP(g){
-    for(const x of [-2.45,2.45])for(const z of [-1.7,1.7]){box(.25,4,.25,[x,2.2,z],enamel,g,.025);box(.6,.12,.6,[x,.26,z],cast,g);for(const dx of [-.21,.21])bolt([x+dx,.34,z+.2],g);box(.10,2.9,.06,[x,2.5,z+.16],m.polished,g);}
-    for(const z of [-1.7,1.7]){box(5.2,.4,.33,[0,4.3,z],blue,g,.03);box(5.2,.08,.09,[0,4.55,z],m.polished,g);}for(const x of [-2.45,2.45])box(.28,.35,3.5,[x,4.3,0],enamel,g,.025);
-    // This portal is the receiving/sensing station. The adjacent robot owns
-    // the vacuum pickup; a second oscillating head would occupy its work area.
-    box(.55,.16,.4,[0,4.01,0],enamel,g,.025);
-    box(.18,.06,.18,[0,3.90,0],m.black,g);
-    for(const z of [-1.7,1.7])pipe([[0,4.15,0],[0,4.15,z],[2.45,4.15,z],[2.45,.5,z]],.025,gasket,g);
-    for(const z of [-2,2])fence(.8,2.4,[-3,.25,z],g,Math.PI/2);
-    for(const x of [-2.2,2.2])fence(1.55,2.4,[x,.25,2.4],g);
-    textPlate('GP-01',1,.24,[0,4.32,1.89],g);
-  }
-  return {CR,TY,BS,GR,GK,GP,hollowHopper,gearmotor,fence,panel,handle,bolt,flange,cylinder,gauge,zinc,blue,enamel,cast,wire};
+  // The open roller receiver, sensor and two moving arms live in palletizingCell.
+  // A second GP portal would place four posts and crossbeams in their path.
+  function GP(){}
+  return {CR,TY,BS,GR,GK,GP,hollowHopper,gearmotor,fence,panel,handle,bolt,flange,cylinder,gauge,valve,zinc,blue,enamel,cast,wire};
 }

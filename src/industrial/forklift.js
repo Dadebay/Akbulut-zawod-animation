@@ -66,7 +66,7 @@ export function createForkliftBuilder(k,pallet,worker){
     for(const z of [-.49,.49])box(.055,1.15,.055,[.12,.62,z],frame,fork);
     for(const y of [.10,1.17])box(.055,.055,1.03,[.12,y,0],frame,fork);
     for(let z=-.35;z<.45;z+=.175)box(.025,1.02,.025,[.12,.64,z],frame,fork);
-    const cargo=pallet(fork,[F.cargoX-F.mastX,F.palletOffsetY,0],'panel',true);
+    const cargo=pallet(fork,[F.cargoX-F.mastX,F.palletOffsetY,0],index===1||index===2?'green':'panel',true);
     const bagCargo=pallet(fork,[F.cargoX-F.mastX,F.palletOffsetY,0],'bags',true);
     cargo.rotation.y=bagCargo.rotation.y=-Math.PI/2;
     const driver=worker({parent:g,position:[-.30,0,0],yaw:Math.PI/2,seated:true,seed:index});
@@ -74,7 +74,7 @@ export function createForkliftBuilder(k,pallet,worker){
       g.position.set(pose.x,pose.y||0,pose.z);g.rotation.y=pose.yaw;
       fork.position.y=pose.height-F.mastBaseY;mast.rotation.z=pose.tilt;
       liftRam.scale.y=Math.max(.08,(pose.height+.58)/1.8);
-      cargo.visible=pose.carrying&&pose.kind==='panel';bagCargo.visible=pose.carrying&&pose.kind==='bags';
+      cargo.visible=pose.carrying&&pose.kind!=='bags';bagCargo.visible=pose.carrying&&pose.kind==='bags';
       steering.forEach(p=>p.rotation.y=-Math.atan2((F.frontAxleX-F.rearAxleX)*pose.curvature,1+p.position.z*pose.curvature));
       ws.forEach((w,i)=>w.rotation.z=-pose.wheelTravel[i]/w.userData.radius);
       steeringWheel.rotation.y=-pose.steer*2.2;

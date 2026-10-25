@@ -40,6 +40,7 @@ export const OLD_LEFT_CAMPUS={
   parking:{west:-25.8,east:-7.4,north:-148.2,south:-141.8},
   median:{west:4,east:65,north:POND_APPROACH.z-2.7,south:POND_APPROACH.z+2.7}
 };
+export const OLD_WAREHOUSE_DOORS=[4,24,49].map(x=>({x,width:4.8,height:3.8,bottom:.08}));
 export const OLD_FRONT_COURT={
   west:OLD_LEFT_CAMPUS.fenceX,east:1,north:-118,south:-73.4,
   entryZ:-81.6,entryWidth:9.4,
@@ -65,8 +66,10 @@ export const RAIL_SIDE_LOADING={
     {west:50,east:57,north:-49.1,south:-46.3,high:'west'},
   ],
   columnXs:[5.3,14,21.5,28,36,44],columnZ:-45.15,guardWidth:.62,
-  panelBays:[{x:8,width:4.4},{x:15,width:4.4},{x:22,width:4.2},{x:29,width:4.4},{x:36,width:4.4},{x:42,width:3.8}],
-  panelRows:[-42.7,-43.85],panelDepth:.94,panelTop:.34
+  // Individual forklift-sized green loads, with an aisle between the stock
+  // and the canopy guards. Each position can visibly empty and be refilled.
+  panelBays:[-1.1,1,8,11.2,17,19,25.5,31].map(x=>({x,width:1.3})),
+  panelRows:[-42.7],panelDepth:1.1,panelTop:1.43
 };
 // Ground height under the loading deck and its two ramps; zero elsewhere.
 export function loadingDeckHeight(x,z){
@@ -120,6 +123,7 @@ export const RAW_STOP=[RAW_STOCK[0]-5.5,0,RAW_STOCK[2]];
 export const GYPSUM_SILO_TOWER={x:-13.6,z:25.3,width:5.2,depth:5.6,height:14.8};
 // Main/courtyard volumes and illustrative interior envelopes. The rear exterior
 // follows the October 21 photographs in rearServiceYard.js; its cutaway is separate.
+export const PROCESS_SERVICE_DOOR_WIDTHS=[1.55,1.55,1.35];
 export const PROCESS_BUILDINGS={
   main:{x:-29,z:5,width:17,depth:29,height:27},
   // The narrower tower and compact rear annex both sit on the same low base.

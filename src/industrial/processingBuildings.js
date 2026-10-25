@@ -1,4 +1,4 @@
-import {PROCESS_BUILDINGS as L} from './siteLayout.js';
+import {PROCESS_BUILDINGS as L,PROCESS_SERVICE_DOOR_WIDTHS} from './siteLayout.js';
 import {buildCourtyardWing} from './courtyardWing.js';
 import {buildRearServiceYard,REAR_SERVICE_YARD} from './rearServiceYard.js';
 
@@ -63,14 +63,15 @@ export function buildProcessingBuildings(k,roofs,structures){
     const x=base.x-base.width/2+base.width*fraction;
     const door=group([x-base.x,0,base.depth/2+.025],bodies.leftBase);
     door.name=`processing-service-door-${index+1}`;
-    const width=index===2?1.9:2.2,height=2.65;
+    const width=PROCESS_SERVICE_DOOR_WIDTHS[index],height=2.65;
     box(width+.14,height+.12,.055,[0,.14+height/2,0],frame,door);
     box(width,height,.035,[0,.14+height/2,.045],doorPanel,door);
     for(let y=.64;y<2.7;y+=.5)
       box(width-.04,.014,.012,[0,y,.069],doorJoint,door).castShadow=false;
     if(index===2)for(const xx of [-.55,0,.55]){
-      box(.43,.23,.018,[xx,2.18,.075],frame,door);
-      box(.35,.15,.018,[xx,2.18,.09],glass,door);
+      const scale=width/1.9;
+      box(.43*scale,.23,.018,[xx*scale,2.18,.075],frame,door);
+      box(.35*scale,.15,.018,[xx*scale,2.18,.09],glass,door);
     }
     box(.035,.25,.04,[width/2-.16,1.15,.087],coping,door);
     box(width+.18,.08,.18,[0,.10,.055],coping,door);

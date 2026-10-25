@@ -5,7 +5,8 @@ import {conveyorMotion,transferTable} from './conveyorTransfer.js';
 import {OLD_LEFT_CAMPUS} from './siteLayout.js';
 import {buildOldHallDetails} from './oldHallDetails.js';
 import {buildOldCeilingFinishing} from './oldCeilingFinishing.js';
-import {buildOldSecondCeilingLine} from './oldSecondCeilingLine.js';
+import {buildOldSecondCeilingLine,OLD_SECOND_CEILING_LINE} from './oldSecondCeilingLine.js';
+import {buildOldHallProcessDetails} from './oldHallProcessDetails.js';
 import {buildDormitoryInterior} from './dormitoryInterior.js';
 import {buildWorkOfficeInterior} from './workOfficeInterior.js';
 import {buildPavilionInterior} from './pavilionInterior.js';
@@ -25,7 +26,8 @@ export function buildOldCampusInterior(k,pallet){
   const dormitory=buildDormitoryInterior(k,root);
   const office=buildWorkOfficeInterior(k,root);
   const pavilion=buildPavilionInterior(k,root);
-  const production=group([0,0,0],root),warehouse=group([0,0,0],root);
+  // The raised loading shutters expose this interior even with the roof on.
+  const production=group([0,0,0],root),warehouse=group([0,0,0],k.scene,true);
   production.name='old-ceiling-production';warehouse.name='old-stock-hangar';
   const equipment=createEquipmentModels(k,[]),models=createArchiveEquipment(k,equipment);
   const panelStyles=createCeilingPanelStyles(k);
@@ -85,6 +87,8 @@ export function buildOldCampusInterior(k,pallet){
   machines.push(...finishing.machines);
   const secondLine=buildOldSecondCeilingLine(k,{parent:production,equipment,models,floorMark});
   machines.push(...secondLine.machines);
+  const processDetails=buildOldHallProcessDetails(k,{parent:production,equipment,models,line,secondLine:OLD_SECOND_CEILING_LINE});
+  machines.push(...processDetails.machines);
 
   const hall=OLD_LEFT_CAMPUS.warehouse;
   const warehousePanels=buildWarehousePanels(k,{parent:warehouse,equipment,models,floorMark});
@@ -144,5 +148,5 @@ export function buildOldCampusInterior(k,pallet){
     }
   }
   update(0);
-  return {root,production,warehouse,products,stock,machines,supports,details,finishing,secondLine,dormitory,office,pavilion,warehousePanels,update};
+  return {root,production,warehouse,products,stock,machines,supports,details,finishing,secondLine,processDetails,dormitory,office,pavilion,warehousePanels,update};
 }

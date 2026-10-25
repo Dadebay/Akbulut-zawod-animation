@@ -68,7 +68,9 @@ export function buildRearServiceYard(k,roofs,structures){
       if(b.roofDivider)box(.13,.7,b.depth,[w-.065,h+.35,0],wall,r);
       return g;
     }
-    box(b.width,.12,b.depth,[0,b.height+.06,0],b.roofFinish==='black'?blackRoof:roof,r);
+    // Keep the deck inside the 12 cm parapets: a full-width sheet shares
+    // their exterior faces and flickers through the white fascia at close range.
+    box(b.width-.24,.12,b.depth-.24,[0,b.height+.06,0],b.roofFinish==='black'?blackRoof:roof,r);
     if(b.roofFinish!=='black')for(let z=-b.depth/2+.4;z<b.depth/2-.2;z+=.7)
       box(b.width-.16,.018,.018,[0,b.height+.13,z],coping,r).castShadow=false;
     for(const x of [-b.width/2+.06,b.width/2-.06])box(.12,.42,b.depth,[x,b.height+.21,0],wall,r);

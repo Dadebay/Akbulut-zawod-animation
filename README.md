@@ -34,12 +34,14 @@ npm test
 npm run build:tablet
 ```
 
-Çıktı: `standalone-tablet/index.html` (yaklaşık 12 MB). Bu da tamamen
-çevrimdışı, tek HTML dosyasıdır. Aynı üretim akışı, TIR/tren, makine
-panelleri ve fotoğraflar korunur. Tablet profili 60 FPS hedefi,
-yüke göre 0,70×–1× piksel oranı, tekrar kullanılan 1024px bina gölgeleri, seyreltilmiş yolka
-geometrisi ve 2K TIR kaplaması kullanır. Hareketli araçların gölgeleri bu
-profilde kapalıdır; sahne arka plandayken çizim yapılmaz.
+Çıktı: `standalone-tablet/index.html` (yaklaşık 17 MB). Bu tamamen
+çevrimdışı, tek HTML dosyasıdır ve Windows'ta Chrome/Edge ile doğrudan açılır.
+Aynı üretim akışı, TIR/tren, makine panelleri ve fotoğraflar korunur.
+Hafif profilde gölge haritası çizilmez; statik temas gölgelemesi, 2× MSAA +
+FXAA, seyreltilmiş yolka geometrisi ve 2K TIR kaplaması kullanılır. Eko modu
+varsayılan olarak 30 FPS hedefler; geniş görünüm 30 FPS'in altına düşerse
+piksel ölçeği kademeli olarak 0,60×'e kadar iner. Yakın görünüme geçince
+tam piksel oranı geri gelir. Sahne arka plandayken çizim yapılmaz.
 
 Yerel tablet profili önizlemesi: `npm run dev:tablet` → http://127.0.0.1:5179/.
 `?perf=1` yalnız geliştirmede FPS/üçgen/çizim sayacını gösterir.
@@ -168,3 +170,12 @@ Eski tesisin uzun, yeşil çatılı holleri ve birbirine paralel çatı sıralar
 ## 18 Ekim sahne iyileştirmeleri
 
 Ayrıntılı uygulama ve doğrulama kaydı: `docs/CODEX_GOREVLER.md`. Ayarlardaki **Eko · 30 FPS** seçeneği cihazda saklanır. `?perf=1` üretim derlemesinde de FPS, çizim çağrısı, üçgen ve tarayıcı destekliyorsa JS belleğini gösterir. Varsayılan hafif model kullanılır; `?hq` tam detay profilidir. Sunucuya yükleme kullanıcı tarafından yapılır.
+
+
+## Masaüstü yaya gezintisi
+
+`Pyýada` → başlangıç noktası → `Trackpad bilen başla`. WASD ile yürüyün,
+trackpad'e basılı tutup sürükleyerek veya ok tuşlarıyla etrafa bakın. E kapıyı
+açar/kapatır; Shift hızlı yürütür; Esc gezinti menüsüne döner. Fare seçeneği de
+vardır. Eski ve yeni fabrika aynı kontrol sistemini kullanır; araç sürüşü yoktur.
+Doğrulanan kapsam: `docs/first-person-walkthrough-plan.md` belgesinin son bölümü.

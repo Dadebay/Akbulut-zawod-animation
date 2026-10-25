@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as T from 'three';
 import {createKit} from './industrial/kit.js';
 import {buildProduction} from './industrial/production.js';
+import {BOARD_DRYER} from './industrial/processPlan.js';
 import {PROCESS_PHYSICS as P,calcineGypsum,createBoardBatch,advanceBoard,boardMass,boardReady,createDrive,createProcessPhysics,HYDRATION_WATER_RATIO} from './industrial/processPhysics.js';
 const near=(a,b,tolerance=1e-8)=>assert.ok(Math.abs(a-b)<=tolerance,`${a} != ${b}`);
 
@@ -77,7 +78,7 @@ test('scene holds wet boards inside dryer, resumes after heat, pauses without mo
     let held;
     for(let i=0;i<400;i++){
       scene.physics.state.dryerAirC=25;scene.updateMotion(.1,options);
-      if(scene.physics.state.waitingForDryer){held=scene.products.find(p=>p.kind==='panel'&&p.object.visible&&Math.abs(p.object.position.x+8-34.4)<.001);if(held)break;}
+      if(scene.physics.state.waitingForDryer){held=scene.products.find(p=>p.kind==='panel'&&p.object.visible&&Math.abs(p.object.position.x+8-BOARD_DRYER.exitX)<.001);if(held)break;}
     }
     assert.ok(held,'wet product reaches the dryer photoeye');assert.equal(boardReady(held.batch),false);
     const stop=held.object.position.clone();

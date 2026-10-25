@@ -199,7 +199,7 @@ export function buildRail(k,pallet){
     for(const x of [-6.65,6.65]){box(.09,.74,2.94,[x,1.91,0],blue,g);for(const z of [-1,0,1])box(.04,.68,.065,[x+Math.sign(x)*.06,1.91,z],steel,g);coupling(g,x+Math.sign(x)*.26,Math.sign(x));}
     for(const x of [-6.1,6.1])for(const z of [-1.62,1.62]){rod([x-.22,.60,z],[x-.22,1.47,z],.025,steel,g);rod([x+.22,.60,z],[x+.22,1.47,z],.025,steel,g);for(const y of [.65,.91,1.17])rod([x-.22,y,z],[x+.22,y,z],.025,steel,g);}
     const brake=ring(.22,.028,[-6.85,2.03,.8],edge,g,'x');for(const z of [-.18,.18])rod([-6.85,2.03,.8],[-6.85,2.03+z,.8],.017,edge,g);
-    for(const x of RAIL_LAYOUT.cargoXs)trainCargo.push(pallet(g,[x,RAIL_LAYOUT.deckHeight,RAIL_LAYOUT.cargoZ],n%2?'bags':'panel',true));
+    for(const x of RAIL_LAYOUT.cargoXs)trainCargo.push(pallet(g,[x,RAIL_LAYOUT.deckHeight,RAIL_LAYOUT.cargoZ],'green',true));
   }
 
   buildTurkmenLocomotive(k,train,{z:RAIL_LAYOUT.z,bogie,coupling});

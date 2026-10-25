@@ -1,7 +1,6 @@
 import {createDust} from './dust.js';
 import * as T from 'three';
-import {clamp01,JOURNEY_STAGE as S} from '../journey.js';
-import {PROCESS_LINES,BOARD_PALLET_OUT,BAG_PALLET_OUT,routeCurve} from './processPlan.js';
+import {PROCESS_LINES,routeCurve} from './processPlan.js';
 import {buildRawInfeed} from './rawInfeed.js';
 import {rubbleAssets} from './rubble.js';
 
@@ -112,42 +111,8 @@ export function buildMaterialFlow(k,logistics){
   const silo=group([1.25,0,3.2],receiver);k.frame(2.3,2.3,1.6,silo);cyl(.2,1.1,[0,1.65,0],m.steel,silo,1.05);cyl(1.05,3.1,[0,3.75,0],m.white,silo);cyl(1.1,.15,[0,5.36,0],m.steel,silo);
   k.pipe([[1.25,6.7,0],[1.25,7.1,0],[1.25,7.1,3.2],[1.25,5.3,3.2]],.18,m.steel,receiver);k.motor([1.7,6.2,0],receiver,.7);k.ladder(5.4,1.25,4.5,receiver);
   k.textPlate('KALSIT',1.6,.35,[1.25,4.2,4.26],receiver);
-  const boardDelivery=[BOARD_PALLET_OUT,[BOARD_PALLET_OUT[0],.8,-36],[25,.8,-36]];
-  const bagDelivery=[BAG_PALLET_OUT,[-26,.8,-36],[10,.8,-36]];
-  // The pallet feeds share two straight runs. Trim each belt at a junction
-  // plate so its blue guide rails cannot cross the neighbouring carrying face.
-  const deckHalf=1.1,deckOverlap=.08,feedZ=-36,boardX=BOARD_PALLET_OUT[0];
-  function transferDeck(x,z,open){
-    const g=group([x,0,z]);
-    box(2*deckHalf+.04,.055,2*deckHalf+.04,[0,.752,0],m.steel,g);
-    box(2*deckHalf,.06,2*deckHalf,[0,.79,0],m.rubber,g);
-    for(const [side,px,pz,w,d] of [
-      ['west',-deckHalf,0,.09,2*deckHalf],['east',deckHalf,0,.09,2*deckHalf],
-      ['north',0,deckHalf,2*deckHalf,.09],['south',0,-deckHalf,2*deckHalf,.09]
-    ])if(!open.includes(side))box(w,.16,d,[px,.88,pz],m.blue,g);
-    for(const sx of [-.87,.87])for(const sz of [-.87,.87])box(.10,.67,.10,[sx,.39,sz],m.steel,g);
-  }
-  const upperJunctions=[
-    [boardX,feedZ,['west','east','north']],
-    [10,feedZ,['west','east']],
-    [25,feedZ,['west']]
-  ];
-  for(const [x,z,open] of upperJunctions)transferDeck(x,z,open);
-  const edge=deckHalf-deckOverlap;
-  belt([BAG_PALLET_OUT,[-26,.8,feedZ],[boardX-edge,.8,feedZ]],1.4);
-  belt([BOARD_PALLET_OUT,[boardX,.8,feedZ+edge]],1.7);
-  for(const [from,to] of [[boardX,10],[10,25]])
-    belt([[from+edge,.8,feedZ],[to-edge,.8,feedZ]],1.7);
-  // Packing deliveries end inside the hall. The exterior apron has no
-  // conveyor, transfer decks or sloping exits, so pallets stop on these decks.
-  const palletTravelPerStep=90;
-  const goods=[
-    {bags:false,points:boardDelivery,starts:[0,.14,.5]},
-    {bags:true,points:bagDelivery,starts:[0,.14,.28]},
-  ].map(({bags,points,starts})=>{
-    const path=makeCurve(points);
-    return {bags,path,length:path.getLength(),starts,objects:starts.map(()=>logistics.pallet(k.scene,[0,0,0],bags?'bags':'panel',true))};
-  });
+  // Packing now ends at the two robot pallets and the bag receiver owned by
+  // production.js. No separate pallet belts cross the empty third roof bay.
   // A dedicated plan view carries the image's four colours; equipment stays
   // white and blue. Instanced arrows show direction without extra UI text.
   const traces=group([0,0,0],k.scene,true),arrowGeo=new T.ConeGeometry(.23,.8,6),arrowPose=new T.Object3D(),up=new T.Vector3(0,1,0);
@@ -172,13 +137,6 @@ export function buildMaterialFlow(k,logistics){
       }
     }));
     infeed.update(j,{showLines});
-    // The interior cell owns its real board stack. Journey illustrations must
-    // not spawn a second loaded pallet through the robot's receiving area.
-    goods.forEach(({bags,path,length,starts,objects})=>objects.forEach((o,i)=>{
-      const distance=(j.progress-starts[i])*palletTravelPerStep,t=distance/length;
-      o.visible=(bags||!showInterior)&&j.index===S.pack&&t>=0&&t<=1;
-      if(o.visible){o.position.copy(path.getPointAt(t));const d=path.getTangentAt(t);o.rotation.y=-Math.atan2(d.z,d.x);}
-    }));
     const quarryPose=landscape.update(j);
     if(j.index===2)logistics.hauler.dischargePoint.getWorldPosition(drop);else landscape.bucketTip.getWorldPosition(drop);
     logistics.hauler.bed.updateWorldMatrix(true,false);loadSurface.set(2.5,.3+j.rawLoad*.65,0).applyMatrix4(logistics.hauler.bed.matrixWorld);
