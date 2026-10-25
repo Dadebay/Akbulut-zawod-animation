@@ -27,7 +27,7 @@ export function buildInteriorEquipment(k,{root,equipment,machines,network}){
   function install(id,kind,zone,position,options={},references=[],yaw=0,scale=1,parent=root){
     const g=group(parent===root?localPoint(position):position,parent);
     g.name=`interior-${id}`;g.rotation.y=yaw;g.scale.setScalar(scale);
-    g.userData.equipment={id,kind,zone,references};
+    g.userData.equipment={id,kind,zone,references};g.userData.equipmentOptions=options;
     models.builders[kind](g,zone,options);
     units[id]=g;
     inventory.push({id,kind,zone,position,scale,references});

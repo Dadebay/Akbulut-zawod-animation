@@ -17,6 +17,7 @@ export function createArchiveEquipment(k,equipment){
     return object;
   }
   function feet(w,d,h,g){
+    g=group([0,0,0],g);g.userData.cadRetain=true;
     for(const x of [-w/2,w/2])for(const z of [-d/2,d/2]){
       box(.13,h,.13,[x,h/2,z],dark,g);box(.38,.08,.38,[x,.04,z],steel,g);
     }
@@ -106,7 +107,7 @@ export function createArchiveEquipment(k,equipment){
     for(const x of [-width/2,width/2])box(.08,height*.25,depth,[x,height*.875,0],steel,g);
     for(const z of [-depth/2,depth/2])for(const x of [-width*.30,width*.30])box(.06,height*.25,.1,[x,height*.875,z],dark,g);
     if(grate)for(let x=-width/2+.1;x<width/2;x+=.22)box(.045,.06,depth,[x,height,0],dark,g);
-    const outlet=group([0,height*.35-.7,0],g);outlet.scale.setScalar(.5);valve(outlet,zone,{internal:true});
+    const outlet=group([0,height*.35-.7,0],g);outlet.userData.cadRetain=true;outlet.scale.setScalar(.5);valve(outlet,zone,{internal:true});
     if(weigh)for(const x of [-width/2,width/2])for(const z of [-depth/2,depth/2])box(.34,.2,.28,[x,height*.75,z],m.blue,g);
     port(g,'in',[0,height,0],[0,1,0],.28,'solid',{open:true});
     port(g,'out',[0,height*.35-.635,0],[0,-1,0],.21);
@@ -130,7 +131,7 @@ export function createArchiveEquipment(k,equipment){
     for(const y of [height*.525,height*.845])flange(1.10,[0,y,0],g);
     cyl(.34,.7,[0,height*.9,0],steel,g);flange(.41,[0,height*.96,0],g);
     cylinder(.35,1.1,[.85,height*.73,0],steel,g,'x');flangeX(.42,1.42,height*.73,0,g);
-    const v=group([0,.25,0],g);v.scale.setScalar(.6);valve(v,zone,{internal:true});
+    const v=group([0,.25,0],g);v.userData.cadRetain=true;v.scale.setScalar(.6);valve(v,zone,{internal:true});
     // The cone is joined to its rotary discharge, not suspended over it.
     cyl(.16,Math.max(.05,height*.175-1.06),[0,(height*.175+1.06)/2,0],steel,g);
     port(g,'in',[1.42,height*.73,0],[1,0,0],.35,'air');
@@ -160,7 +161,7 @@ export function createArchiveEquipment(k,equipment){
     cylinder(.16,3.15,[0,height+.45,.7],steel,g,'x');
     const shaker=moving(group([0,height+.05,-.7],g),zone,'vibrate','y',15,.025);
     box(2.4,.15,.25,[0,0,0],steel,shaker);
-    const outlet=group([0,.05,0],g);outlet.scale.setScalar(.5);valve(outlet,zone,{internal:true});
+    const outlet=group([0,.05,0],g);outlet.userData.cadRetain=true;outlet.scale.setScalar(.5);valve(outlet,zone,{internal:true});
     cylinder(.32,.85,[1.85,2.6,0],steel,g,'x');
     port(g,'in',[2.275,2.6,0],[1,0,0],.32,'air');
     port(g,'air',[0,height-.5,-1.4],[0,0,-1],.32,'air',{nozzle:.5});

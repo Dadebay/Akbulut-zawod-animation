@@ -1,0 +1,183 @@
+{
+  "version": 1,
+  "asset": "models/cad-interiors.glb",
+  "sourceModel": "FabrikaGenelMontaj.iam",
+  "mappingSha256": "15de9690e783f5e82ccb577f244fe1f5352a31b9e0980c1e72783831c6ca2ad1",
+  "geometrySha256": "ea215a27f6e013cf95702f0b8d8d6e29564f2a515cc3347350112df0d2bf4aba",
+  "nativeSource": {
+    "source": "FabrikaGenelMontaj.dwfx",
+    "sha256": "50f09d90d5007baa3d5415e3cf98922f1892f5c17a8c5602fa6410652a6b0bfa"
+  },
+  "geometryMethod": "Full-resolution DWFX surfaces; attribute-aware mesh simplification, without the handoff preview decimation.",
+  "placement": "Source equipment shapes adapted to existing rooms; not surveyed site coordinates or live asset identities.",
+  "models": {
+    "silo": {
+      "code": "1-003-250",
+      "objectId": "_Z75Kl_0qEO95PQ3kHCt6Q",
+      "label": "Silo",
+      "assembly": "Gypsum_Calcination:1",
+      "size": [
+        3.079594850540161,
+        7.667999267578125,
+        2.9531893730163574
+      ],
+      "sourceTriangles": 115360,
+      "triangles": 27324,
+      "error": 0.0019528024131432176
+    },
+    "tallSilo": {
+      "code": "1-004-390",
+      "objectId": "SaH5Kl_0qEO95PQ3kHCt6Q",
+      "label": "Silo",
+      "assembly": "GypsumGrindingClassifying:1",
+      "size": [
+        3.6609725952148438,
+        21.915958404541016,
+        3.7590103149414062
+      ],
+      "sourceTriangles": 228408,
+      "triangles": 29224,
+      "error": 0.001965896226465702
+    },
+    "hopper": {
+      "code": "1-004-330",
+      "objectId": "4qH5Kl_0qEO95PQ3kHCt6Q",
+      "label": "Bunker",
+      "assembly": "GypsumGrindingClassifying:1",
+      "size": [
+        3.0199995040893555,
+        3.3349990844726562,
+        3.020000457763672
+      ],
+      "sourceTriangles": 52044,
+      "triangles": 17846,
+      "error": 0.0015431344509124756
+    },
+    "weighHopper": {
+      "code": "1-005-600",
+      "objectId": "1Mz5Kl_0qEO95PQ3kHCt6Q",
+      "label": "Tartım Bunkeri",
+      "assembly": "MixingUnit:1",
+      "size": [
+        2.7562484741210938,
+        2.806001663208008,
+        2.6282730102539062
+      ],
+      "sourceTriangles": 39468,
+      "triangles": 17983,
+      "error": 0.0007656297530047596
+    },
+    "filter": {
+      "code": "1-004-490",
+      "objectId": "ZKH5Kl_0qEO95PQ3kHCt6Q",
+      "label": "Jet Pulse Filtre",
+      "assembly": "GypsumGrindingClassifying:1",
+      "size": [
+        3.87447452545166,
+        7.65247917175293,
+        2.3765411376953125
+      ],
+      "sourceTriangles": 93818,
+      "triangles": 18542,
+      "error": 0.001986175077036023
+    },
+    "roundFilter": {
+      "code": "1-003-257",
+      "objectId": "Ep_5Kl_0qEO95PQ3kHCt6Q",
+      "label": "Silo Üstü Filtre",
+      "assembly": "Gypsum_Calcination:1",
+      "size": [
+        1.6576244831085205,
+        2.305999755859375,
+        1.0500001907348633
+      ],
+      "sourceTriangles": 2032,
+      "triangles": 2032,
+      "error": 0
+    },
+    "cyclone": {
+      "code": "1-004-367",
+      "objectId": "5qD5Kl_0qEO95PQ3kHCt6Q",
+      "label": "Siklon (Helisel Tip)",
+      "assembly": "GypsumGrindingClassifying:1",
+      "size": [
+        2.2919998168945312,
+        6.119320869445801,
+        2.2919998168945312
+      ],
+      "sourceTriangles": 21416,
+      "triangles": 18000,
+      "error": 0.00011205871123820543
+    },
+    "fan": {
+      "code": "1-003-275",
+      "objectId": "M5_5Kl_0qEO95PQ3kHCt6Q",
+      "label": "Fan",
+      "assembly": "Gypsum_Calcination:1",
+      "size": [
+        2.308499813079834,
+        1.748999834060669,
+        1.2169997692108154
+      ],
+      "sourceTriangles": 3362,
+      "triangles": 3362,
+      "error": 0
+    },
+    "elevator": {
+      "code": "1-004-370",
+      "objectId": "OqH5Kl_0qEO95PQ3kHCt6Q",
+      "label": "Kovalı Elevatör",
+      "assembly": "GypsumGrindingClassifying:1",
+      "size": [
+        2.5009994506835938,
+        32.957998633384705,
+        2.7894973754882812
+      ],
+      "sourceTriangles": 741694,
+      "triangles": 20950,
+      "error": 0.0019978389609605074
+    },
+    "hammerMill": {
+      "code": "1-004-325",
+      "objectId": "5aH5Kl_0qEO95PQ3kHCt6Q",
+      "label": "Çekiçli Değirmen",
+      "assembly": "GypsumGrindingClassifying:1",
+      "size": [
+        3.116000175476074,
+        5.483856201171875,
+        3.7080955505371094
+      ],
+      "sourceTriangles": 4658,
+      "triangles": 4658,
+      "error": 0
+    },
+    "mixer": {
+      "code": "1-005-605",
+      "objectId": "48z5Kl_0qEO95PQ3kHCt6Q",
+      "label": "Kuru Karışım Mikseri",
+      "assembly": "MixingUnit:1",
+      "size": [
+        2.671234130859375,
+        2.6321849822998047,
+        5.543998718261719
+      ],
+      "sourceTriangles": 458485,
+      "triangles": 38988,
+      "error": 0.001991384895518422
+    },
+    "burner": {
+      "code": "1-003-260",
+      "objectId": "FZ_5Kl_0qEO95PQ3kHCt6Q",
+      "label": "Brülör ve Gaz Armatürleri",
+      "assembly": "Gypsum_Calcination:1",
+      "size": [
+        1.4955005645751953,
+        1.6955008506774902,
+        0.9027378559112549
+      ],
+      "sourceTriangles": 55245,
+      "triangles": 26896,
+      "error": 0.001952966907992959
+    }
+  }
+}

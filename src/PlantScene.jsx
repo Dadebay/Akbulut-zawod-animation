@@ -23,6 +23,7 @@ import {ZONES,STATUSES} from './data.js';
 import {createRenderClock,createResolutionBudget,profilePixelRatio} from './renderBudget.js';
 import {POND,OLD_ENTRANCE,OLD_PAVILION,OLD_RAIL_DORMITORY as DORM,OLD_WORK_OFFICE as OFFICE,RAIL_ACCESS_CROSSING as RAIL_GATE,PRODUCTION_ENTRANCE as ENTRY} from './industrial/siteLayout.js';
 import {quarryPoint} from './industrial/quarryLayout.js';
+import {prepareCadInteriors} from './industrial/cadInteriors.js';
 import {createWalkWorld} from './industrial/walkWorld.js';
 import {createWalkController} from './industrial/walkController.js';
 import {WALK_STARTS} from './industrial/walkLayout.js';
@@ -90,6 +91,7 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
     const oldInterior=buildOldCampusInterior(k,logistics.pallet);
     const birds=buildBirds(k),services=buildFactoryServices(k,production);
     const lighting=buildCampusLighting(k,{logistics,loader:materialFlow.loader,production,excavator:landscape});
+    const cadInteriors=prepareCadInteriors(k,production.root);
     const walkWorld=TABLET?null:createWalkWorld(k,{site,production,oldInterior,logistics,materialFlow});
     const walker=walkWorld?createWalkController(camera,renderer.domElement,walkWorld,{onState:setWalkStatus,onInspect:id=>state.current.onSelect(id)}):null;
     if(walkWorld){
@@ -112,6 +114,12 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
     scene.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false;}});
     updateBatches=batchAssemblies(k);
     const stopTruckLoad=logistics.loadTruckModels(()=>{dirty=true;});
+    container.dataset.cadInteriors='loading';
+    const stopCadLoad=cadInteriors.load(count=>{
+      const updateExisting=updateBatches,updateCad=batchAssemblies(k,{roots:cadInteriors.renderRoots});
+      updateBatches=()=>{updateExisting();updateCad();};
+      container.dataset.cadInteriors=String(count);dirty=true;
+    },error=>{container.dataset.cadInteriors='fallback';console.warn('CAD interiors unavailable; keeping existing equipment.',error);});
     const anchors=[];
     STATIONS.forEach(s=>{const label=document.createElement('button');label.className='scene-label industrial-label';label.innerHTML=`<span class="scene-dot"></span><strong>${s.id}-001</strong>`;label.setAttribute('aria-label',`${ZONES.find(z=>z.id===s.id).name}: AKB-${s.id}-001`);label.onclick=()=>onSelect(`AKB-${s.id}-001`);labels.current.appendChild(label);anchors.push({label,point:new T.Vector3(s.pos[0]+8,s.height,s.pos[2]-25),zone:s.id});});
     SITE_VIEWS.forEach(preset=>{
@@ -255,7 +263,7 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
       pipeline.update(distance,s.night);pipeline.render();dirty=false;
     }
     frame=requestAnimationFrame(animate);
-    return()=>{walker?.dispose();stopTruckLoad();cancelAnimationFrame(frame);document.removeEventListener('visibilitychange',resetClock);observer.disconnect();controls.removeEventListener('start',stopTransition);controls.dispose();k.dispose();environment.dispose();sun.shadow.dispose();pipeline.dispose();renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();anchors.forEach(a=>a.label.remove());api.current=null;};
+    return()=>{walker?.dispose();stopTruckLoad();stopCadLoad();cancelAnimationFrame(frame);document.removeEventListener('visibilitychange',resetClock);observer.disconnect();controls.removeEventListener('start',stopTransition);controls.dispose();k.dispose();environment.dispose();sun.shadow.dispose();pipeline.dispose();renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();anchors.forEach(a=>a.label.remove());api.current=null;};
   },[]);
   return <div className="plant-scene" ref={host}><div className="scene-labels" ref={labels}/>{walking&&!failed&&<>
     {walkStatus.locked?<div className="walk-hud"><span className="walk-location">{walkStatus.region}</span><span className="walk-reticle" aria-hidden="true"/>{walkStatus.interaction&&<span className="walk-interaction"><kbd>E</kbd>{walkStatus.interaction}</span>}<span className="walk-help"><kbd>W A S D</kbd> Ýöre <kbd>Shift</kbd> Çalt <kbd>← ↑ ↓ →</kbd> Bak <kbd>E</kbd> Aç / ýap <kbd>Esc</kbd> Menýu</span></div>:!selected&&<div className="walk-menu-shade"><div className="walk-menu" role="dialog" aria-modal="true" aria-labelledby="walk-title">

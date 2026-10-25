@@ -31,11 +31,11 @@ export function poolSurfaces(k){
 
 // Keep each cell/assembly as an independently culled submesh, submitted in one
 // multi-draw per material. Transform handles stay in the original hierarchy.
-export function batchAssemblies(k){
+export function batchAssemblies(k,{roots=[k.scene]}={}){
   // optimize() creates assembly-local meshes; resolve their world transforms before baking.
   k.scene.updateMatrixWorld(true);
   const groups=new Map(),batches=[],empty=k.trackGeometry(new T.BufferGeometry());
-  k.scene.traverse(o=>{
+  for(const root of roots)root.traverse(o=>{
     if(!o.isMesh||o.isInstancedMesh||o.isBatchedMesh||Array.isArray(o.material)||o.material.transparent)return;
     const layout=Object.entries(o.geometry.attributes).sort(([a],[b])=>a.localeCompare(b)).map(([n,a])=>`${n}:${a.itemSize}`).join('|');
     const key=`${o.material.uuid}:${o.castShadow}:${o.receiveShadow}:${o.renderOrder}:${layout}`;

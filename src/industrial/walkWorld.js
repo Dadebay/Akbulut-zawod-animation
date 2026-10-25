@@ -135,6 +135,15 @@ export function createWalkWorld(k,{site,production,oldInterior,logistics,materia
     physics.add(body);
   }
   k.scene.traverse(addPrimitive);
+  // CAD bodies arrive after construction/batching. Reserve their fitted local
+  // envelope now so loading a detailed shell never leaves it walk-through.
+  production.root.traverse(machine=>{
+    const local=machine.userData.cadCollision;if(!local)return;
+    const b=local.clone().applyMatrix4(machine.matrixWorld),centre=b.getCenter(vector());
+    const scale=machine.getWorldScale(vector()),size=dimensions(local).multiply(scale);
+    const yaw=new T.Euler().setFromQuaternion(machine.getWorldQuaternion(new T.Quaternion()),'YXZ').y;
+    physics.add({x:centre.x,z:centre.z,hx:size.x/2,hz:size.z/2,bottom:b.min.y,top:b.max.y,yaw,walkable:false});
+  });
   // The loading ramp is an extruded profile, not a construction box.
   for(const r of RAIL_SIDE_LOADING.ramps)physics.addSurface({x:(r.west+r.east)/2,z:(r.north+r.south)/2,hx:(r.east-r.west)/2,hz:(r.south-r.north)/2,top:.7,heightAt:loadingDeckHeight});
   // Prevent walking into the pond or beyond the virtual campus.

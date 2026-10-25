@@ -7,8 +7,9 @@ const up=new T.Vector3(0,1,0);
 // a pipe from its flange. They are resolved before the static mesh batching pass.
 export function machinePort(k,machine,name,position,direction,radius,medium,{nozzle=0,open=false}={}){
   const p=new T.Vector3(...position),n=new T.Vector3(...direction).normalize();
-  if(nozzle)k.rod(p.clone().addScaledVector(n,-nozzle).toArray(),position,radius,k.m.steel,machine);
+  if(nozzle)k.rod(p.clone().addScaledVector(n,-nozzle).toArray(),position,radius,k.m.steel,machine).userData.cadRetain=true;
   const collar=k.ring(radius+.045,.035,position,k.m.steel,machine);
+  collar.userData.cadRetain=true;
   collar.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),n);
   const port={machine,name,position:p,direction:n,radius,medium,open,connected:false};
   (machine.userData.ports??={})[name]=port;
@@ -111,6 +112,7 @@ export function createEquipmentConnections(k,root,equipment,rotors){
     root.traverse(g=>Object.values(g.userData.ports||{}).forEach(port=>{
       if(port.connected||port.open)return;
       const cap=k.cyl(port.radius,.035,port.position.toArray(),k.m.steel,g);
+      cap.userData.cadRetain=true;
       cap.quaternion.setFromUnitVectors(up,port.direction);
     }));
   }

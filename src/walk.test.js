@@ -5,6 +5,7 @@ import {createWalkPhysics,walkDelta,WALK_BODY} from './industrial/walkPhysics.js
 import {createDoorMotion,buildWalkDoor} from './industrial/doors.js';
 import {subtractWalkBox,createWalkWorld} from './industrial/walkWorld.js';
 import {WALK_BUILDINGS,WALK_STARTS,portalPose} from './industrial/walkLayout.js';
+import {prepareCadInteriors} from './industrial/cadInteriors.js';
 import {createKit} from './industrial/kit.js';
 import {buildProduction} from './industrial/production.js';
 import {buildSite} from './industrial/site.js';
@@ -70,6 +71,7 @@ test('both campuses have a clear entrance for every registered building',()=>fix
   const production=buildProduction(k);production.root.position.set(8,0,-25);
   const logistics=buildLogistics(k,[]),site=buildSite(k),oldInterior=buildOldCampusInterior(k,logistics.pallet);
   const materialFlow=buildMaterialFlow(k,logistics);production.root.attach(materialFlow.enclosed);
+  prepareCadInteriors(k,production.root);
   const world=createWalkWorld(k,{site,production,oldInterior,logistics,materialFlow});world.setActive(true);
   assert.equal(world.buildings.length,WALK_BUILDINGS.length);assert.ok(world.doors.length>=55);
   for(const start of WALK_STARTS){const p=V(...start.position);p.y=world.physics.floorAt(p,p.y+.6);assert.ok(world.physics.clear(p),`${start.id}: clear spawn ${p.toArray()}`);}

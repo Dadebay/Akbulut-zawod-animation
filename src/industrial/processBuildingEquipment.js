@@ -18,7 +18,7 @@ export function buildProcessBuildingEquipment(k,{root,models,equipment,units,inv
     const g=group(localPoint(position),root);
     g.name=`interior-${id}`;g.rotation.y=yaw;g.scale.setScalar(scale);
     const entry={id,kind,zone:'BS',building,position,scale,sourceFiles:reference?[PROCESS_EQUIPMENT_REFERENCES[reference]]:[],illustrative:!reference};
-    g.userData.equipment=entry;inventory.push(entry);units[id]=g;
+    g.userData.equipment=entry;g.userData.equipmentOptions=options;inventory.push(entry);units[id]=g;
     (kind==='process-silo'?silo:models.builders[kind])(g,'BS',options);
     return g;
   }
@@ -47,10 +47,10 @@ export function buildProcessBuildingEquipment(k,{root,models,equipment,units,inv
     cyl(radius,.25,[0,top+.125,0],steel,g,radius*.24);
     for(let y=coneTop;y<top+.05;y+=1.8)ring(radius+.025,.035,[0,y,0],steel,g);
     for(const x of [-radius*.78,radius*.78])for(const z of [-radius*.78,radius*.78]){
-      box(.12,coneTop,.12,[x,coneTop/2,z],frame,g);
-      box(.25,.12,.25,[x,.07,z],m.blue,g);
+      box(.12,coneTop,.12,[x,coneTop/2,z],frame,g).userData.cadRetain=true;
+      box(.25,.12,.25,[x,.07,z],m.blue,g).userData.cadRetain=true;
     }
-    const valve=group([0,.15,0],g);valve.scale.setScalar(.6);
+    const valve=group([0,.15,0],g);valve.userData.cadRetain=true;valve.scale.setScalar(.6);
     models.builders.valve(valve,zone,{internal:true});
     cyl(.21,.15,[0,.99,0],steel,g);
     cyl(.16,.35,[0,height-.175,0],steel,g);
