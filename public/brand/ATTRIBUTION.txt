@@ -1,0 +1,5 @@
+Turkmenistan flag texture: turkmenistan-flag.webp
+Source: https://commons.wikimedia.org/wiki/File:Flag_of_Turkmenistan.svg
+Original: https://upload.wikimedia.org/wikipedia/commons/1/1b/Flag_of_Turkmenistan.svg
+Open Clip Art / Wikimedia Commons, CC0 1.0 / public domain.
+Converted to a 900 x 600 WebP texture for the three administration flagpoles.

@@ -4,6 +4,7 @@ import {buildProcessTower} from './processTower.js';
 import {JOURNEY_STAGE as S} from '../journey.js';
 import {createArchiveEquipment} from './archiveEquipment.js';
 import {buildProcessBuildingEquipment} from './processBuildingEquipment.js';
+import {buildServiceAnnexEquipment} from './serviceAnnexEquipment.js';
 import {createCeilingPanelStyles} from './ceilingPanelStyles.js';
 
 // The first leg takes a dry sheet off the supply pallet into the finishing magazine.
@@ -13,6 +14,7 @@ export const INTERIOR_VIEWS=[
   {id:'dosing',name:'Köp gatly önümçilik binasy',zone:'BS',position:[-73,40,58],target:[-23,11,7]},
   {id:'bagging',name:'Haltalama enjamlary',zone:'GR',position:[-47,17,-40],target:[-35,2.2,-20]},
   {id:'utilities',name:'Silo, süzgüç we sowadyş binasy',zone:'BS',position:[32,35,51],target:[-8,8,11]},
+  {id:'services',name:'Hyzmat we kompressor otaglary',zone:'BS',position:[13,23,6],target:[-11.2,1.7,-4]},
   {id:'finishing',name:'Gaplama we paletleme',zone:'GP',position:[57,20,-41],target:[43,2,-22]},
 ];
 
@@ -349,5 +351,6 @@ export function buildInteriorEquipment(k,{root,equipment,machines,network}){
   join('air-receiver','out','pulse-filter','cleaningAir',[[-1.1,2.7,13],[-1.1,4.9,13],[-20,4.9,13],[-20,25.155,13],[-20,25.155,9.59]],'duct','air');
 
   buildProcessBuildingEquipment(k,{root,models,equipment,units,inventory,network});
+  buildServiceAnnexEquipment(k,{root,models,equipment,units,inventory,network});
   return {inventory,units,update:models.update};
 }

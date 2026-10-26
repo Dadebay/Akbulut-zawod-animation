@@ -5,6 +5,9 @@ import {RAIL_LAYOUT} from './railLayout.js';
 
 // Photo-based presentation coordinates, not a surveyed construction plan.
 export const OUTER_RAIL_Z=49;
+// The administration facade overlaps the hall roof, but its work rooms stop
+// at the production hall's west wall. Equipment stays east of that wall.
+export const NEW_ADMINISTRATION={x:-61.2,z:-25,width:8.6,depth:25.6,height:7.5,entrance:5.6,ground:.36,productionWallX:-58};
 export function outerRailPath(){const path=new T.CurvePath();path.add(new T.LineCurve3(new T.Vector3(-700,0,OUTER_RAIL_Z),new T.Vector3(100,0,OUTER_RAIL_Z)));path.add(new T.CatmullRomCurve3([[100,0,OUTER_RAIL_Z],[150,1.2,OUTER_RAIL_Z],[205,4.6,OUTER_RAIL_Z+2],[250,5,OUTER_RAIL_Z+2],[330,6.5,OUTER_RAIL_Z+2],[450,10,OUTER_RAIL_Z+2],[560,13,OUTER_RAIL_Z+2]].map(p=>new T.Vector3(...p)),false,'catmullrom',.12));return path;}
 // Turn the reservoir footprint beside the avenue, retaining its surface area
 // and leaving the straight approach and the railway-side street clear.
@@ -21,6 +24,9 @@ export const NEW_FACTORY_ENTRANCE={x:-138.25,fenceX:-137,southFenceX:-137,z:-2,l
 // The road in front of the gate continues west across the avenue, as in the reference views.
 export const NEW_ENTRANCE_ROAD={west:-205,east:-143,z:-2,width:9.4,outer:{x:-205,north:-232,south:201,width:7.4}};
 export const NEW_ENTRANCE_MEDIAN={west:NEW_ENTRANCE_ROAD.west+9,east:NEW_ENTRANCE_ROAD.east-12,z:NEW_ENTRANCE_ROAD.z,width:1.05};
+// The lawn meets the inside faces of both boundary walls.
+export const FRONT_WOODLAND={west:NEW_FACTORY_ENTRANCE.fenceX+.125,east:-86.5,north:4.5,south:39.875,cornerRadius:3.5};
+export const DINING_STREET={west:FRONT_WOODLAND.east,east:-78,north:3.5,south:39.5};
 export function oldEntranceClearance(x,z){
   const c=Math.cos(OLD_ENTRANCE_YAW),s=Math.sin(OLD_ENTRANCE_YAW);
   const distance=(cx,cz,halfX,halfZ)=>{
@@ -120,7 +126,7 @@ export const RAW_STOCK=[
 ];
 export const RAW_STOP=[RAW_STOCK[0]-5.5,0,RAW_STOCK[2]];
 // Tall white auxiliary tower directly beside the exposed corner silo.
-export const GYPSUM_SILO_TOWER={x:-13.6,z:25.3,width:5.2,depth:5.6,height:14.8};
+export {GYPSUM_SILO_TOWER} from './processPlan.js';
 // Main/courtyard volumes and illustrative interior envelopes. The rear exterior
 // follows the October 21 photographs in rearServiceYard.js; its cutaway is separate.
 export const PROCESS_SERVICE_DOOR_WIDTHS=[1.55,1.55,1.35];
@@ -154,6 +160,9 @@ export const TRUCK_WEIGHBRIDGE={
   x:92.5,z:-21.4,width:3.4,length:14,deckHeight:.2,rampLength:3.5,flare:2.6,
   boothX:95.6,boothZ:-21.4,boothWidth:1.6,boothDepth:1.8,boothHeight:2.5
 };
+// Long gravel verge along the east boundary, beyond the scale's south ramp.
+// Its inner edge stays outside the loader's manoeuvring lane.
+export const WEIGHBRIDGE_GRAVEL={west:89.2,east:96.65,north:-6,south:39.45,radius:5.5};
 export const GYPSUM_STOCKYARD={
   west:17,east:75.5,north:-4.5,south:30.1,radius:3.2,
   // Centre the three rows within the paving, clear of the receiving-hall wall.

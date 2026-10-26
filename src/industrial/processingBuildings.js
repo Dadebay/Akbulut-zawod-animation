@@ -6,7 +6,7 @@ import {buildRearServiceYard,REAR_SERVICE_YARD} from './rearServiceYard.js';
 export function buildProcessingBuildings(k,roofs,structures){
   const {box,group,material,textPlate}=k;
   const wall=material('#f4f5f3',.04,.82),seam=material('#cdd2cf',.10,.78);
-  const roof=material('#abb3b5',.08,.85),coping=material('#d8dcda',.24,.61);
+  const roof=material('#abb3b5',.08,.85,{surface:'roofSheet'}),coping=material('#d8dcda',.24,.61);
   const glass=material('#304a52',.45,.28),frame=material('#c4cdcb',.32,.57);
   const bodies={};
   const high=REAR_SERVICE_YARD.buildings.find(b=>b.name==='process-high-roof-block');

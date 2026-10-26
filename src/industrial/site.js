@@ -4,6 +4,8 @@ import {buildRoads} from './roads.js';
 import {buildRoadMedian} from './roadMedian.js';
 import {buildOldCampus} from './oldCampus.js';
 import {buildNewFrontCourt} from './newFrontCourt.js';
+import {buildFrontBuildings} from './frontBuildings.js';
+import {buildAdministrationInterior} from './administrationInterior.js';
 import {buildNewFactoryEntrance} from './newFactoryEntrance.js';
 import {buildProcessingBuildings} from './processingBuildings.js';
 import {buildProductionEntrance} from './productionEntrance.js';
@@ -16,21 +18,21 @@ import {buildCornerSilo} from './rawInfeed.js';
 import {buildGypsumReceivingHall} from './gypsumReceivingHall.js';
 import {buildBoulderPiles} from './rubble.js';
 import {buildWeighbridge} from './weighbridge.js';
+import {applyFactoryPaving} from './factoryPaving.js';
 import {MAIN_ROAD_X} from './trafficLayout.js';
-import {GYPSUM_STOCKYARD as STOCKYARD,LOADER_STOCK,NEW_FACTORY_ENTRANCE as ENTRANCE,NEW_ENTRANCE_MEDIAN,OUTER_RAIL_Z,RAIL_ACCESS_CROSSING,RAIL_SIDE_LOADING as LOADING} from './siteLayout.js';
+import {GYPSUM_STOCKYARD as STOCKYARD,LOADER_STOCK,NEW_FACTORY_ENTRANCE as ENTRANCE,NEW_ENTRANCE_MEDIAN,FRONT_WOODLAND,OUTER_RAIL_Z,RAIL_ACCESS_CROSSING,RAIL_SIDE_LOADING as LOADING} from './siteLayout.js';
 
 // Proportions traced from user-supplied architectural renders 220–227.
 // These presentation dimensions are not survey measurements.
 export function buildSite(k){
   const {m,box,cyl,rod,group,mesh,material,textPlate}=k;
+  applyFactoryPaving(m.road);
   const roofs=group([0,0,0],k.scene,true),structures=group([0,0,0],k.scene,true),plants=createVegetation(k);
   const white=material('#e1e4e8',.1,.64),roof=material('#8795a5',.22,.7),roofDark=material('#6f8092',.25,.65),glass=material('#244950',.65,.25),paving=material('#7a838c',0,.95),asphalt=m.road,trim=material('#b9c1ca',.3,.65),greenRoof=material('#376955',.28,.65);
   const canvas=document.createElement('canvas');canvas.width=canvas.height=512;const ctx=canvas.getContext('2d');let seed=5;const pixels=ctx.createImageData(512,512);for(let i=0;i<pixels.data.length;i+=4){seed=(seed*1664525+1013904223)>>>0;const n=185+(seed%40);pixels.data[i]=pixels.data[i+1]=pixels.data[i+2]=n;pixels.data[i+3]=255;}ctx.putImageData(pixels,0,0);const rough=k.trackTexture(new T.CanvasTexture(canvas));rough.wrapS=rough.wrapT=T.RepeatWrapping;rough.repeat.set(45,24);paving.map=rough;
-  box(2400,.2,2200,[60,-.8,-28],material('#b4ad9d',0,1));box(234,.28,91,[-20,-.28,-5],paving);
+  box(2400,.2,2200,[60,-.8,-28],material('#b4ad9d',0,1));box(234,.28,91,[-20,-.28,-5],asphalt);
   buildRoads(k);buildOuterRail(k);buildRawYard(k);
   buildRoadMedian(k,plants,{...NEW_ENTRANCE_MEDIAN,lit:true,name:'gate-road-median'});
-  for(let x=-136;x<98;x+=6)box(.025,.01,90,[x,-.13,-5],m.dark);
-  for(let z=-50;z<41;z+=6)box(233,.01,.025,[-20,-.13,z],m.dark);
   function fence(a,b){const A=new T.Vector3(...a),B=new T.Vector3(...b),len=A.distanceTo(B),mid=A.clone().add(B).multiplyScalar(.5),g=group(mid.toArray());g.rotation.y=-Math.atan2(B.z-A.z,B.x-A.x);box(len,.55,.25,[0,.28,0],white,g);for(let x=-len/2;x<=len/2;x+=4){box(.3,1.85,.3,[x,.9,0],white,g);box(.43,.16,.43,[x,1.87,0],white,g);}for(const y of [.65,1.55])box(len,.08,.08,[0,y,0],white,g);for(let x=-len/2;x<len/2;x+=.4)box(.035,.85,.035,[x,1.1,0],white,g);}
   const southFenceX=ENTRANCE.southFenceX,southGateZ=ENTRANCE.z+ENTRANCE.left*ENTRANCE.widthScale;
   const railGateWest=RAIL_ACCESS_CROSSING.x-RAIL_ACCESS_CROSSING.width/2;
@@ -80,6 +82,24 @@ export function buildSite(k){
     const r=box(132,.14,5.05,[8,8.8,z+side*2.42],side>0?roof:roofDark,roofs);r.rotation.x=side*Math.atan(1.5/4.83);
     for(let x=-58;x<74;x+=6){const stripe=box(.32,.04,5.06,[x,8.90,z+side*2.42],glass,roofs);stripe.rotation.x=r.rotation.x;}
     for(let x=-58;x<74;x+=.8){const rib=box(.035,.035,5.05,[x,8.91,z+side*2.42],trim,roofs);rib.rotation.x=r.rotation.x;}
+  }
+  // The reference has one narrow, raised roof strip along the stockyard-side
+  // ridge. Its low white rim encloses a recessed grey surface, stopping short
+  // of both the process towers and the far gable.
+  const raisedStrip=group([28,0,-15.33],roofs);raisedStrip.name='production-roof-raised-strip';
+  const stripLength=56,stripWidth=1.65,stripDeck=9.95,stripRim=.42;
+  const stripWhite=material('#dce2df',.12,.72),stripCoping=material('#cad2cf',.30,.57);
+  const stripFinish=material('#aab2b5',.18,.72,{surface:'roofSheet'});
+  // The base extends below the sloping sheets, closing the junction on both sides.
+  box(stripLength,.75,stripWidth,[0,stripDeck-.375,0],stripWhite,raisedStrip);
+  box(stripLength-.30,.035,stripWidth-.30,[0,stripDeck+.0175,0],stripFinish,raisedStrip);
+  for(const z of [-stripWidth/2+.075,stripWidth/2-.075]){
+    box(stripLength,stripRim,.15,[0,stripDeck+stripRim/2,z],stripWhite,raisedStrip);
+    box(stripLength+.04,.045,.20,[0,stripDeck+stripRim+.0225,z],stripCoping,raisedStrip);
+  }
+  for(const x of [-stripLength/2+.075,stripLength/2-.075]){
+    box(.15,stripRim,stripWidth,[x,stripDeck+stripRim/2,0],stripWhite,raisedStrip);
+    box(.20,.045,stripWidth+.04,[x,stripDeck+stripRim+.0225,0],stripCoping,raisedStrip);
   }
   // The railway loading face follows the supplied view: a white, deep
   // cantilever with a tall ribbed fascia, a single outer row of posts and
@@ -174,133 +194,8 @@ export function buildSite(k){
   loadingSign.name='rail-loading-sign';
   for(const z of [-40,-10])for(let x=-50;x<75;x+=18)cyl(.06,7.6,[x,3.8,z],trim,structures);
   buildProcessingBuildings(k,roofs,structures);
-  // Photo proportions: two low wings flank a recessed, taller entrance.
-  // Keep these envelopes independent of the production hall and its equipment.
-  function office(x,z,w,d,h,entranceWidth,singleRoof=false){
-    const g=group([x,0,z],structures),front=-w/2,wingDepth=(d-entranceWidth)/2;
-    const roofFinish=singleRoof?material('#d3d8d7',.08,.82):material('#858c92',.12,.81);
-    const officeGlass=singleRoof?material('#315b68',.45,.29):material('#436876',.48,.31);
-    const canteenFrame=singleRoof?material('#667075',.28,.48):trim;
-    const reflectedGlass=material(singleRoof?'#879697':'#879da8',.24,.37);
-    // End the office terraces at the hall facade, before its pitched roof begins.
-    const terraceInset=singleRoof?0:1.15,terraceWidth=w-terraceInset;
-    const roofWell=(cx,cz,width,depth,height)=>{
-      box(width,.14,depth,[cx,height-.07,cz],white,g);
-      box(width-.65,.06,depth-.65,[cx,height+.03,cz],roofFinish,g);
-      for(const xx of [cx-width/2+.13,cx+width/2-.13])box(.26,.46,depth,[xx,height+.23,cz],white,g);
-      for(const zz of [cz-depth/2+.13,cz+depth/2-.13])box(width,.46,.26,[cx,height+.23,zz],white,g);
-      // Metal copings give each recessed roof its own finished edge.
-      for(const xx of [cx-width/2+.13,cx+width/2-.13])box(.31,.045,depth+.06,[xx,height+.48,cz],trim,g);
-    };
-    box(w+.2,.22,d+.2,[0,.11,0],m.concrete,g);
-    if(singleRoof){
-      const roofRib=material('#e0e3e1',.12,.72);
-      for(let zz=-d/2+.42;zz<d/2-.4;zz+=.19)
-        box(w-.68,.012,.018,[0,h+.066,zz],roofRib,g);
-    }
-    // The office ends in open roof terraces, directly against the hall.
-    for(const side of [-1,1]){
-      const cz=side*(entranceWidth/2+wingDepth/2);
-      box(w,h,wingDepth,[0,h/2,cz],white,g);
-      if(!singleRoof)roofWell(-terraceInset/2,cz,terraceWidth,wingDepth,h);
-      // Deep white reveals and narrow vertical glazing, not a continuous curtain wall.
-      const count=4;
-      const pitch=(wingDepth-1.15)/count;
-      for(let i=0;i<count;i++){
-        const zz=cz-wingDepth/2+.575+pitch*(i+.5),paneWidth=singleRoof?Math.min(.82,pitch*.58):Math.min(1.10,pitch*.58),paneHeight=h-1.25;
-        box(.07,paneHeight+.16,paneWidth+.18,[front-.025,.48+paneHeight/2,zz],trim,g);
-        box(.085,paneHeight,paneWidth,[front-.075,.48+paneHeight/2,zz],officeGlass,g);
-        box(.015,paneHeight*.52,paneWidth-.02,
-          [front-.13,.48+paneHeight*.74,zz],reflectedGlass,g);
-        box(.23,.09,paneWidth+.28,[front-.11,.42,zz],white,g);
-        if(singleRoof)for(const yy of [1.48,2.55])
-          box(.10,.045,paneWidth,[front-.15,yy,zz],canteenFrame,g);
-        else for(const yy of [1.4,2.4,3.4,4.4,5.4])if(yy<h-.52)
-          box(.11,.045,paneWidth+.025,[front-.13,yy,zz],trim,g);
-      }
-      for(const zz of [cz-wingDepth/2+.22,cz+wingDepth/2-.22])box(.42,h+.25,.44,[front-.17,(h+.25)/2,zz],white,g);
-      box(.46,.38,wingDepth,[front-.18,h-.07,cz],white,g);
-      if(!singleRoof)box(.20,.12,wingDepth,[front-.21,.32,cz],white,g);
-      if(!singleRoof){
-        // Layered white parapets hide the hall roofs behind the office wings.
-        box(.40,1.28,wingDepth,[front-.23,h+.57,cz],white,g);
-        for(const offset of [.12,.55,.98])
-          box(.46,.045,wingDepth+.04,[front-.28,h+offset,cz],trim,g);
-        box(.56,.13,wingDepth+.16,[front-.28,h+1.24,cz],white,g);
-      }
-      // The cafeteria side elevation has only a small high service window.
-      if(singleRoof){
-        box(1.26,.52,.07,[1.7,2.92,side*(d/2+.035)],trim,g);
-        box(1.13,.40,.055,[1.7,2.92,side*(d/2+.08)],officeGlass,g);
-        continue;
-      }
-      // The main office side walls have slender inset windows.
-      for(let xx=front+1.6;xx<w/2-1;xx+=2.2){
-        if(!singleRoof)box(.85,h-1.48,.07,[xx,(h-.55)/2,side*(d/2+.02)],trim,g);
-        box(.72,h-1.6,.055,[xx,(h-.55)/2,side*(d/2+.03)],officeGlass,g);
-        box(.86,.07,.15,[xx,.48,side*(d/2+.08)],white,g);
-        if(!singleRoof)for(const yy of [1.4,2.4,3.4,4.4,5.4])if(yy<h-.52)
-          box(.75,.045,.075,[xx,yy,side*(d/2+.075)],trim,g);
-      }
-    }
-    const recess=.85,entryHeight=h+(singleRoof?0:1.35),entryFront=front+recess;
-    box(w-recess,entryHeight,entranceWidth,[recess/2,entryHeight/2,0],white,g);
-    if(singleRoof)roofWell(0,0,w,d,h);
-    else roofWell((recess-terraceInset)/2,0,terraceWidth-recess,entranceWidth,entryHeight);
-    const glazingHeight=entryHeight-(singleRoof?.67:.87);
-    const glazingY=singleRoof?.31+glazingHeight/2:.32+glazingHeight/2;
-    box(.07,glazingHeight,entranceWidth-1.2,[entryFront-.04,glazingY,0],officeGlass,g);
-    if(singleRoof)box(.015,1.65,entranceWidth-1.22,[entryFront-.095,2.84,0],reflectedGlass,g);
-    else box(.015,glazingHeight*.62,entranceWidth-1.22,
-      [entryFront-.095,.32+glazingHeight*.69,0],reflectedGlass,g);
-    for(const zz of [-entranceWidth/2+.2,entranceWidth/2-.2])box(.58,entryHeight,.4,[front+.15,entryHeight/2,zz],white,g);
-    box(1.05,.38,entranceWidth,[front+.35,entryHeight-.05,0],white,g);
-    if(!singleRoof){
-      // The entrance is one tall curtain wall with a door inside the lower bays.
-      for(const zz of [-1.65,-.55,.55,1.65])
-        box(.09,glazingHeight,.075,[entryFront-.105,glazingY,zz],trim,g);
-      for(const yy of [2.42,3.72,4.94,6.16,7.38])
-        box(.09,.055,entranceWidth-1.2,[entryFront-.11,yy,0],trim,g);
-      box(.10,2.16,2.18,[entryFront-.13,1.30,0],material('#274a53',.45,.29),g);
-      for(const zz of [-1.1,0,1.1])box(.11,2.2,.055,[entryFront-.20,1.30,zz],trim,g);
-      box(.11,.07,2.2,[entryFront-.20,2.40,0],trim,g);
-      for(const zz of [-.14,.14])rod([entryFront-.24,1.12,zz],[entryFront-.24,1.62,zz],.023,m.steel,g);
-      const emblem=mesh(new T.CircleGeometry(.21,24,0,Math.PI),white,[entryFront-.17,entryHeight-1.35,0],g);
-      emblem.rotation.y=-Math.PI/2;
-      box(.72,.10,entranceWidth-.55,[front-.33,.05,0],m.concrete,g);
-      // A raised, open rectangular parapet crowns the central terrace.
-      for(const zz of [-entranceWidth/2+.17,entranceWidth/2-.17])
-        box(terraceWidth-recess,.65,.28,[(recess-terraceInset)/2,entryHeight+.43,zz],white,g);
-      box(.28,.65,entranceWidth,[w/2-terraceInset-.08,entryHeight+.43,0],white,g);
-      box(.40,.78,entranceWidth,[front+.12,entryHeight+.40,0],white,g);
-      box(.46,.09,entranceWidth+.12,[front+.12,entryHeight+.84,0],trim,g);
-      const sign=textPlate('EDARA BINASY',entranceWidth-.58,.54,[front-.095,entryHeight+.43,0],g,'#a17b37','#e1e4e8');
-      sign.rotation.y=-Math.PI/2;
-    }else{
-      // The dining hall entrance fills the centre bay instead of sitting below an awning.
-      for(const zz of [-1.05,0,1.05])box(.09,glazingHeight,.065,[entryFront-.105,glazingY,zz],canteenFrame,g);
-      for(const yy of [1.38,2.20,3.12])box(.09,.055,entranceWidth-1.2,[entryFront-.11,yy,0],canteenFrame,g);
-      box(.09,2.03,2.06,[entryFront-.14,1.33,0],material('#294e58',.43,.30),g);
-      for(const zz of [-1.03,0,1.03])box(.11,2.06,.055,[entryFront-.20,1.33,zz],canteenFrame,g);
-      box(.11,.06,2.09,[entryFront-.20,2.38,0],canteenFrame,g);
-      for(const zz of [-.14,.14])rod([entryFront-.25,1.12,zz],[entryFront-.25,1.62,zz],.022,m.steel,g);
-      for(let i=0;i<3;i++){
-        const height=.30-i*.10;
-        box(.78,height,entranceWidth-.2,[front-.32-i*.57,height/2,0],m.concrete,g);
-      }
-      // The taller canopy and gold name read clearly from the street.
-      for(const zz of [-entranceWidth/2+.2,entranceWidth/2-.2])
-        box(.54,h+.59,.43,[front+.14,(h+.59)/2,zz],white,g);
-      roofWell(front+1.23,0,2.46,entranceWidth+.34,h+.64);
-      box(.42,.58,entranceWidth+.34,[front+.08,h+.81,0],white,g);
-      const sign=textPlate('NAHARHANA',entranceWidth-.18,.44,[front-.145,h+.82,0],g,'#97712e','#e1e4e8');
-      sign.rotation.y=-Math.PI/2;
-    }
-    for(const zz of [-entranceWidth/2+.55,entranceWidth/2-.55])box(.12,.28,.14,[front-.19,2.15,zz],m.light,g);
-    return g;
-  }
-  office(-61.2,-25,8.6,25.6,7.5,5.6);
-  office(-60.9,12.8,10,16,4.05,4.4,true);
+  buildFrontBuildings(k,structures);
+  const administration=buildAdministrationInterior(k);
   // Entire heaps are fractured boulders, including their distant silhouette.
   const pileSpots=[];
   // The loader's selected heap is built separately so scooping can lower it.
@@ -309,36 +204,57 @@ export function buildSite(k){
     const variation=((column*3+row*2)%5-2)*.035;
     pileSpots.push([x,z,STOCKYARD.heapRadius*(1+variation),STOCKYARD.heapHeight*(1-variation)]);
   }
-  for(let x=-67;x<-48;x+=4.5)for(let z=23;z<33;z+=4.5)pileSpots.push([x,z,1.45,.9]);
+  // Dining courtyard reference: six stock heaps in each of two straight rows.
+  for(let column=0;column<6;column++)for(const z of [26.7,31.1])pileSpots.push([-68.4+column*4.2,z,1.45,.9]);
   const padWidth=STOCKYARD.east-STOCKYARD.west,padDepth=STOCKYARD.south-STOCKYARD.north;
   const hw=padWidth/2,hd=padDepth/2,r=STOCKYARD.radius,padShape=new T.Shape();
   padShape.moveTo(-hw+r,-hd);padShape.lineTo(hw-r,-hd);padShape.quadraticCurveTo(hw,-hd,hw,-hd+r);
   padShape.lineTo(hw,hd-r);padShape.quadraticCurveTo(hw,hd,hw-r,hd);padShape.lineTo(-hw+r,hd);
   padShape.quadraticCurveTo(-hw,hd,-hw,hd-r);padShape.lineTo(-hw,-hd+r);padShape.quadraticCurveTo(-hw,-hd,-hw+r,-hd);padShape.closePath();
   const padGeometry=new T.ExtrudeGeometry(padShape,{depth:.12,bevelEnabled:false,curveSegments:8});padGeometry.rotateX(-Math.PI/2);
-  mesh(padGeometry,asphalt,[(STOCKYARD.west+STOCKYARD.east)/2,-.08,(STOCKYARD.north+STOCKYARD.south)/2]);
-  box(25,.12,20,[-58,-.02,26],asphalt,k.scene,1);
+  // Both raw-material pads keep an uninterrupted lighter asphalt finish.
+  const stockAsphalt=material('#62676a',0,.96,{surface:'asphalt',unique:true});
+  mesh(padGeometry,stockAsphalt,[(STOCKYARD.west+STOCKYARD.east)/2,-.08,(STOCKYARD.north+STOCKYARD.south)/2]).name='gypsum-stockyard-surface';
+  box(25,.12,20,[-58,-.02,26],stockAsphalt,k.scene,1).name='courtyard-stock-surface';
   buildBoulderPiles(k,pileSpots);
   buildGypsumReceivingHall(k,roofs,structures);buildCornerSilo(k);buildWeighbridge(k);
   // Landscaped office frontage, passenger bays and the separate truck court.
   buildNewFrontCourt(k,plants);
   buildNewFactoryEntrance(k);
-  const frontWoodland={west:-133.5,east:-86.5,north:4.5,south:37.5};
-  plants.grove(-110,21,47,33,2.8);
-  // The dining street covers the eastern part of this lawn up to z=28.8.
-  // Follow the exposed grass edge so the kerb does not cross the road.
+  const lawnOutline=new T.Shape(),w=FRONT_WOODLAND;
+  lawnOutline.moveTo(w.west,-w.north);lawnOutline.lineTo(w.east-w.cornerRadius,-w.north);
+  lawnOutline.quadraticCurveTo(w.east,-w.north,w.east,-w.north-w.cornerRadius);
+  lawnOutline.lineTo(w.east,-w.south);lawnOutline.lineTo(w.west,-w.south);lawnOutline.closePath();
+  const woodlandGround=new T.ShapeGeometry(lawnOutline,24);woodlandGround.rotateX(-Math.PI/2);
+  const woodlandLawn=mesh(woodlandGround,m.grass,[0,-.025,0]);
+  woodlandLawn.name='front-woodland-lawn';woodlandLawn.castShadow=false;
+  // Staggered conifers cover the whole lawn, including the dining frontage
+  // and the newly planted wall margins. Keep crowns inside the curved kerb.
+  const plantingOutline=lawnOutline.getPoints(24);
+  for(let z=w.north+3.4,row=0;z<=w.south-2.6;z+=3.5,row++){
+    for(let x=w.west+2.8+(row%2)*1.75,column=0;x<=w.east-2.8;x+=3.5,column++){
+      const size=row===0?.60:.68+((row+column*2)%4)*.025,margin=2.5;
+      if(![[x-margin,z],[x+margin,z],[x,z-margin],[x,z+margin]].every(([xx,zz])=>pointInWoodland(xx,zz)))continue;
+      plants.plant(x,z,size,{plantedBed:true});
+    }
+  }
+  function pointInWoodland(x,z){
+    let inside=false;
+    for(let i=0,j=plantingOutline.length-1;i<plantingOutline.length;j=i++){
+      const a=plantingOutline[i],b=plantingOutline[j];
+      if((a.y>-z)!==(b.y>-z)&&x<(b.x-a.x)*(-z-a.y)/(b.y-a.y)+a.x)inside=!inside;
+    }
+    return inside;
+  }
   const woodlandKerb=material('#9da5a5',.03,.88);
-  const woodlandOutline=[
-    [frontWoodland.west,frontWoodland.north],[-91,frontWoodland.north],
-    [-91,28.8],[frontWoodland.east,28.8],
-    [frontWoodland.east,frontWoodland.south],[frontWoodland.west,frontWoodland.south]
-  ];
-  woodlandOutline.forEach(([ax,az],i)=>{
-    const [bx,bz]=woodlandOutline[(i+1)%woodlandOutline.length];
-    const kerb=box(Math.hypot(bx-ax,bz-az)+.22,.20,.22,
-      [(ax+bx)/2,.055,(az+bz)/2],woodlandKerb);
-    kerb.rotation.y=-Math.atan2(bz-az,bx-ax);kerb.castShadow=false;
-  });
+  const woodlandOutline=lawnOutline.getPoints(24);
+  for(let i=1;i<woodlandOutline.length;i++){
+    const a=woodlandOutline[i-1],b=woodlandOutline[i],length=a.distanceTo(b);if(length<.001)continue;
+    // The perimeter wall already finishes these edges; no second kerb or gap.
+    if((a.x===w.west&&b.x===w.west)||(a.y===-w.south&&b.y===-w.south))continue;
+    const kerb=box(length+.02,.20,.22,[(a.x+b.x)/2,.055,-(a.y+b.y)/2],woodlandKerb);
+    kerb.rotation.y=Math.atan2(b.y-a.y,b.x-a.x);kerb.castShadow=false;
+  }
   // Bring the woodland lawn and canopy up to the avenue's outer sidewalk.
   plants.grove(-172.3,-9,49.4,96,3.0);
   // Replace the bare shoulder between the avenue sidewalk and woodland, up to the rail ballast.
@@ -456,7 +372,7 @@ export function buildSite(k){
     const z=originalZ===-47&&x>-26&&x<36?-56:originalZ;
     cyl(.055,5.2,[x,2.6,z],white);for(const dx of [-.6,.6]){rod([x,5,z],[x+dx,5.3,z],.035,white);box(.6,.08,.24,[x+dx,5.3,z],m.light);}}
   plants.finish();return {
-    roofs,structures,oldShells:oldCampus.shells,update:pond.update,
+    roofs,structures,administration,oldShells:oldCampus.shells,update:pond.update,
     updateVentilation(dt){
       for(const rotor of fanRotors)rotor.rotation.z=(rotor.rotation.z-dt*4)%(2*Math.PI);
     },

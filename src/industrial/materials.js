@@ -52,7 +52,14 @@ export function createSurfaceMaps(pattern,{resolution=512,anisotropy=8}={}){
     if(pattern==='brushed')detail+=(hash(x,0)-.5)*.06;
     if(pattern==='rubber')detail+=(n-.5)*.025;
     if(pattern==='tread'){const groove=(u*8)%1<.08;detail-=groove?.13:0;r=groove?.75:.5;}
-    if(pattern==='panel'||pattern==='roof'){const rib=(u*4)%1;detail-=rib<.045?.06:0;r=rib<.045?.65:.48;}
+    if(pattern==='panel'){const rib=(u*4)%1;detail-=rib<.045?.06:0;r=rib<.045?.65:.48;}
+    // Broad folded seams remain legible at the site-view scale. The material
+    // library normalizes the map mean, retaining each roof's original colour.
+    if(pattern==='roof'){
+      const rib=(u*2)%1;
+      detail+=rib<.105?-.24:rib<.16?.09:0;
+      r=rib<.105?.67:rib<.16?.36:.48;
+    }
     if(['concrete','screed','asphalt','sand','plaster','paper'].includes(pattern))detail+=(n-.5)*(pattern==='asphalt'?.16:.07);
     if(pattern==='screed')detail+=Math.sin(y*2)*.02;
     if(pattern==='kerb')detail-=(u<.006||u>.994)?.1:0;

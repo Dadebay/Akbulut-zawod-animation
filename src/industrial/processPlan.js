@@ -10,14 +10,25 @@ const points=(list,y)=>list.map(([x,z])=>planPoint(x,z,y));
 // runs west through the building before rising to the processing-block silo.
 export const GYPSUM_INTAKE=[70,.85,34.8];
 export const GYPSUM_CRUSHER=[60,0,34.8];
-export const GYPSUM_CORNER_SILO=[-10,0,31];
+// October 26 markup: receiving hall (5) → outdoor silo (4) → transfer
+// tower (3) → long process building (1). Tower and silo stand on the gravel pad.
+export const GYPSUM_CORNER_SILO=[-3.6,0,32];
+export const GYPSUM_SILO_TOWER={x:-4.5,z:26.3,width:3.8,depth:4.2,height:14.8};
+export const GYPSUM_TRANSFER_HEIGHT=11.5;
 // The twin silos fit the current rear block; the old centre (-25.6, 30.2)
 // left their lift and upper distribution pipe beyond its stepped west facade.
 export const GYPSUM_STORAGE={x:-20.75,z:26};
-const storageLift=[GYPSUM_STORAGE.x-4,11.5,GYPSUM_STORAGE.z-2.7];
+const storageJunction=[GYPSUM_STORAGE.x,GYPSUM_TRANSFER_HEIGHT,GYPSUM_SILO_TOWER.z];
 const storageFeed=x=>[[x,11.5,GYPSUM_STORAGE.z],[x,10.13,GYPSUM_STORAGE.z]];
 // The head clears the silo deck; material drops through its central inlet.
-export const GYPSUM_LIFT=[[16,1.3,34.8],[-10,13.05,31]];
+export const GYPSUM_LIFT=[[20,1.3,GYPSUM_CORNER_SILO[2]],[GYPSUM_CORNER_SILO[0],13.2,GYPSUM_CORNER_SILO[2]]];
+export const GYPSUM_SILO_TRANSFER=[
+  [GYPSUM_CORNER_SILO[0],1.3,GYPSUM_CORNER_SILO[2]],
+  [GYPSUM_CORNER_SILO[0],1.3,GYPSUM_SILO_TOWER.z],
+  [GYPSUM_SILO_TOWER.x,1.3,GYPSUM_SILO_TOWER.z],
+  [GYPSUM_SILO_TOWER.x,GYPSUM_TRANSFER_HEIGHT,GYPSUM_SILO_TOWER.z],
+  storageJunction,
+];
 const liftDirection=new T.Vector3(...GYPSUM_LIFT[1]).sub(new T.Vector3(...GYPSUM_LIFT[0])).setY(0).normalize();
 const gypsumDrop=new T.Vector3(...GYPSUM_LIFT[1]).addScaledVector(liftDirection,.35);
 export const CALCITE_INTAKE=planPoint(197,623,.85);
@@ -46,8 +57,8 @@ export const PROCESS_LINES=[
   {id:'gypsum',zone:'CR',name:'Gips daşyny döwüji enjamlar toplumy',short:'Gips daşy',color:'#3158f5',stages:[S.infeed,S.crush,S.calcine],step:S.crush,
     points:[GYPSUM_INTAKE,[GYPSUM_INTAKE[0]-4.9,.85,GYPSUM_INTAKE[2]],[GYPSUM_CRUSHER[0],4.15,GYPSUM_CRUSHER[2]],[GYPSUM_CRUSHER[0],1.3,GYPSUM_CRUSHER[2]],[GYPSUM_CRUSHER[0]-3,1.3,GYPSUM_CRUSHER[2]],...GYPSUM_LIFT,[gypsumDrop.x,12.95,gypsumDrop.z],[gypsumDrop.x,10.9,gypsumDrop.z]],
     branches:[
-      [[-10,1.3,31],[-14,1.3,31],[-14,1.3,storageLift[2]],[storageLift[0],1.3,storageLift[2]],storageLift,...storageFeed(GYPSUM_STORAGE.x-1.55)],
-      [storageLift,[GYPSUM_STORAGE.x+2.45,11.5,storageLift[2]],...storageFeed(GYPSUM_STORAGE.x+2.45)],
+      [...GYPSUM_SILO_TRANSFER,...storageFeed(GYPSUM_STORAGE.x-1.55)],
+      [storageJunction,...storageFeed(GYPSUM_STORAGE.x+2.45)],
     ],
     label:[44,9,32],position:[79,37,82],target:[35,3,34]},
   {id:'calcite',zone:'TY',name:'Kalsit önümçilik liniýasy',short:'Kalsit',color:'#e8c532',stages:[S.crush,S.calcine,S.mix],step:S.crush,

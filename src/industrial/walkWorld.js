@@ -24,8 +24,9 @@ export function subtractWalkBox(source,hole){
 
 export function createWalkWorld(k,{site,production,oldInterior,logistics,materialFlow}){
   const physics=createWalkPhysics(),root=k.group([0,0,0],k.scene,true);root.name='walk-architecture';
+  const shell=k.group([0,0,0],root,true);shell.name='walk-building-shells';
   const hidden=[],doors=[],records=[],dynamicBodies=[],equipmentTargets=[];
-  const interiorRoots=new Set([production.root,production.outdoor,oldInterior.root,oldInterior.warehouse]);
+  const interiorRoots=new Set([production.root,production.outdoor,oldInterior.root,oldInterior.warehouse,site.administration.root]);
   const vehicleRoots=new Set([logistics.dispatchTruck.g,logistics.dispatchTruck.trailer,logistics.hauler.g,logistics.train,logistics.traffic.g,materialFlow.loader.g,...logistics.vehicles.map(v=>v.g),logistics.oldFork?.g].filter(Boolean));
   const parkedTractors=k.vehicleLights.filter(v=>v.length===24&&!vehicleRoots.has(v.root)).map(v=>v.root);
   parkedTractors.forEach(o=>vehicleRoots.add(o));
@@ -33,7 +34,7 @@ export function createWalkWorld(k,{site,production,oldInterior,logistics,materia
   k.scene.updateMatrixWorld(true);
   const original=[];k.scene.traverse(o=>{if(o.isMesh&&!o.isInstancedMesh&&!o.isBatchedMesh){o.geometry.computeBoundingBox();original.push({o,b:o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld)});}});
   function hide(o){if(hidden.includes(o))return;o.userData.dynamic=true;hidden.push(o);}
-  function meshBox(bounds,mat,parent=root){
+  function meshBox(bounds,mat,parent=shell){
     const s=dimensions(bounds),p=bounds.getCenter(new T.Vector3());
     if(Math.min(s.x,s.y,s.z)<.00001)return null;
     const mesh=k.box(s.x,s.y,s.z,p.toArray(),mat,parent,0);mesh.userData.walkConstruction=true;return mesh;
@@ -186,6 +187,8 @@ export function createWalkWorld(k,{site,production,oldInterior,logistics,materia
   syncVehicles(0);
   let enabled=false;
   function setActive(value){enabled=value;root.visible=value;hidden.forEach(o=>{o.visible=!value;});doors.forEach(d=>d.leaves.forEach(l=>{l.body.enabled=value;}));}
+  // Cutaway changes only rendering; walking and door collision stay active.
+  function setCutaway(value){shell.visible=!value;}
   setActive(false);
   function region(p){
     const b=records.filter(b=>Math.abs(p.x-b.x)<b.width/2&&Math.abs(p.z-b.z)<b.depth/2).sort((a,b)=>a.width*a.depth-b.width*b.depth)[0];
@@ -193,7 +196,7 @@ export function createWalkWorld(k,{site,production,oldInterior,logistics,materia
     if(Math.abs(p.x-stairPoint.x)<12&&Math.abs(p.z-stairPoint.z)<27&&p.y>1)return `Proses platformasy · ${p.y.toFixed(1)} m`;
     return p.z< -58?'Köne zawod · Meýdança':'Täze zawod · Meýdança';
   }
-  return {physics,root,doors,buildings:records,starts:WALK_STARTS,equipmentTargets,setActive,syncVehicles,trafficBlocked,region,
+  return {physics,root,doors,buildings:records,starts:WALK_STARTS,equipmentTargets,setActive,setCutaway,syncVehicles,trafficBlocked,region,
     updateDoors(dt,player){let changed=false;for(const d of doors)changed=d.update(dt,player,dynamicBodies.map(v=>v.body))||changed;return changed;},
     get active(){return enabled;},
     get inventory(){return {buildings:records.length,doors:doors.length,colliders:physics.count};},

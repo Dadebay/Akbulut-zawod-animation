@@ -58,9 +58,9 @@ test('CAD equipment fits existing rooms and preserves production tools, ports an
   const inventory=JSON.stringify(production.interiorInventory);
   const outdoorBounds=new T.Box3().setFromObject(production.outdoor);
   const cad=prepareCadInteriors(k,production.root);
-  assert.equal(cad.slots.length,56);
+  assert.equal(cad.slots.length,58);
   const ports=cad.slots.map(s=>Object.values(s.machine.userData.ports||{}).map(p=>({p,position:p.position.clone(),connected:p.connected})));
-  assert.equal(cad.install(await library()),56);
+  assert.equal(cad.install(await library()),58);
   const empty=new T.Box3(new T.Vector3(EMPTY_PRODUCTION_BAY.west,0,EMPTY_PRODUCTION_BAY.north),new T.Vector3(EMPTY_PRODUCTION_BAY.east,40,EMPTY_PRODUCTION_BAY.south));
   for(const [i,{machine,bounds,fallback}] of cad.slots.entries()){
     const id=machine.userData.equipment.id,shape=machine.getObjectByName(`cad-${id}`);

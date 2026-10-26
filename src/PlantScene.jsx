@@ -57,6 +57,8 @@ const SITE_VIEWS=[
   {name:'ÝÜKLEME NOKADY',anchor:[25,7.5,-46.4],position:[-9,35,-110],target:[25,2.7,-43]},
   {name:'ÖNÜMÇILIK BINASY',anchor:[ENTRY.x,6.3,ENTRY.z],position:[ENTRY.x-3,6.8,ENTRY.z+14],target:[ENTRY.x,2.9,ENTRY.z+.6]},
   {name:'GIRIŞ MEÝDANÇASY',anchor:[-111,3,-25],position:[-158,56,14],target:[-111,1,-27]},
+  {name:'EDARA BINASY',anchor:[-65.5,10.5,-25],position:[-121,8,-25],target:[-65.5,4.8,-25],interior:{position:[-83,30,-17],target:[-61.75,.7,-25]}},
+  {name:'NAHARHANA',anchor:[-65.9,5.7,12.8],position:[-104,9,12.8],target:[-65.9,2.6,12.8]},
   {name:'ÇIG MAL',anchor:[45,5,14],position:[98,48,64],target:[48,1.5,14]},
   {name:'BALYK HOWUZY',anchor:[POND.x,2,POND.z],position:[POND.x-47,65,POND.z+49],target:[POND.x,0,POND.z]},
   {name:'ÝATAKHANA',anchor:[DORM.x,3,DORM.z],position:[DORM.x-8,20,DORM.z-22],target:[DORM.x,0,DORM.z]},
@@ -146,7 +148,7 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
       },
       focusSite(preset,immediate){
         manualCamera=true;state.current.onManualCamera?.({cutaway:production.root.visible});
-        moveCamera(preset,immediate);
+        moveCamera(production.root.visible&&preset.interior?preset.interior:preset,immediate);
       },
     };
     const stopTransition=()=>{transition=false;manualCamera=true;state.current.onManualCamera?.({cutaway:production.root.visible});};controls.addEventListener('start',stopTransition);
@@ -193,7 +195,7 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
           if(loopRestarted)changed=true;
         }else clock+=dt*s.speed;
       }
-      const journey=journeyAt(clock),following=!walk&&s.follow&&!manualCamera,showInterior=walk|| (s.follow?(manualCamera?production.root.visible:journey.step.cutaway):!s.roof);
+      const journey=journeyAt(clock),following=!walk&&s.follow&&!manualCamera,showInterior=s.follow?(manualCamera?production.root.visible:journey.step.cutaway):!s.roof;
       const opacity=journeyOpacity(journey.time,{following,playing:animateMotion&&!blocked,loopStep:s.loopStep});
       renderer.domElement.style.opacity=opacity;labels.current.style.opacity=opacity;
       container.style.background=s.night?'#101c30':'#dce4eb';
@@ -237,7 +239,9 @@ export default function PlantScene({machines,selected,onSelect,view='perspective
         const floor=landscape.vehicleSurface(camera.position.x,camera.position.z)+2.5;
         if(camera.position.y<floor){camera.position.y=floor;camera.lookAt(controls.target);}
       }
-      site.oldShells.forEach(shell=>{shell.visible=walk||!showInterior;});site.roofs.visible=walk||!showInterior;site.structures.visible=walk||!showInterior;production.root.visible=showInterior;oldInterior.root.visible=showInterior;
+      site.oldShells.forEach(shell=>{shell.visible=!showInterior;});site.roofs.visible=!showInterior;site.structures.visible=!showInterior;production.root.visible=showInterior;oldInterior.root.visible=showInterior;
+      walkWorld?.setCutaway(showInterior);
+      site.administration.root.visible=showInterior;
       logistics.setTruckInteriorVisible(showInterior&&!walk);
       // Facade ventilation runs at a steady speed even when the tour is paused.
       const ventilationMoving=!showInterior&&!reduced.matches;

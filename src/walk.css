@@ -13,3 +13,4 @@
 .walk-mouse-option{display:block;margin:10px auto 0;padding:7px 10px;border:0;background:transparent;color:#486773;font:500 12px system-ui;cursor:pointer}.walk-mouse-option:hover{text-decoration:underline}.visual-factory .walk-toggle{display:inline-flex;align-items:center;justify-content:center;width:auto;min-width:84px;white-space:nowrap;gap:6px;padding-inline:10px}.walk-hud .walk-help{max-width:calc(100% - 24px);flex-wrap:wrap;justify-content:center;white-space:normal}.is-walking canvas{touch-action:none;outline:none}
 
 .walk-location{top:116px}.walk-menu-shade{overflow-y:auto}
+.visual-factory.is-walking .factory-controls{flex-basis:100%;justify-content:flex-start}

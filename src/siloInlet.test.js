@@ -4,7 +4,9 @@ import * as T from 'three';
 import {createKit} from './industrial/kit.js';
 import {buildCornerSilo} from './industrial/rawInfeed.js';
 import {buildMaterialFlow} from './industrial/materialFlow.js';
-import {GYPSUM_LIFT,PROCESS_LINES} from './industrial/processPlan.js';
+import {GYPSUM_LIFT,PROCESS_LINES,GYPSUM_CORNER_SILO,GYPSUM_SILO_TOWER,GYPSUM_SILO_TRANSFER,GYPSUM_STORAGE} from './industrial/processPlan.js';
+import {buildGypsumReceivingHall} from './industrial/gypsumReceivingHall.js';
+import {GYPSUM_RECEIVING_HALL} from './industrial/siteLayout.js';
 
 function fixture(run){
   const previous=globalThis.document;
@@ -24,6 +26,28 @@ function clearSegment(a,b,meshes,label){
   const delta=b.clone().sub(a),ray=new T.Raycaster(a,delta.clone().normalize(),.001,delta.length()-.001);
   assert.equal(ray.intersectObjects(meshes,false).length,0,label);
 }
+
+test('raw material travels 5 to 4 to 3 to 1 with straight exterior transfers',()=>fixture((scene,k)=>{
+  const [tail,head]=GYPSUM_LIFT;
+  assert.equal(tail[0],GYPSUM_RECEIVING_HALL.west,'belt exits the receiving-hall wall');
+  assert.equal(tail[2],head[2],'5→4 belt has no horizontal dogleg');
+  assert.equal(head[0],GYPSUM_CORNER_SILO[0]);assert.equal(head[2],GYPSUM_CORNER_SILO[2]);
+  const route=GYPSUM_SILO_TRANSFER;
+  assert.deepEqual(route[0],[GYPSUM_CORNER_SILO[0],1.3,GYPSUM_CORNER_SILO[2]]);
+  assert.deepEqual(route[2],[GYPSUM_SILO_TOWER.x,1.3,GYPSUM_SILO_TOWER.z]);
+  assert.equal(route[3][0],route[2][0]);assert.equal(route[3][2],route[2][2]);
+  assert.ok(route[3][1]>route[2][1]+9,'lift happens inside tower 3');
+  assert.equal(route[4][0],GYPSUM_STORAGE.x);
+  assert.equal(route[3][1],route[4][1]);assert.equal(route[3][2],route[4][2],'3→1 is a straight elevated span');
+  assert.ok(route[3][0]-route[4][0]>15,'3 no longer touches 1');
+  const roofs=k.group(),walls=k.group();buildGypsumReceivingHall(k,roofs,walls);
+  const solids=solidMeshes(walls);
+  for(const z of [-.78,0,.78])for(const y of [-.18,0,.4]){
+    clearSegment(new T.Vector3(tail[0]+.5,tail[1]+y,tail[2]+z),new T.Vector3(tail[0]-.5,tail[1]+y,tail[2]+z),solids,'5→4 passes through the actual wall opening');
+  }
+  const silo=scene.getObjectByName('gypsum-corner-silo'),siloSolids=solidMeshes(silo);
+  clearSegment(new T.Vector3(route[0][0],1.3,route[0][2]-1),new T.Vector3(route[0][0],1.3,route[0][2]-2.4),siloSolids,'4→3 clears the silo ladder and legs');
+}));
 
 test('enclosed calcite equipment keeps its world position and follows cutaway visibility after optimization',()=>fixture((scene,k)=>{
   const flow=buildMaterialFlow(k,{pallet:(parent,pos)=>k.group(pos,parent,true)});

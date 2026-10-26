@@ -6,7 +6,7 @@ import {PROCESS_BUILDINGS as L} from './siteLayout.js';
 export function buildCourtyardWing(k,roofs,structures){
   const {box,group,material}=k;
   const wall=material('#f4f5f3',.04,.82),joint=material('#d4dad7',.08,.76);
-  const coping=material('#e1e5e2',.24,.61),roof=material('#dbe0dd',.18,.58);
+  const coping=material('#e1e5e2',.24,.61),roof=material('#dbe0dd',.18,.58,{surface:'roofSheet'});
   const glass=material('#304a52',.45,.28),frame=material('#c4cdcb',.32,.57);
   const shell=group([0,0,0],structures),top=group([0,0,0],roofs);
   shell.name='courtyard-wing-shell';top.name='courtyard-wing-roof';
@@ -47,8 +47,6 @@ export function buildCourtyardWing(k,roofs,structures){
   // A continuous flat L-shaped roof, with standing seams and no wall at the elbow.
   for(const b of [arm,long,core]){
     box(b.width,.10,b.depth,[b.x,b.height+.05,b.z],roof,top);
-    for(let x=b.x-b.width/2+.45;x<b.x+b.width/2-.2;x+=.7)
-      box(.018,.018,b.depth-.18,[x,b.height+.11,b.z],joint,top);
   }
   function parapet(x0,z0,x1,z1,y,height){
     const w=Math.abs(x1-x0),d=Math.abs(z1-z0),x=(x0+x1)/2,z=(z0+z1)/2;

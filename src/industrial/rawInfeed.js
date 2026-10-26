@@ -41,7 +41,8 @@ export function buildCornerSilo(k){
   for(const z of [-.82,.82])box(1.55,.08,.12,[0,11.5,z],m.blue,inlet);
   for(const x of [-.68,.68])box(.12,.08,1.72,[x,11.5,0],m.blue,inlet);
   box(.9,.3,.9,[0,1.3,0],m.blue,silo);k.motor([.75,.9,0],silo,.65);
-  k.ladder(11.4,0,-1.85,silo);
+  // The north side now carries the discharge to transfer tower 3.
+  k.ladder(11.4,0,1.85,silo);
   // Stop the deep truss outside the silo wall; only the belt head overhangs
   // the open receiving deck.
   const trussEnd=1-2.5/horizontal,normal=new T.Vector3(-direction.z,0,direction.x).normalize().multiplyScalar(.85);
@@ -75,7 +76,7 @@ export function buildCornerSilo(k){
 export function buildRawInfeed(k){
   const {box,rod,group,mesh,m}=k,loader=buildWheelLoader(k);
   // A short manoeuvring lane connects the right-hand heap to the bunker.
-  for(const [west,east,north,south] of LOADER_PAVEMENT)box(east-west,.075,south-north,[(west+east)/2,-.055,(north+south)/2],m.concrete);
+  for(const [west,east,north,south] of LOADER_PAVEMENT)box(east-west,.075,south-north,[(west+east)/2,-.055,(north+south)/2],m.road);
   const deliveryStock=group(RAW_STOCK,k.scene,true);buildBoulderPiles(k,[[0,0,3.2,1.35]],{parent:deliveryStock,seed:291});
   const loaderStock=group(LOADER_STOCK,k.scene,true);
   const stockFields=buildBoulderPiles(k,[[0,0,GYPSUM_STOCKYARD.heapRadius,GYPSUM_STOCKYARD.heapHeight]],{parent:loaderStock,seed:619});

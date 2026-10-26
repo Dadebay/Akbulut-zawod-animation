@@ -160,6 +160,8 @@ export function buildRail(k,pallet){
   }
   function bogie(parent,x,loco=false){
     const g=group([x,0,0],parent),axles=loco?[-1.75,0,1.75]:[-.93,.93];
+    // Narrow the body while keeping wheels and axles on the existing rails.
+    g.scale.z=1/RAIL_LAYOUT.widthScale;
     for(const a of axles)wheelset(g,a,loco?.49:.46);
     for(const z of [-1.04,1.04]){
       box(loco?4.7:2.7,.23,.19,[0,1.05,z],frame,g,.045);
@@ -175,7 +177,7 @@ export function buildRail(k,pallet){
     box(.22,.20,.17,[x+direction*.47,1.08,.13],frame,parent,.025);
     for(const z of [-.38,.38]){const hose=mesh(new T.TubeGeometry(new T.CatmullRomCurve3([new T.Vector3(x,1.08,z),new T.Vector3(x+direction*.17,.62,z),new T.Vector3(x+direction*.37,.91,z)]),12,.025,6,false),rubber,[0,0,0],parent);}
   }
-  const train=group([RAIL_LAYOUT.offsetX,0,0],k.scene,true);
+  const train=group([RAIL_LAYOUT.offsetX,0,RAIL_LAYOUT.z*(1-RAIL_LAYOUT.widthScale)],k.scene,true);
   for(const [n,cx] of RAIL_LAYOUT.wagonCentres.entries()){
     const g=group([cx,0,RAIL_LAYOUT.z],train);bogie(g,-4.65);bogie(g,4.65);
     for(const z of [-.72,.72]){box(13.4,.28,.13,[0,1.23,z],frame,g);box(13.4,.06,.28,[0,1.35,z],frame,g);}
@@ -203,12 +205,12 @@ export function buildRail(k,pallet){
   }
 
   buildTurkmenLocomotive(k,train,{z:RAIL_LAYOUT.z,bogie,coupling});
-  // Shrink along the track and in height only; pallets keep their real size.
-  const s=RAIL_LAYOUT.scale;train.scale.set(s,s,1);
-  for(const cargo of trainCargo)cargo.scale.set(1/s,1/s,1);
+  // Scale width about the track centre; pallets retain their size and loading point.
+  const s=RAIL_LAYOUT.scale,w=RAIL_LAYOUT.widthScale;train.scale.set(s,s,w);
+  for(const cargo of trainCargo){cargo.scale.set(1/s,1/s,1/w);cargo.position.z/=w;}
   const incoming=[],firstIncomingWheel=railWheels.length;
   for(let i=0;i<3;i++){
-    const g=group([0,0,0],k.scene,true);incoming.push(g);g.scale.set(RAIL_LAYOUT.scale,RAIL_LAYOUT.scale,1);
+    const g=group([0,0,0],k.scene,true);incoming.push(g);g.scale.set(s,s,w);
     if(i===0){
       buildTurkmenLocomotive(k,g,{z:0,bogie,coupling,sectionCentres:[0],frontTowardsPositiveX:true});
     }else{

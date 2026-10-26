@@ -12,7 +12,7 @@ import {buildSite} from './industrial/site.js';
 import {buildLogistics} from './industrial/logistics.js';
 import {buildOldCampusInterior} from './industrial/oldCampusInterior.js';
 import {buildMaterialFlow} from './industrial/materialFlow.js';
-import {PROCESS_LINES,GYPSUM_STORAGE} from './industrial/processPlan.js';
+import {PROCESS_LINES,GYPSUM_STORAGE,GYPSUM_SILO_TOWER,GYPSUM_SILO_TRANSFER} from './industrial/processPlan.js';
 import {REAR_SERVICE_YARD} from './industrial/rearServiceYard.js';
 import {poolSurfaces,batchAssemblies} from './industrial/surfaceBatching.js';
 
@@ -87,6 +87,23 @@ test('both campuses have a clear entrance for every registered building',()=>fix
     });
     assert.ok(accessible,`${b.id}: must have an unobstructed entrance`);
   }
+  for(const d of world.doors.filter(d=>d.ids?.some(id=>id.startsWith('rear-hall-link-')||id.startsWith('rear-hall-return-')||id.startsWith('new-administration-')))){
+    if(!d.motion.target)d.toggle();d.update(2,null);
+  }
+  for(const [label,start,end] of [
+    ['administration entrance',[-67,.16,-25],[-61.75,.36,-25]],
+    ['administration work aisle',[-61.75,.36,-25],[-61.75,.36,-35.5]],
+    ['administration meeting aisle',[-61.75,.36,-25],[-61.75,.36,-14.5]],
+    ['administration production door',[-61.75,.36,-25],[-56.5,.06,-25]],
+    ['annex cross passage',[-7,.06,-4.5],[-15.4,.06,-4]],
+    ['annex to service room',[-11.175,.06,-4.5],[-11.175,.06,2.6]],
+    ['annex to rear return entrance',[-13.5,.06,-6],[-16,.06,-6]],
+  ]){
+    const p=V(...start),target=V(...end),delta=target.clone().sub(p).setY(0).normalize().multiplyScalar(.02);
+    const steps=Math.ceil(p.distanceTo(target)/.02);p.y=world.physics.floorAt(p,p.y+.26);
+    for(let i=0;i<steps;i++)world.physics.move(p,delta,1/60);
+    assert.ok(Math.hypot(p.x-target.x,p.z-target.z)<.06,`${label}: reached ${p.toArray()}`);
+  }
   for(const [label,start,delta,count,height] of [
     ['front tower',[-50.1,.04,.2],[0,0,-.02],290,3.2],
     ['office first flight',[-12.5,.32,-91.6],[0,0,.02],180,1.62],
@@ -95,14 +112,25 @@ test('both campuses have a clear entrance for every registered building',()=>fix
     const p=V(...start);for(let i=0;i<count;i++)world.physics.move(p,V(...delta),1/60);
     assert.ok(Math.abs(p.y-height)<.05,`${label}: reached ${p.toArray()}`);
   }
+  // Manual cutaway must survive batching without disabling walking or doors.
+  poolSurfaces(k);k.optimize({preserveRepeated:true});const update=batchAssemblies(k);
+  const visible=()=>{update();let count=0;scene.traverse(o=>{if(o.isBatchedMesh)for(let i=0;i<o.instanceCount;i++)count+=Number(o.getVisibleAt(i));});return count;};
+  world.setCutaway(false);const closed=visible(),colliders=world.physics.count;
+  world.setCutaway(true);assert.ok(visible()<closed,'manual cutaway hides the hollow walk facades');
+  assert.equal(world.active,true);assert.equal(world.root.visible,true);
+  assert.equal(world.physics.count,colliders);
+  assert.ok(world.doors.every(d=>d.leaves.every(l=>l.body.enabled)),'door collision remains enabled');
+  world.setCutaway(false);assert.equal(visible(),closed,'every walk facade restores');
 }));
 
 test('silo distribution pipes and their nozzle connections stay inside the current rear facade',()=>{
   const branches=PROCESS_LINES.find(l=>l.id==='gypsum').branches;
-  const inside=([x,y,z])=>[-.45,.45].every(dx=>[-.45,.45].every(dz=>REAR_SERVICE_YARD.buildings.some(b=>x+dx>b.x-b.width/2&&x+dx<b.x+b.width/2&&z+dz>b.z-b.depth/2&&z+dz<b.z+b.depth/2&&y+.45<b.height)));
+  const inside=([x,y,z])=>[-.45,.45].every(dx=>[-.45,.45].every(dz=>[...REAR_SERVICE_YARD.buildings,GYPSUM_SILO_TOWER].some(b=>x+dx>b.x-b.width/2&&x+dx<b.x+b.width/2&&z+dz>b.z-b.depth/2&&z+dz<b.z+b.depth/2&&y+.45<b.height)));
   for(const path of branches){
-    // The ground transfer from the outdoor corner silo is intentionally exposed.
+    // The low silo outlet and straight 3→1 gallery are intentionally exposed;
+    // the raised endpoints and distribution drops stay inside their buildings.
     for(const p of path.filter(p=>p[1]>2))assert.ok(inside(p),`upper pipe outside facade: ${p}`);
   }
   assert.deepEqual(branches.map(p=>p.at(-1)),[-1.55,2.45].map(x=>[GYPSUM_STORAGE.x+x,10.13,GYPSUM_STORAGE.z]));
+  assert.deepEqual(branches[0].slice(0,GYPSUM_SILO_TRANSFER.length),GYPSUM_SILO_TRANSFER);
 });

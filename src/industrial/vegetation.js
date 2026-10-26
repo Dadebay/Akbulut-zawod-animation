@@ -2,7 +2,7 @@ import {addTreeWind} from './treeWind.js';
 import * as T from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {trafficClearance} from './trafficLayout.js';
-import {POND,OUTER_RAIL_Z,POND_APPROACH,OLD_FRONT_PARK,OLD_FRONT_COURT as COURT,OLD_SIDE_LOADING,OLD_REAR_BOUNDARY,OLD_RAW_SILOS,OLD_PAVILION,OLD_LEFT_CAMPUS as LEFT,OLD_APPROACH,NEW_FACTORY_ENTRANCE as ENTRANCE,NEW_ENTRANCE_ROAD as GATE_ROAD,GYPSUM_RECEIVING_HALL,GYPSUM_SILO_TOWER,PROCESS_BUILDINGS,pondAccessClearance,loaderRoadClearance,oldEntranceClearance} from './siteLayout.js';
+import {POND,OUTER_RAIL_Z,POND_APPROACH,OLD_FRONT_PARK,OLD_FRONT_COURT as COURT,OLD_SIDE_LOADING,OLD_REAR_BOUNDARY,OLD_RAW_SILOS,OLD_PAVILION,OLD_LEFT_CAMPUS as LEFT,OLD_APPROACH,NEW_FACTORY_ENTRANCE as ENTRANCE,NEW_ENTRANCE_ROAD as GATE_ROAD,DINING_STREET,GYPSUM_RECEIVING_HALL,GYPSUM_SILO_TOWER,PROCESS_BUILDINGS,pondAccessClearance,loaderRoadClearance,oldEntranceClearance} from './siteLayout.js';
 
 // A few shared conifer silhouettes, with individual proportions and colours.
 // The planting is deterministic so refreshing never moves a tree onto a road.
@@ -36,8 +36,9 @@ export function createVegetation(k){
       if(rectDistance(x,z,b.x-b.width/2,b.x+b.width/2,b.z-b.depth/2,b.z+b.depth/2)<crown+.3)return false;
     const rear=OLD_REAR_BOUNDARY.building;
     if(rectDistance(x,z,rear.x-2.6,rear.x+2.6,rear.z+rear.depth/2,rear.z+rear.depth/2+2.8)<crown+.3)return false;
-    // The dining street cuts the front woodland's south-east corner; keep crowns off it.
-    if(rectDistance(x,z,-91,-86.5,4.5,28.8)<crown+1.8)return false;
+    // Protect the actual dining street, allowing trees into its former setback.
+    const dining=DINING_STREET;
+    if(rectDistance(x,z,dining.west,dining.east,dining.north,dining.south)<crown+.3)return false;
     // Leave the silo approach beside the north fence open.
     if(rectDistance(x,z,-22.5,20,28.3,39.95)<crown+.4)return false;
     for(const b of [GYPSUM_RECEIVING_HALL,GYPSUM_RECEIVING_HALL.wing])
