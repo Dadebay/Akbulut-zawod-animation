@@ -70,7 +70,7 @@ test('animated door leaves retain collision and visibility after surface batchin
 test('both campuses have a clear entrance for every registered building',()=>fixture((k,scene)=>{
   const production=buildProduction(k);production.root.position.set(8,0,-25);
   const logistics=buildLogistics(k,[]),site=buildSite(k),oldInterior=buildOldCampusInterior(k,logistics.pallet);
-  const materialFlow=buildMaterialFlow(k,logistics);production.root.attach(materialFlow.enclosed);
+  const materialFlow=buildMaterialFlow(k,logistics);
   prepareCadInteriors(k,production.root);
   const world=createWalkWorld(k,{site,production,oldInterior,logistics,materialFlow});world.setActive(true);
   assert.equal(world.buildings.length,WALK_BUILDINGS.length);assert.ok(world.doors.length>=55);

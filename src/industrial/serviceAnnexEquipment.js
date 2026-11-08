@@ -1,6 +1,7 @@
 import {localPoint} from './processPlan.js';
 import {REAR_SERVICE_YARD} from './rearServiceYard.js';
 import {machinePort} from './equipmentConnections.js';
+import {buildControlRoom} from './controlRoom.js';
 
 // The October 25 views establish the shells, not their machinery. Keep this
 // service layout explicitly illustrative and inside those actual envelopes.
@@ -27,6 +28,7 @@ export function buildServiceAnnexEquipment(k,{root,models,equipment,units,invent
   box(annex.width-.36,.10,annex.depth-.36,[0,0,0],m.floor,floor);
   const back=REAR_SERVICE_YARD.buildings.find(b=>b.sharedRoof===annex.name);
   box(back.width-.36,.10,back.depth-.36,localPoint([back.x,0,back.z]),m.floor,root).name='rear-hall-return-floor';
+  buildControlRoom(k,root,back);
   // Keep the east/west doors connected by a two-metre unobstructed aisle.
   for(const z of [-1,1])box(annex.width-.5,.012,.06,[0,.065,z],m.yellow,floor);
   const label=k.textPlate('HOWA · SUW',3.6,.32,[0,.075,0],floor,'#344f5c','#e4e9e7');label.rotation.x=-Math.PI/2;

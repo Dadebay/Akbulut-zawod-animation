@@ -27,7 +27,8 @@ export const REAR_SERVICE_YARD={
     // October 25 markup, building 1: a low, recessed flat roof surrounded by
     // a deep parapet. Its west edge meets the shaft at -14.75, without a slit.
     {reference:8,name:'rear-hall-link',x:-11.175,z:-4.5,width:7.15,depth:12,height:5.4,parapetHeight:.9},
-    {name:'rear-hall-return',x:-17.65,z:-7.6,width:5.8,depth:5.8,height:5.4,sharedRoof:'rear-hall-link'},
+    // October 27 markup: the glazed monitoring room faces the production hall.
+    {name:'rear-hall-return',x:-17.65,z:-7.6,width:5.8,depth:5.8,height:5.4,sharedRoof:'rear-hall-link',controlWindow:{west:-19.9,east:-15.4,sill:.9,head:3.2}},
     {reference:7,name:'rear-service-room',x:-12.175,z:7.5,width:5.15,depth:12,height:4.5,roofRise:1.2},
     // Markup part 2: attached to the end of part 1, extending toward the west.
     {reference:9,name:'rear-low-annex',x:-23,z:35,width:13,depth:3,height:3.0,roofFinish:'black'},
@@ -105,8 +106,16 @@ export function buildRearServiceYard(k,roofs,structures){
       wedge.setAttribute('position',new T.Float32BufferAttribute([
         -w,h,-d,w,h,-d,-w,h+rise,-d,-w,h,d,w,h,d,-w,h+rise,d,
       ],3));
-      wedge.setIndex([2,4,1,2,5,4,0,5,2,0,3,5,0,2,1,3,4,5]);wedge.computeVertexNormals();
-      mesh(wedge,wall,[0,0,0],g);
+      wedge.setIndex([2,4,1,2,5,4,0,5,2,0,3,5,0,2,1,3,4,5]);
+      // Flat faces: shared, smoothed normals made the wall ends face the sky
+      // and read as bright white strips beneath the roof sheets.
+      const flat=wedge.toNonIndexed();flat.computeVertexNormals();wedge.dispose();
+      mesh(flat,wall,[0,0,0],g);
+      // Continue the cladding joints up the triangular ends to the roof line.
+      for(const z of [d+.012])for(let x=-w+.65;x<w-.2;x+=.7){
+        const up=rise*(w-x)/(2*w)-.06;
+        if(up>.08)box(.014,up,.016,[x,h+up/2,z],joint,g).castShadow=false;
+      }
       const length=Math.hypot(b.width,rise),angle=-Math.atan2(rise,b.width);
       const sheet=box(length+.12,.10,b.depth+.12,[0,h+rise/2+.06,0],ribbedRoof,r);
       sheet.rotation.z=angle;

@@ -62,6 +62,7 @@ export function buildLogistics(k,operators){
     const p=pallet(panelStocks,[x,.06,LOADING.panelRows[0]],'green',true);
     p.name=`rail-green-pallet-${i+1}`;return p;
   });
+  LOADING.staticPanelBays.forEach((x,i)=>{pallet(panelStocks,[x,.06,LOADING.panelRows[0]],'green').name=`rail-stock-pallet-${i+1}`;});
   const stock=FORKLIFT_JOBS.map(({source},i)=>{
     if(i!==1)box(1.8,.06,1.8,[source[0],source[1]-.03,source[2]],m.concrete);
     const g=group(source,k.scene,true);g.rotation.y=Math.PI;

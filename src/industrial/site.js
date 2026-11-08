@@ -130,7 +130,7 @@ export function buildSite(k){
   for(let x=dock.west+5;x<dock.east;x+=5)
     box(.018,dock.height-.12,.009,[x,(dock.height-.12)/2,dock.north-.006],shutterLine,loadingPlatform);
   const loadingDoors=group([0,dock.height,0],loadingFace);
-  for(let x=8;x<44;x+=7){
+  for(const x of LOADING.doorXs){
     // The reference has quiet, pale roller shutters instead of dark glazing.
     box(4.45,3.95,.06,[x,2.05,-39.61],shutter,loadingDoors);
     for(let y=.45;y<3.95;y+=.30)
@@ -204,8 +204,9 @@ export function buildSite(k){
     const variation=((column*3+row*2)%5-2)*.035;
     pileSpots.push([x,z,STOCKYARD.heapRadius*(1+variation),STOCKYARD.heapHeight*(1-variation)]);
   }
-  // Dining courtyard reference: six stock heaps in each of two straight rows.
-  for(let column=0;column<6;column++)for(const z of [26.7,31.1])pileSpots.push([-68.4+column*4.2,z,1.45,.9]);
+  // Leave the equipment-facing end clear: its last two heaps touched the
+  // calcite machines, while the remaining courtyard stock stays in place.
+  for(let column=0;column<5;column++)for(const z of [26.7,31.1])pileSpots.push([-68.4+column*4.2,z,1.45,.9]);
   const padWidth=STOCKYARD.east-STOCKYARD.west,padDepth=STOCKYARD.south-STOCKYARD.north;
   const hw=padWidth/2,hd=padDepth/2,r=STOCKYARD.radius,padShape=new T.Shape();
   padShape.moveTo(-hw+r,-hd);padShape.lineTo(hw-r,-hd);padShape.quadraticCurveTo(hw,-hd,hw,-hd+r);

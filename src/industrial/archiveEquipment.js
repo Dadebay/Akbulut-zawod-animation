@@ -100,7 +100,7 @@ export function createArchiveEquipment(k,equipment){
     port(g,'in',[-.4,1.1,.48],[0,0,1],.42,'air');
     port(g,'out',[.25,2.05,0],[0,1,0],.35,'air');
   }
-  function hopper(g,zone,{width=3,depth=3,height=3.6,grate=false,weigh=false}={}){
+  function hopper(g,zone,{width=3,depth=3,height=3.6,grate=false,weigh=false,outletRadius=.21}={}){
     feet(width-.25,depth-.25,height-.45,g);
     hollowHopper(width,depth,.55,.55,height*.40,[0,height*.35,0],g);
     for(const z of [-depth/2,depth/2])box(width,height*.25,.08,[0,height*.875,z],steel,g);
@@ -110,7 +110,7 @@ export function createArchiveEquipment(k,equipment){
     const outlet=group([0,height*.35-.7,0],g);outlet.userData.cadRetain=true;outlet.scale.setScalar(.5);valve(outlet,zone,{internal:true});
     if(weigh)for(const x of [-width/2,width/2])for(const z of [-depth/2,depth/2])box(.34,.2,.28,[x,height*.75,z],m.blue,g);
     port(g,'in',[0,height,0],[0,1,0],.28,'solid',{open:true});
-    port(g,'out',[0,height*.35-.635,0],[0,-1,0],.21);
+    port(g,'out',[0,height*.35-.635,0],[0,-1,0],outletRadius);
     port(g,'air',[width/2+.3,height*.85,0],[1,0,0],.16,'air',{nozzle:.35});
   }
   function elevator(g,zone,{height=9}={}){
@@ -237,7 +237,7 @@ export function createArchiveEquipment(k,equipment){
       port(g,'out',[1.3,2.6,0],[1,0,0],.2,'air');
     }
   }
-  function mill(g,zone,{vertical=false}={}){
+  function mill(g,zone,{vertical=false,outletY=.55}={}){
     feet(3,2.4,.5,g);
     if(vertical){
       cyl(.35,1.4,[0,1.1,0],steel,g,1.12);cyl(1.12,1.8,[0,2.7,0],panel,g);
@@ -256,7 +256,7 @@ export function createArchiveEquipment(k,equipment){
       inspection(1.5,1.3,0,1.7,1.07,g);
     }
     port(g,'in',vertical?[-1.35,2.9,0]:[0,3.4,0],vertical?[-1,0,0]:[0,1,0],.28,'solid',{nozzle:vertical?.4:0,open:!vertical});
-    port(g,'out',[0,.55,-1.55],[0,0,-1],.25,'solid',{nozzle:.7});
+    port(g,'out',[0,outletY,-1.55],[0,0,-1],.25,'solid',{nozzle:.7});
     if(vertical)port(g,'air',[1.65,3,0],[1,0,0],.35,'air');
   }
   function drum(g,zone,{length=8}={}){

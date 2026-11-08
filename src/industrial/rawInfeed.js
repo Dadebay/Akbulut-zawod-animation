@@ -57,15 +57,17 @@ export function buildCornerSilo(k){
     }
   }
   // Two separate concrete pads: a low portal and a taller four-leg trestle.
+  const along=direction.clone().setY(0).normalize(),rearLegs=1.25;
   for(const t of [.27,.72]){
     const left=chord(t,-1,.95),right=chord(t,1,.95);
-    const pad=box(2.4,.18,2.5,[(left[0]+right[0])/2,.09,(left[2]+right[2])/2],m.concrete);pad.rotation.y=yaw;
+    // Centre each pad on its whole footprint, including the trestle's rear legs.
+    const shift=t>.5?-rearLegs/2:0;
+    const pad=box(2.4,.18,2.5,[(left[0]+right[0])/2+along.x*shift,.09,(left[2]+right[2])/2+along.z*shift],m.concrete);pad.rotation.y=yaw;
     for(const p of [left,right])rod([p[0],.18,p[2]],p,.085,m.steel);
     rod(left,right,.065,m.steel);rod([left[0],.25,left[2]],right,.04,m.steel);rod([right[0],.25,right[2]],left,.04,m.steel);
     if(t>.5){
-      const along=direction.clone().setY(0).normalize();
       for(const p of [left,right]){
-        const q=new T.Vector3(...p).addScaledVector(along,-1.25);
+        const q=new T.Vector3(...p).addScaledVector(along,-rearLegs);
         rod([q.x,.18,q.z],q.toArray(),.085,m.steel);rod(q.toArray(),p,.06,m.steel);
         rod([q.x,.18,q.z],p,.045,m.steel);rod([p[0],.18,p[2]],q.toArray(),.045,m.steel);
       }

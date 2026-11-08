@@ -8,7 +8,7 @@ import {createKit} from './industrial/kit.js';
 import {buildProduction} from './industrial/production.js';
 import {prepareCadInteriors,CAD_INTERIOR_CATALOG as catalog} from './industrial/cadInteriors.js';
 import {poolSurfaces,batchAssemblies} from './industrial/surfaceBatching.js';
-import {EMPTY_PRODUCTION_BAY,CEILING_LINES} from './industrial/processPlan.js';
+import {EMPTY_PRODUCTION_BAY} from './industrial/processPlan.js';
 
 async function library(){
   const b=await readFile(new URL('../public/models/cad-interiors.glb',import.meta.url));
@@ -58,9 +58,9 @@ test('CAD equipment fits existing rooms and preserves production tools, ports an
   const inventory=JSON.stringify(production.interiorInventory);
   const outdoorBounds=new T.Box3().setFromObject(production.outdoor);
   const cad=prepareCadInteriors(k,production.root);
-  assert.equal(cad.slots.length,58);
+  assert.equal(cad.slots.length,55);
   const ports=cad.slots.map(s=>Object.values(s.machine.userData.ports||{}).map(p=>({p,position:p.position.clone(),connected:p.connected})));
-  assert.equal(cad.install(await library()),58);
+  assert.equal(cad.install(await library()),55);
   const empty=new T.Box3(new T.Vector3(EMPTY_PRODUCTION_BAY.west,0,EMPTY_PRODUCTION_BAY.north),new T.Vector3(EMPTY_PRODUCTION_BAY.east,40,EMPTY_PRODUCTION_BAY.south));
   for(const [i,{machine,bounds,fallback}] of cad.slots.entries()){
     const id=machine.userData.equipment.id,shape=machine.getObjectByName(`cad-${id}`);
@@ -76,7 +76,7 @@ test('CAD equipment fits existing rooms and preserves production tools, ports an
     assert.equal(machine.userData.cadInterior.status,'ready');
     for(const {p,position,connected} of ports[i]){assert.ok(p.position.equals(position));assert.equal(p.connected,connected);assert.equal(p.machine,machine);}
   }
-  for(const id of ['board-slurry-mixer',`${CEILING_LINES[0].id}-crosscut`,`${CEILING_LINES[1].id}-perforation`,'rear-thermal-drum','twin-roll-feed']){
+  for(const id of ['board-slurry-mixer','rear-thermal-drum','twin-roll-feed']){
     const object=production.root.getObjectByName(`interior-${id}`);assert.ok(object,id);assert.equal(object.userData.cadInterior,undefined,`${id}: keep its own mechanism`);
   }
   assert.equal(JSON.stringify(production.interiorInventory),inventory);

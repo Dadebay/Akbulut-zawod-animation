@@ -32,27 +32,47 @@ export const GYPSUM_SILO_TRANSFER=[
 const liftDirection=new T.Vector3(...GYPSUM_LIFT[1]).sub(new T.Vector3(...GYPSUM_LIFT[0])).setY(0).normalize();
 const gypsumDrop=new T.Vector3(...GYPSUM_LIFT[1]).addScaledVector(liftDirection,.35);
 export const CALCITE_INTAKE=planPoint(197,623,.85);
-// From the user's front/roof view: the railway-side third bay stays empty.
-// Preparation comes from the attached south buildings; two straight ceiling
-// lines and the compact board/dryer cell use only the other two roof bays.
-export const EMPTY_PRODUCTION_BAY={west:-58,east:74,north:-39.5,south:-29.83};
-export const BOARD_START=[-23,1.18,-22.8];
-export const BOARD_CUT_X=-14;
-export const BOARD_DRYER={x:0,z:BOARD_START[2],entryX:-9.8,exitX:6.4};
-export const BOARD_END=[12.5,1.18,BOARD_START[2]];
-export const BOARD_ROUTE=[BOARD_START,BOARD_END];
-export const CEILING_LINES=[
-  {id:'panel',number:'01',z:-14.2,start:2,laminate:11,cut:22,press:35,inspect:49,pack:61,end:67},
-  {id:'panel-2',number:'02',z:-24,start:29,laminate:35,cut:42,press:49,inspect:57,pack:64,end:69.5},
-].map(line=>({...line,route:[[line.start,1.18,line.z-2.6],...[line.start,line.laminate,line.cut,line.press,line.inspect,line.pack,line.end].map(x=>[x,1.18,line.z])]}));
-export const CEILING_LINE_Z=CEILING_LINES[0].z;
-export const PROCESS_AISLE_Z=-19;
-export const BAGGING_POSITION=[-35,0,-16];
-export const BAG_ROUTE=[[-36.3,1.19,-16],[-29.5,1.19,-16],[-29.5,1.19,-20],[-24,1.19,-20]];
-export const DRYMIX_END=[-24,3.8,-20];
-export const BOARD_PALLET_OUT=[BOARD_END[0],.27,BOARD_END[2]-4.2];
-export const PALLET_ROBOT_BASE=[BOARD_END[0]+4.3,0,BOARD_END[2]-2.1];
-export const BAG_PALLET_OUT=[-21.4,.27,-20];
+// The stockyard belt rises to the twin-roll receiver. The remaining material
+// stays enclosed through the weigher, hammer mill, TY-001 and south annex.
+export const CALCITE_FEED_END=[-49.5,2.85,34];
+export const CALCITE_ROUTE=[
+  CALCITE_INTAKE,CALCITE_FEED_END,[-44.4,1.3,34],[-39.5,3.5,34],
+  [-45.5,4,25],[-45.5,.65,23.1],[-48.5,5.7,20],[-48.5,5.7,-7],[-50,3.1,-7],
+  [-50,.5,-7],[-48,.55,-7],[-45.8,9.9,-7],[-43.5,2.25,-6],
+  [-40.5,8,-6],[-40.5,8,-18],[-50.2,6.8,-18],
+];
+// The railway-side bay north of the dryer stays empty.
+export const EMPTY_PRODUCTION_BAY={west:3,east:74,north:-39.5,south:-29.83};
+// The bag palletizer stands at GP-001, between the process-building feed and
+// the independent board finishing line.
+export const BEUMER_LINE={west:-33,east:-23.5,z:-24};
+// October 27 markup: the setting belt runs east along the south bay past the
+// control room to the cutter; a wet transfer turns the boards into the middle
+// bay and back west through the 31 m dryer. Its final packer is separate from
+// the BEUMER bag palletizer at GP-001.
+export const BOARD_LINE_Z=-13.8;
+// IMG_6732: the setting belt runs a long, open stretch past the control-room
+// glazing; the forming station stands well to the west.
+export const BOARD_START=[-32.5,1.18,BOARD_LINE_Z];
+export const BOARD_CUT_X=62;
+export const BOARD_TRANSFER_X=66;
+export const BOARD_DRYER_Z=-20.8;
+// October 28 markup: shift the return, packer and wrapper 7 m toward the
+// dryer (left in the reference view); their connected runs use this centre line.
+export const BOARD_RETURN_X=-13.5;
+export const BOARD_DRYER={x:26.5,z:BOARD_DRYER_Z,entryX:42,exitX:11,length:31,entryApron:6.2,exitApron:5,decks:5,deckPitch:.5,boardInterval:8};
+export const BOARD_END=[BOARD_RETURN_X,1.18,-25.8];
+export const BOARD_ROUTE=[
+  BOARD_START,[BOARD_TRANSFER_X,1.18,BOARD_LINE_Z],[BOARD_TRANSFER_X,1.18,BOARD_DRYER_Z],
+  [BOARD_RETURN_X,1.18,BOARD_DRYER_Z],BOARD_END,
+];
+export const PROCESS_AISLE_Z=-16.8;
+// Filled bags leave through the level-six front service deck of the process
+// tower. A short level transfer turns the bags onto the straight GP-001 feed.
+export const BAG_FACTORY_OUTLET=[-30,6.55,-8];
+export const BAG_TRANSFER=[BEUMER_LINE.west+1.5,6.55,BAG_FACTORY_OUTLET[2]];
+// Receive only once the whole bag has passed through the stacker's front inlet.
+export const BAG_ROUTE=[BAG_FACTORY_OUTLET,BAG_TRANSFER,[BAG_TRANSFER[0],3.45,BEUMER_LINE.z]];
 export const PROCESS_LINES=[
   {id:'gypsum',zone:'CR',name:'Gips daşyny döwüji enjamlar toplumy',short:'Gips daşy',color:'#3158f5',stages:[S.infeed,S.crush,S.calcine],step:S.crush,
     points:[GYPSUM_INTAKE,[GYPSUM_INTAKE[0]-4.9,.85,GYPSUM_INTAKE[2]],[GYPSUM_CRUSHER[0],4.15,GYPSUM_CRUSHER[2]],[GYPSUM_CRUSHER[0],1.3,GYPSUM_CRUSHER[2]],[GYPSUM_CRUSHER[0]-3,1.3,GYPSUM_CRUSHER[2]],...GYPSUM_LIFT,[gypsumDrop.x,12.95,gypsumDrop.z],[gypsumDrop.x,10.9,gypsumDrop.z]],
@@ -62,10 +82,10 @@ export const PROCESS_LINES=[
     ],
     label:[44,9,32],position:[79,37,82],target:[35,3,34]},
   {id:'calcite',zone:'TY',name:'Kalsit önümçilik liniýasy',short:'Kalsit',color:'#e8c532',stages:[S.crush,S.calcine,S.mix],step:S.crush,
-    points:[CALCITE_INTAKE,planPoint(357,623),[-45.45,4,29],[-45.45,4,25],...points([[357,535],[423,535],[423,399]],1.3)],
+    points:CALCITE_ROUTE,
     label:[-52,6,18],position:[-102,41,62],target:[-45,3,19]},
   {id:'drymix',zone:'GR',name:'Gury gurluşyk garyndylaryň önümçilik liniýasy',short:'Gury garyndy',color:'#15cbd4',stages:[S.mix,S.form,S.pack],step:S.mix,
-    points:[...points([[466,583],[455,583],[455,375],[424,375]],4.6),[-35,4.6,-16],DRYMIX_END],
+    points:[...points([[466,583],[455,583],[455,375],[424,375]],4.6),[BAG_ROUTE[0][0],4.6,-7.5],...BAG_ROUTE],
     label:[-42,8,-23],position:[-80,31,-57],target:[-42,3,-22]},
   {id:'board',zone:'GK',name:'Gipsokarton önümçilik liniýasy',short:'Gipsokarton',color:'#d338d0',stages:[S.mix,S.form,S.pack],step:S.form,
     points:[...points([[454,600],[444,600],[444,383]],3.4),[BOARD_START[0],3.4,planPoint(376,383)[2]],...BOARD_ROUTE],
@@ -75,13 +95,13 @@ export const PROCESS_STATIONS=[
   {id:'CR',name:'Gips silolary',world:[GYPSUM_STORAGE.x,0,GYPSUM_STORAGE.z],height:11.3},
   {id:'TY',name:'Kalsit degirmeni',world:[-45.5,0,25],height:6.6},
   {id:'BS',name:'Gips taýýarlygy',world:[-29,0,8],height:6.3},
-  {id:'GR',name:'Gury garyndy',world:[-44.1,0,-24.8],height:6.9},
   {id:'GK',name:'Gipsokarton',world:[BOARD_DRYER.x,0,BOARD_DRYER.z],height:6.8},
-  {id:'GP',name:'Paletleýji',world:[BOARD_END[0],0,BOARD_END[2]],height:5.8},
+  {id:'GP',name:'Paletleýji',world:[BEUMER_LINE.west+1.5,0,BEUMER_LINE.z],height:5.8},
 ];
 export const localPoint=p=>[p[0]-8,p[1],p[2]+25];
 export function routeCurve(points){const curve=new T.CurvePath();for(let i=1;i<points.length;i++)if(points[i].some((value,axis)=>value!==points[i-1][axis]))curve.add(new T.LineCurve3(new T.Vector3(...points[i-1]),new T.Vector3(...points[i])));return curve;}
-export const STATION_VIEWS=Object.fromEntries(PROCESS_STATIONS.map(s=>[s.id,{position:[s.world[0]-14,12,s.world[2]+17],target:[s.world[0],3,s.world[2]]}]));
+// South-bay stations are viewed from the hall, not through the process blocks.
+const southBay=s=>s.world[2]>-20.17&&s.world[2]<-10.5;
+export const STATION_VIEWS=Object.fromEntries(PROCESS_STATIONS.map(s=>[s.id,{position:[s.world[0]-14,12,s.world[2]+(southBay(s)?-17:17)],target:[s.world[0],3,s.world[2]]}]));
 STATION_VIEWS.BS={position:[-61,31,46],target:[-29,12,5]};
 STATION_VIEWS.GK={position:[BOARD_DRYER.x+15,15,BOARD_DRYER.z+17],target:[BOARD_DRYER.x,3,BOARD_DRYER.z]};
-STATION_VIEWS.robot={position:[BOARD_END[0]+7,23,BOARD_END[2]-10],target:[BOARD_END[0],1.5,BOARD_END[2]-3]};

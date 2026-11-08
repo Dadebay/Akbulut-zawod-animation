@@ -37,8 +37,9 @@ export function conveyorMotion(points,{speed=1.8,turnTime=.9,startHold=0,stops={
   return {duration,turns,milestones,pose};
 }
 
-export function transferTable(k,corner,{parent,size=3,top=1.175,clearTime=2.1}={}){
+export function transferTable(k,corner,{parent,size=3,top=1.175,clearTime=2.1,name}={}){
   const {box,cyl,group,m}=k,g=group(corner.a.toArray(),parent);g.position.y=0;
+  if(name)g.name=name;
   const half=size/2;
   for(const x of [-half+.18,half-.18])for(const z of [-half+.18,half-.18]){
     box(.13,top-.2,.13,[x,(top-.2)/2,z],m.dark,g);box(.3,.06,.3,[x,.03,z],m.steel,g);

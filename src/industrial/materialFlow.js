@@ -1,13 +1,12 @@
 import {createDust} from './dust.js';
 import * as T from 'three';
-import {PROCESS_LINES,routeCurve} from './processPlan.js';
+import {PROCESS_LINES,CALCITE_INTAKE,CALCITE_FEED_END,routeCurve} from './processPlan.js';
 import {buildRawInfeed} from './rawInfeed.js';
 import {rubbleAssets} from './rubble.js';
 
 export function buildMaterialFlow(k,logistics){
   const {m,box,cyl,group,mesh,rod}=k;
   const infeed=buildRawInfeed(k),rubble=rubbleAssets(k);
-  const enclosed=group([0,0,0],k.scene,true);enclosed.name='calcite-enclosed-feed';
   const makeCurve=routeCurve;
   function belt(points,width=1.4,supports=true,railMaterial=m.blue){
     const path=points.map(p=>new T.Vector3(...p)).filter((p,i,all)=>!i||p.distanceToSquared(all[i-1])>1e-8);
@@ -72,19 +71,21 @@ export function buildMaterialFlow(k,logistics){
       if(Math.abs(a.y-b.y)<.1&&a.distanceTo(b)>3){const p=a.clone().lerp(b,.5);rod([p.x,0,p.z],[p.x,p.y-.25,p.z],.07,m.steel,parent);}
     }
   }
-  // The exterior calcite belt, intake and facade pipe have been removed.
-  // Keep the connection inside the building, including in the line-view overlay.
-  const rawRoutes=PROCESS_LINES.slice(0,2).flatMap(line=>[line.points,...(line.branches||[])].map(points=>({
-    line,points:line.id==='calcite'?points.slice(5):points,
-  })));
+  // Exposed rock travels on the stockyard belt. From the twin-roll receiver
+  // onward, equipmentConnections owns the sealed machine-to-machine route.
+  const rawRoutes=[...PROCESS_LINES[0].branches.map(points=>({line:PROCESS_LINES[0],points})),
+    {line:PROCESS_LINES[0],points:PROCESS_LINES[0].points},
+    {line:PROCESS_LINES[1],points:[CALCITE_INTAKE,CALCITE_FEED_END]}];
   const rawLines=rawRoutes.map(({line,points})=>{
     const coarse=line.id==='gypsum'&&points===line.points;
+    const calciteFeed=line.id==='calcite';
     // buildCornerSilo owns the hollow receiving chute at the lift head.
     if(coarse){belt(points.slice(1,3),1.35);belt(points.slice(3,6),1.35);belt(points.slice(5,7),1.35,false,m.steel);}
-    else duct(points,line.id==='calcite'?enclosed:k.scene);
+    else if(calciteFeed)belt(points,1.1,true,m.steel);
+    else duct(points);
     const path=makeCurve(points),length=path.getLength(),objects=[];
     const coarseUntil=coarse?path.curves[0].getLength()+path.curves[1].getLength():0;
-    for(let i=0;i<(coarse?18:0);i++){
+    for(let i=0;i<(coarse?18:calciteFeed?10:0);i++){
       const g=group([0,0,0],k.scene,true);
       for(let n=0;n<3;n++){
         const rock=mesh(rubble.geometries[(i+n)%4],rubble.material,[(n-1)*.28,.28,(n%2-.5)*.30],g);
@@ -95,28 +96,18 @@ export function buildMaterialFlow(k,logistics){
     const exposed=[];let offset=0;
     path.curves.forEach((segment,index)=>{
       const end=offset+segment.getLength();
-      if(coarse&&[0,1,3,4,5,6,7].includes(index))exposed.push([offset,end]);
+      if((coarse&&[0,1,3,4,5,6,7].includes(index))||calciteFeed)exposed.push([offset,end]);
       offset=end;
     });
     return {line,path,length,objects,coarseUntil,exposed};
   });
-  // Preserve the enclosed calcite receiver, lift and buffer silo.
-  const calcite=PROCESS_LINES.find(line=>line.id==='calcite'),last=calcite.points.at(-1),previous=calcite.points.at(-2),receiver=group([last[0],0,last[2]],enclosed);
-  receiver.rotation.y=-Math.atan2(last[2]-previous[2],last[0]-previous[0]);
-  box(4.8,.22,3.1,[0,.11,0],m.concrete,receiver);
-  for(const z of [-1.4,1.4]){box(4.4,1.85,.12,[0,1.72,z],m.white,receiver);box(4.4,.18,.18,[0,.78,z],m.blue,receiver);}
-  box(4.6,.15,3,[0,2.72,0],m.white,receiver);box(.12,1.9,2.9,[2.2,1.72,0],m.white,receiver);
-  box(2.4,.8,2.5,[.55,.75,0],m.dark,receiver);box(.7,6.8,.8,[1.25,3.4,0],m.white,receiver);
-  for(let y=.7;y<6.5;y+=.8)box(.82,.05,.92,[1.25,y,0],m.steel,receiver);
-  const silo=group([1.25,0,3.2],receiver);k.frame(2.3,2.3,1.6,silo);cyl(.2,1.1,[0,1.65,0],m.steel,silo,1.05);cyl(1.05,3.1,[0,3.75,0],m.white,silo);cyl(1.1,.15,[0,5.36,0],m.steel,silo);
-  k.pipe([[1.25,6.7,0],[1.25,7.1,0],[1.25,7.1,3.2],[1.25,5.3,3.2]],.18,m.steel,receiver);k.motor([1.7,6.2,0],receiver,.7);k.ladder(5.4,1.25,4.5,receiver);
-  k.textPlate('KALSIT',1.6,.35,[1.25,4.2,4.26],receiver);
   // Packing now ends at the two robot pallets and the bag receiver owned by
   // production.js. No separate pallet belts cross the empty third roof bay.
   // A dedicated plan view carries the image's four colours; equipment stays
   // white and blue. Instanced arrows show direction without extra UI text.
   const traces=group([0,0,0],k.scene,true),arrowGeo=new T.ConeGeometry(.23,.8,6),arrowPose=new T.Object3D(),up=new T.Vector3(0,1,0);
-  const traceLines=rawRoutes.map(({line,points})=>{
+  const traceRoutes=[...rawRoutes.filter(({line})=>line.id==='gypsum'),{line:PROCESS_LINES[1],points:PROCESS_LINES[1].points}];
+  const traceLines=traceRoutes.map(({line,points})=>{
     const path=makeCurve(points.map(([x,y,z])=>[x,y+.65,z])),mat=k.material(line.color,.1,.5,{emissive:line.color,emissiveIntensity:.3,depthTest:false,depthWrite:false});
     const trace=mesh(new T.TubeGeometry(path,Math.max(36,Math.ceil(path.getLength())),.085,5,false),mat,[0,0,0],traces);trace.castShadow=false;trace.renderOrder=30;
     const arrows=k.instances(arrowGeo,mat,14,traces);arrows.castShadow=false;arrows.renderOrder=31;
@@ -124,7 +115,7 @@ export function buildMaterialFlow(k,logistics){
   });
   const falling=[];for(let i=0;i<26;i++){const rock=group([0,0,0],k.scene,true),chunk=mesh(rubble.geometries[i%4],rubble.material,[0,0,0],rock);chunk.scale.setScalar(.24+(i%3)*.045);falling.push(rock);}
   const drop=new T.Vector3(),loadSurface=new T.Vector3(),dustOrigin=new T.Vector3(),dust=createDust(k);
-  return {enclosed,loader:infeed.loader,update(j,landscape,{showLines=false,showInterior=false,active}={}){
+  return {loader:infeed.loader,update(j,landscape,{showLines=false,showInterior=false,active}={}){
     const isRunning=zone=>!active||active.get(zone)?.status==='running';
     traces.visible=showLines;
     traceLines.forEach(({line,path,arrows})=>{arrows.visible=isRunning(line.zone);if(!showLines)return;for(let i=0;i<arrows.count;i++){const t=(j.time*.035+i/arrows.count)%1;arrowPose.position.copy(path.getPointAt(t));arrowPose.quaternion.setFromUnitVectors(up,path.getTangentAt(t).normalize());arrowPose.updateMatrix();arrows.setMatrixAt(i,arrowPose.matrix);}arrows.instanceMatrix.needsUpdate=true;});

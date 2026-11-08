@@ -4,6 +4,7 @@ import * as T from 'three';
 import {createKit} from './industrial/kit.js';
 import {buildCornerSilo} from './industrial/rawInfeed.js';
 import {buildMaterialFlow} from './industrial/materialFlow.js';
+import {buildProduction} from './industrial/production.js';
 import {GYPSUM_LIFT,PROCESS_LINES,GYPSUM_CORNER_SILO,GYPSUM_SILO_TOWER,GYPSUM_SILO_TRANSFER,GYPSUM_STORAGE} from './industrial/processPlan.js';
 import {buildGypsumReceivingHall} from './industrial/gypsumReceivingHall.js';
 import {GYPSUM_RECEIVING_HALL} from './industrial/siteLayout.js';
@@ -49,16 +50,17 @@ test('raw material travels 5 to 4 to 3 to 1 with straight exterior transfers',()
   clearSegment(new T.Vector3(route[0][0],1.3,route[0][2]-1),new T.Vector3(route[0][0],1.3,route[0][2]-2.4),siloSolids,'4→3 clears the silo ladder and legs');
 }));
 
-test('enclosed calcite equipment keeps its world position and follows cutaway visibility after optimization',()=>fixture((scene,k)=>{
-  const flow=buildMaterialFlow(k,{pallet:(parent,pos)=>k.group(pos,parent,true)});
-  const before=new T.Box3().setFromObject(flow.enclosed);
-  const interior=k.group([8,0,-25],scene,true);interior.attach(flow.enclosed);
+test('connected calcite equipment keeps its world position and follows cutaway visibility after optimization',()=>fixture((scene,k)=>{
+  const production=buildProduction(k),hopper=production.root.getObjectByName('interior-calcite-hopper');
+  production.root.position.set(8,0,-25);
+  const before=hopper.getWorldPosition(new T.Vector3());
   k.optimize({preserveRepeated:true});scene.updateMatrixWorld(true);
-  const after=new T.Box3().setFromObject(flow.enclosed);
-  assert.ok(before.min.distanceTo(after.min)<.001&&before.max.distanceTo(after.max)<.001,'cutaway parenting does not move the process connections');
-  const visibleMeshes=()=>{let count=0;interior.traverseVisible(o=>{if(o.isMesh)count++;});return count;};
-  interior.visible=false;assert.equal(visibleMeshes(),0,'no enclosed feed protrudes through the exterior facade');
-  interior.visible=true;assert.ok(visibleMeshes()>0,'the feed remains available in the interior view');
+  const after=hopper.getWorldPosition(new T.Vector3());
+  assert.ok(before.distanceTo(after)<.001,'optimization does not move the connected receiver');
+  const visibleMeshes=()=>{let count=0;scene.traverseVisible(o=>{if(!o.isMesh)return;for(let parent=o.parent;parent;parent=parent.parent)if(parent===hopper){count++;break;}});return count;};
+  production.root.visible=false;assert.equal(visibleMeshes(),0,'the receiver hides with the process cutaway');
+  production.root.visible=true;assert.ok(visibleMeshes()>0,'the connected receiver is visible in the interior');
+  assert.equal(scene.getObjectByName('calcite-enclosed-feed'),undefined,'no duplicate standalone receiver remains');
 }));
 
 test('silo approach leaves clearance around the full conveyor and its material',()=>fixture(scene=>{

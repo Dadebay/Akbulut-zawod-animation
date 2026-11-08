@@ -75,7 +75,11 @@ export const RAIL_SIDE_LOADING={
   // Individual forklift-sized green loads, with an aisle between the stock
   // and the canopy guards. Each position can visibly empty and be refilled.
   panelBays:[-1.1,1,8,11.2,17,19,25.5,31].map(x=>({x,width:1.3})),
-  panelRows:[-42.7],panelDepth:1.1,panelTop:1.43
+  panelRows:[-42.7],panelDepth:1.1,panelTop:1.43,
+  // Extra stock between the working bays; the forklift jobs leave these alone.
+  staticPanelBays:[4.3,14.1,22.3,28.3,34.3],
+  // Three sectional loading doors in the hall's railway wall.
+  doorXs:[11,25.5,40],
 };
 // Ground height under the loading deck and its two ramps; zero elsewhere.
 export function loadingDeckHeight(x,z){

@@ -1,12 +1,16 @@
 import {OLD_WORK_OFFICE as O,OLD_PAVILION as P,OLD_RAIL_DORMITORY as D,OLD_REAR_BOUNDARY,OLD_WAREHOUSE_DOORS,PROCESS_BUILDINGS as L,PROCESS_SERVICE_DOOR_WIDTHS,GYPSUM_SILO_TOWER as S,GYPSUM_RECEIVING_HALL as R,TRUCK_WEIGHBRIDGE as W} from './siteLayout.js';
 import {REAR_SERVICE_YARD} from './rearServiceYard.js';
-import {NEW_ADMINISTRATION as A} from './siteLayout.js';
+import {NEW_ADMINISTRATION as A,RAIL_SIDE_LOADING} from './siteLayout.js';
+const REAR_LOADING_DOORS=RAIL_SIDE_LOADING.doorXs;
+
+// The control room's glazing is seen through the hall's south wall.
+const CONTROL=REAR_SERVICE_YARD.buildings.find(b=>b.controlWindow).controlWindow;
 
 // Coordinates come from the existing construction modules. Missing room
 // divisions and personnel doors are illustrative, like the existing interiors.
 const door=(side,at=0,width=1.4,height=2.4,extra={})=>({side,at,width,height,...extra});
 export const WALK_BUILDINGS=[
-  {id:'new-production',label:'Täze zawod · Önümçilik',campus:'new',x:8,z:-25,width:132,depth:29,height:8,doors:[door('south',-63.6,3.88,2.7,{bottom:.49,type:'double'}),door('east',0,2),door('north',3.5,3,3.8,{type:'roller',open:true}),...[8,15,22,29,36,43].map(x=>door('north',x-8,4.45,3.95,{bottom:.7,type:'roller'})),door('west',0,1.6,2.4,{bottom:A.ground,type:'double'})]},
+  {id:'new-production',label:'Täze zawod · Önümçilik',campus:'new',x:8,z:-25,width:132,depth:29,height:8,doors:[door('south',-63.6,3.88,2.7,{bottom:.49,type:'double'}),door('east',0,2),door('north',3.5,3,3.8,{type:'roller',open:true}),...REAR_LOADING_DOORS.map(x=>door('north',x-8,4.45,3.95,{bottom:.7,type:'roller'})),door('west',0,1.6,2.4,{bottom:A.ground,type:'double'}),door('south',(CONTROL.west+CONTROL.east)/2-8,CONTROL.east-CONTROL.west,CONTROL.head-CONTROL.sill,{bottom:CONTROL.sill,type:'opening'})]},
   {id:'new-administration',label:'Edara binasy · Iş ýerleri',campus:'new',x:(A.x-A.width/2+A.productionWallX)/2,z:A.z,width:A.productionWallX-(A.x-A.width/2),depth:A.depth,height:A.height,doors:[door('west',0,2.4,2.4,{bottom:A.ground,type:'double'}),door('east',0,1.6,2.4,{bottom:A.ground,type:'double'})]},
   {id:'old-production',label:'Köne zawod · Önümçilik',campus:'old',x:31,z:-102,width:76,depth:30,height:6.2,doors:[door('west',-10,1.05),door('west',-5.4,1.05),door('south',13,12.4,5,{type:'opening'})]},
   {id:'old-warehouse',label:'Köne zawod · Ammar',campus:'old',x:31,z:-138,width:76,depth:12,height:5.8,doors:[door('west',0,1.5),...OLD_WAREHOUSE_DOORS.map(d=>door('south',d.x-31,d.width,d.height,{bottom:d.bottom,type:'roller'}))]},

@@ -60,7 +60,8 @@ if(extra.length)throw new Error('Unembedded build assets: '+extra.map(item=>item
 const js=chunks[0].code.replace(/<\/script/gi,'<\\/script');
 if(/<\/style/i.test(styles))throw new Error('Unexpected closing style tag in generated CSS.');
 
-const files=(await filesIn(publicDir)).filter(file=>file!==(tablet?'models/man-tractor-cab.glb':'models/man-tractor-cab-tablet.glb'));
+// Desktop uses the tablet mesh for distant vehicle LODs as well as the full cab.
+const files=(await filesIn(publicDir)).filter(file=>!tablet||file!=='models/man-tractor-cab.glb');
 const embedded=[];
 for(const file of files){
   let mime=mimeTypes[extname(file).toLowerCase()];
