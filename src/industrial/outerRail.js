@@ -4,7 +4,7 @@ export const RAIL_CROSSINGS=[-143,-205];
 export const RAIL_CROSSING_POSTS=RAIL_CROSSINGS.flatMap(x=>[-1,1].map(side=>({x:x+side*5.4,z:z+side*5,side})));
 
 export function buildOuterRail(k){
-  const {box,cyl,rod,material,m}=k,ballast=material('#8f897c',0,1),steel=material('#8a8b86',.78,.4),tie=material('#b1b0a4',0,.96),dark=material('#545751',.6,.7);
+  const {box,cyl,material,m}=k,ballast=material('#8f897c',0,1),steel=material('#8a8b86',.78,.4),tie=material('#b1b0a4',0,.96),dark=material('#545751',.6,.7);
   // The outer boundary is a railway embankment, not another asphalt road.
   const path=outerRailPath(),length=path.getLength(),segments=420;
   function strip(width,y,mat){const pts=[],indices=[];for(let i=0;i<=segments;i++){const p=path.getPointAt(i/segments),t=path.getTangentAt(i/segments),n=new T.Vector3(-t.z,0,t.x).normalize();for(const side of [-1,1]){const q=p.clone().addScaledVector(n,width*side/2);pts.push(q.x,q.y+y,q.z);}if(i<segments){const a=i*2;indices.push(a,a+1,a+2,a+1,a+3,a+2);}}const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(pts,3));geo.setIndex(indices);geo.computeVertexNormals();k.mesh(geo,mat).castShadow=false;}
@@ -26,8 +26,4 @@ export function buildOuterRail(k){
     box(4.8,.13,.12,[-side*2.4,0,0],m.white,arm);
     for(let a=.4;a<4.8;a+=.8)box(.28,.14,.13,[-side*a,0,0],m.red,arm);
   }
-  // Keep the drainage outside; the poles stand between the fence and the left rail shoulder.
-  box(260,.08,1.6,[-30,-.3,z+5.8],material('#7f7b70',0,1));for(const dz of [-.85,.85])box(260,.3,.15,[-30,-.1,z+5.8+dz],tie);
-  const poleZ=41.9;
-  for(let x=-160;x<100;x+=36){cyl(.12,10,[x,5,poleZ],tie,k.scene,.08,10);box(.14,.18,2.6,[x,9.3,poleZ],dark);for(const dz of [-1,0,1]){cyl(.09,.23,[x,9.5,poleZ+dz],m.white);if(x<64)rod([x,9.6,poleZ+dz],[x+36,9.6,poleZ+dz],.014,dark);}}
 }

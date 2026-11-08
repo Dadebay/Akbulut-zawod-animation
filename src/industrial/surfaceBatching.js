@@ -8,7 +8,7 @@ export function poolSurfaces(k){
   k.scene.traverse(o=>{
     if(!o.isMesh||o.isInstancedMesh||o.isBatchedMesh||Array.isArray(o.material))return;
     const mat=o.material;
-    if(!mat.isMeshStandardMaterial||mat.userData.independent||mat.transparent||mat.vertexColors||mat.emissive.getHex()!==0||Object.values(mat).some(v=>v?.isTexture)||mat.onBeforeCompile.toString().includes('terrainBlend'))return;
+    if(!mat.isMeshStandardMaterial||mat.isMeshPhysicalMaterial||mat.userData.independent||mat.transparent||mat.vertexColors||mat.emissive.getHex()!==0||Object.values(mat).some(v=>v?.isTexture)||mat.onBeforeCompile.toString().includes('terrainBlend'))return;
     const key=[mat.side,mat.flatShading,mat.depthTest,mat.depthWrite,mat.polygonOffset,mat.polygonOffsetFactor,mat.polygonOffsetUnits].join(':');
     if(!families.has(key)){
       const shared=k.material('#ffffff',1,1,{unique:true,vertexColors:true,side:mat.side,flatShading:mat.flatShading,depthTest:mat.depthTest,depthWrite:mat.depthWrite,polygonOffset:mat.polygonOffset,polygonOffsetFactor:mat.polygonOffsetFactor,polygonOffsetUnits:mat.polygonOffsetUnits});
@@ -31,11 +31,11 @@ export function poolSurfaces(k){
 
 // Keep each cell/assembly as an independently culled submesh, submitted in one
 // multi-draw per material. Transform handles stay in the original hierarchy.
-export function batchAssemblies(k){
+export function batchAssemblies(k,{roots=[k.scene]}={}){
   // optimize() creates assembly-local meshes; resolve their world transforms before baking.
   k.scene.updateMatrixWorld(true);
   const groups=new Map(),batches=[],empty=k.trackGeometry(new T.BufferGeometry());
-  k.scene.traverse(o=>{
+  for(const root of roots)root.traverse(o=>{
     if(!o.isMesh||o.isInstancedMesh||o.isBatchedMesh||Array.isArray(o.material)||o.material.transparent)return;
     const layout=Object.entries(o.geometry.attributes).sort(([a],[b])=>a.localeCompare(b)).map(([n,a])=>`${n}:${a.itemSize}`).join('|');
     const key=`${o.material.uuid}:${o.castShadow}:${o.receiveShadow}:${o.renderOrder}:${layout}`;

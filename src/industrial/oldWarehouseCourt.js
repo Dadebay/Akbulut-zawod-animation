@@ -13,7 +13,9 @@ export function buildOldWarehouseCourt(k,plants){
   const court=L.forecourt,park=L.parking;
   box(court.east-court.west,.68,court.south-court.north,[(court.east+court.west)/2,-.36,(court.south+court.north)/2],asphalt);
   // Keep the checkpoint's approach continuous with the concrete court.
-  const entranceApron=box(10,.035,9.0,[L.fenceX-3.3,-.041,OLD_ENTRANCE.innerZ],asphalt);
+  // Carry the asphalt beneath the near lawn edge so the pale road bedding
+  // cannot peek through as a triangle beside the security checkpoint.
+  const entranceApron=box(10,.035,11.0,[L.fenceX-3.3,-.041,OLD_ENTRANCE.innerZ-1],asphalt);
   entranceApron.castShadow=false;
 
   const cx=(park.west+park.east)/2,cz=(park.north+park.south)/2;
@@ -47,7 +49,7 @@ export function buildOldWarehouseCourt(k,plants){
   box(width+.4,.10,.13,[0,3.13,depth/2+.03],metal,shelter);
   cyl(.055,3.1,[-width/2,1.55,depth/2+.04],metal,shelter,undefined,12);
 
-  function roundedBed(w,d,x,z,radius=1){
+  function roundedBed(w,d,x,z,radius=1,baseMaterial=concrete){
     function shape(width,depth,r){
       const s=new T.Shape(),a=-width/2,b=width/2,c=-depth/2,e=depth/2;
       s.moveTo(a+r,c);s.lineTo(b-r,c);s.quadraticCurveTo(b,c,b,c+r);
@@ -59,7 +61,7 @@ export function buildOldWarehouseCourt(k,plants){
     mesh(curb,concrete,[x,-.08,z]);
     const grass=new T.ExtrudeGeometry(shape(w-.27,d-.27,Math.max(.15,radius-.14)),{depth:.20,bevelEnabled:false,curveSegments:5});grass.rotateX(-Math.PI/2);
     mesh(grass,lawn,[x,-.035,z]);
-    box(w-.3,.58,d-.3,[x,-.39,z],concrete);
+    box(w-.3,.58,d-.3,[x,-.39,z],baseMaterial);
   }
   // Continue the outside lawn from the road to the fence and the gate paving.
   // Its former rounded curb sat inside the planting and left bare margins.
@@ -83,7 +85,7 @@ export function buildOldWarehouseCourt(k,plants){
   }
 
   const island=L.median,ix=(island.west+island.east)/2,iz=(island.north+island.south)/2;
-  roundedBed(island.east-island.west,island.south-island.north,ix,iz,2.15);
+  roundedBed(island.east-island.west,island.south-island.north,ix,iz,2.15,asphalt);
   for(let i=0;i<14;i++){
     const x=island.west+3.5+i*3.85;
     for(const side of [-1,1]){
@@ -108,7 +110,8 @@ export function buildOldWarehouseCourt(k,plants){
   const gateEnd=side=>[OLD_ENTRANCE.innerX+Math.sin(OLD_ENTRANCE_YAW)*side*7.75,OLD_ENTRANCE.innerZ+Math.cos(OLD_ENTRANCE_YAW)*side*7.75];
   const northEnd=gateEnd(-1),southEnd=gateEnd(1);
   fence([L.fenceX,L.sideFenceZ],[L.fenceX,northEnd[1]]);
-  fence([L.fenceX,northEnd[1]],northEnd);
+  if(Math.abs(northEnd[0]-L.fenceX)>.01)
+    fence([L.fenceX,northEnd[1]],northEnd);
   fence([L.fenceX,L.sideFenceZ],[100,L.sideFenceZ]);
   fence(southEnd,[L.fenceX,-113]);
 

@@ -1,6 +1,14 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createFramePresenter} from './industrial/renderPipeline.js';
+import {createFramePresenter,withoutShadowRefresh} from './industrial/renderPipeline.js';
+
+test('AO transparency reuses opaque shadows and restores update flags after errors',()=>{
+  const renderer={shadowMap:{autoUpdate:true,needsUpdate:true}};
+  assert.throws(()=>withoutShadowRefresh(renderer,()=>{
+    assert.equal(renderer.shadowMap.autoUpdate,false);assert.equal(renderer.shadowMap.needsUpdate,false);throw new Error('draw failure');
+  }),/draw failure/);
+  assert.deepEqual(renderer.shadowMap,{autoUpdate:true,needsUpdate:true});
+});
 
 test('viewport and quality changes cannot leave a cleared canvas between frames',()=>{
   let ratio=1,buffer='scene';const calls=[];

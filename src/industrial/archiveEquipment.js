@@ -17,6 +17,7 @@ export function createArchiveEquipment(k,equipment){
     return object;
   }
   function feet(w,d,h,g){
+    g=group([0,0,0],g);g.userData.cadRetain=true;
     for(const x of [-w/2,w/2])for(const z of [-d/2,d/2]){
       box(.13,h,.13,[x,h/2,z],dark,g);box(.38,.08,.38,[x,.04,z],steel,g);
     }
@@ -50,16 +51,16 @@ export function createArchiveEquipment(k,equipment){
       cylinder(.39,length,[0,1.25,0],yellowCover?yellow:steel,g,'x');
       for(const x of [-length/2,0,length/2])flangeX(.46,x,1.25,0,g);
       cyl(.22,.65,[-length*.32,1.85,0],steel,g);flange(.29,[-length*.32,2.18,0],g);
-      const coupling=moving(group([length/2+.14,1.25,0],g),zone,'rotate','x',rpmToRadians(P.screwRpm));
+      const coupling=moving(group([length/2+.20,1.25,0],g),zone,'rotate','x',rpmToRadians(P.screwRpm));
       for(let n=0;n<6;n++){const a=n*Math.PI/3;box(.22,.065,.065,[0,Math.sin(a)*.19,Math.cos(a)*.19],dark,coupling);}
     }else{
       box(length,.12,.88,[0,1,0],steel,g);
       for(const z of [-.44,.44])box(length,.43,.07,[0,1.2,z],panel,g);
-      shaft(length-.2,.32,1.27,g,zone);
+      shaft(length-.2,.32,1.42,g,zone);
       for(const x of [-length/2,length/2])box(.1,.7,.95,[x,1.3,0],steel,g);
     }
-    gearmotor([length/2+.55,.78,0],g,.7,Math.PI);
-    port(g,'in',[-length*.32,closed?2.18:1.55,0],[0,1,0],.22);
+    gearmotor([length/2+1,(closed?1.25:1.42)-.7*.48,0],g,.7);
+    port(g,'in',[-length*.32,closed?2.18:1.85,0],[0,1,0],.22);
     port(g,'out',[length*.32,.85,0],[0,-1,0],.22,'solid',{nozzle:.45});
   }
   function valve(g,zone,{gate=false,diverter=false,internal=false}={}){
@@ -85,9 +86,12 @@ export function createArchiveEquipment(k,equipment){
   function fan(g,zone,{blower=false}={}){
     feet(2.4,1.5,.3,g);
     const volute=group([-.4,1.1,0],g);
-    cylinder(.85,.65,[0,0,0],steel,volute,'z');ring(.72,.09,[0,0,.36],panel,volute,'z');
-    cylinder(.54,.08,[0,0,.37],rubber,volute,'z');
-    const rotor=moving(group([0,0,.44],volute),zone,'rotate','z',4.5);
+    const casing=mesh(new T.CylinderGeometry(.85,.85,.65,k.tablet?24:48,1,true),steel,[0,0,0],volute);casing.rotation.x=Math.PI/2;
+    cylinder(.85,.06,[0,0,-.325],steel,volute,'z');
+    mesh(new T.RingGeometry(.44,.85,k.tablet?24:48),material('#c3cbcc',.42,.45,{side:T.DoubleSide}),[0,0,.35],volute);
+    ring(.72,.06,[0,0,.36],panel,volute,'z');
+    // The impeller turns behind the inlet face, leaving the attached duct clear.
+    const rotor=moving(group([0,0,.17],volute),zone,'rotate','z',4.5);
     for(let n=0;n<9;n++){const a=n*Math.PI*2/9,b=box(.14,.55,.07,[Math.sin(a)*.31,Math.cos(a)*.31,0],panel,rotor);b.rotation.z=-a+.3;}
     cylinder(.13,.14,[0,0,.03],dark,rotor,'z');
     box(.5,.85,.62,[.65,.48,0],steel,volute);flange(.35,[.65,.95,0],volute);
@@ -96,17 +100,17 @@ export function createArchiveEquipment(k,equipment){
     port(g,'in',[-.4,1.1,.48],[0,0,1],.42,'air');
     port(g,'out',[.25,2.05,0],[0,1,0],.35,'air');
   }
-  function hopper(g,zone,{width=3,depth=3,height=3.6,grate=false,weigh=false}={}){
+  function hopper(g,zone,{width=3,depth=3,height=3.6,grate=false,weigh=false,outletRadius=.21}={}){
     feet(width-.25,depth-.25,height-.45,g);
     hollowHopper(width,depth,.55,.55,height*.40,[0,height*.35,0],g);
     for(const z of [-depth/2,depth/2])box(width,height*.25,.08,[0,height*.875,z],steel,g);
     for(const x of [-width/2,width/2])box(.08,height*.25,depth,[x,height*.875,0],steel,g);
     for(const z of [-depth/2,depth/2])for(const x of [-width*.30,width*.30])box(.06,height*.25,.1,[x,height*.875,z],dark,g);
     if(grate)for(let x=-width/2+.1;x<width/2;x+=.22)box(.045,.06,depth,[x,height,0],dark,g);
-    const outlet=group([0,height*.35-.7,0],g);outlet.scale.setScalar(.5);valve(outlet,zone,{internal:true});
+    const outlet=group([0,height*.35-.7,0],g);outlet.userData.cadRetain=true;outlet.scale.setScalar(.5);valve(outlet,zone,{internal:true});
     if(weigh)for(const x of [-width/2,width/2])for(const z of [-depth/2,depth/2])box(.34,.2,.28,[x,height*.75,z],m.blue,g);
     port(g,'in',[0,height,0],[0,1,0],.28,'solid',{open:true});
-    port(g,'out',[0,height*.35-.635,0],[0,-1,0],.21);
+    port(g,'out',[0,height*.35-.635,0],[0,-1,0],outletRadius);
     port(g,'air',[width/2+.3,height*.85,0],[1,0,0],.16,'air',{nozzle:.35});
   }
   function elevator(g,zone,{height=9}={}){
@@ -127,7 +131,7 @@ export function createArchiveEquipment(k,equipment){
     for(const y of [height*.525,height*.845])flange(1.10,[0,y,0],g);
     cyl(.34,.7,[0,height*.9,0],steel,g);flange(.41,[0,height*.96,0],g);
     cylinder(.35,1.1,[.85,height*.73,0],steel,g,'x');flangeX(.42,1.42,height*.73,0,g);
-    const v=group([0,.25,0],g);v.scale.setScalar(.6);valve(v,zone,{internal:true});
+    const v=group([0,.25,0],g);v.userData.cadRetain=true;v.scale.setScalar(.6);valve(v,zone,{internal:true});
     // The cone is joined to its rotary discharge, not suspended over it.
     cyl(.16,Math.max(.05,height*.175-1.06),[0,(height*.175+1.06)/2,0],steel,g);
     port(g,'in',[1.42,height*.73,0],[1,0,0],.35,'air');
@@ -157,7 +161,7 @@ export function createArchiveEquipment(k,equipment){
     cylinder(.16,3.15,[0,height+.45,.7],steel,g,'x');
     const shaker=moving(group([0,height+.05,-.7],g),zone,'vibrate','y',15,.025);
     box(2.4,.15,.25,[0,0,0],steel,shaker);
-    const outlet=group([0,.05,0],g);outlet.scale.setScalar(.5);valve(outlet,zone,{internal:true});
+    const outlet=group([0,.05,0],g);outlet.userData.cadRetain=true;outlet.scale.setScalar(.5);valve(outlet,zone,{internal:true});
     cylinder(.32,.85,[1.85,2.6,0],steel,g,'x');
     port(g,'in',[2.275,2.6,0],[1,0,0],.32,'air');
     port(g,'air',[0,height-.5,-1.4],[0,0,-1],.32,'air',{nozzle:.5});
@@ -195,20 +199,20 @@ export function createArchiveEquipment(k,equipment){
       mesh(shell,material('#9aa8ac',.6,.46,{side:T.DoubleSide}),[0,1.7,0],g);
       cyl(1.48,.10,[0,1.12,0],steel,g);ring(1.51,.06,[0,2.3,0],steel,g);
       const rotor=moving(group([0,1.48,0],g),zone,'rotate','y',1.1);
-      cyl(.12,1.1,[0,.1,0],steel,rotor);
+      cyl(.12,.85,[0,.2,0],steel,rotor);
       for(let n=0;n<4;n++){const a=n*Math.PI/2;rod([0,.25,0],[Math.cos(a)*1.22,0,Math.sin(a)*1.22],.07,steel,rotor);const p=box(.32,.35,.48,[Math.cos(a)*1.22,0,Math.sin(a)*1.22],dark,rotor);p.rotation.y=-a;}
-      gearmotor([1.7,.6,0],g,.8);cylinder(.25,.65,[1.5,1.4,0],steel,g,'x');
+      gearmotor([1.7,.6,0],g,.8);cylinder(.25,.65,[1.825,1.4,0],steel,g,'x');
     }else{
       feet(3.8,2.0,.8,g);box(3.7,.13,1.8,[0,1.0,0],steel,g);
-      for(const z of [-.9,.9])box(3.8,1.35,.10,[0,1.62,z],panel,g);
-      for(const x of [-1.9,1.9])box(.12,1.35,1.9,[x,1.62,0],steel,g);
-      const rotor=moving(group([0,1.55,0],g),zone,'rotate','x',1.4);
+      for(const z of [-.9,.9])box(3.8,1.7,.10,[0,1.8,z],panel,g);
+      for(const x of [-1.9,1.9])box(.12,1.7,1.9,[x,1.8,0],steel,g);
+      const rotor=moving(group([0,1.76,0],g),zone,'rotate','x',1.4);
       cylinder(.09,3.9,[0,0,0],steel,rotor,'x');
       for(let x=-1.6,i=0;x<1.8;x+=.45,i++){const a=i*.9;rod([x,0,0],[x,Math.cos(a)*.55,Math.sin(a)*.55],.06,steel,rotor);const paddle=box(.32,.15,.42,[x,Math.cos(a)*.55,Math.sin(a)*.55],dark,rotor);paddle.rotation.x=a;}
-      gearmotor([2.35,.8,0],g,.9,Math.PI);flange(.3,[0,.75,0],g);
+      gearmotor([2.75,1.76-.9*.48,0],g,.9);flange(.3,[0,.75,0],g);
     }
-    port(g,'in',[0,2.3,0],[0,1,0],.28,'solid',{open:true});
-    port(g,'out',pan?[1.825,1.4,0]:[0,.75,0],pan?[1,0,0]:[0,-1,0],.25,wet?'slurry':'solid');
+    port(g,'in',[0,pan?2.3:2.65,0],[0,1,0],.28,'solid',{open:true});
+    port(g,'out',pan?[2.15,1.4,0]:[0,.75,0],pan?[1,0,0]:[0,-1,0],.25,wet?'slurry':'solid');
     if(wet){cyl(1.42,.08,[0,1.6,0],material('#c8bea9',.05,.45),g);}
     if(wet)port(g,'water',[0,2.6,-1.3],[0,1,0],.1,'water',{nozzle:.4});
   }
@@ -226,14 +230,14 @@ export function createArchiveEquipment(k,equipment){
     }
     inspection(.6,.65,0,horizontal?1.7:2.4,horizontal?.96:.91,g);
     if(horizontal){
-      port(g,'out',[-2.35,1.1,0],[-1,0,0],.12,'water',{nozzle:.5});
+      port(g,'out',[-2.35,1.65,0],[-1,0,0],.12,'water',{nozzle:.5});
       port(g,'fill',[-1,3.03,0],[0,1,0],.2,'water');
     }else{
       port(g,'in',[1.3,1.5,0],[1,0,0],.2,'air');
       port(g,'out',[1.3,2.6,0],[1,0,0],.2,'air');
     }
   }
-  function mill(g,zone,{vertical=false}={}){
+  function mill(g,zone,{vertical=false,outletY=.55}={}){
     feet(3,2.4,.5,g);
     if(vertical){
       cyl(.35,1.4,[0,1.1,0],steel,g,1.12);cyl(1.12,1.8,[0,2.7,0],panel,g);
@@ -242,16 +246,17 @@ export function createArchiveEquipment(k,equipment){
       const shaftHead=moving(group([0,3.9,.6],g),zone,'rotate','y',2);box(.5,.14,.14,[0,0,0],dark,shaftHead);
     }else{
       box(2.5,2.1,2.1,[0,1.6,0],steel,g);hollowHopper(2.1,1.9,1.3,1.1,.75,[0,2.65,0],g);
-      for(const z of [-1.12,1.12]){
+      for(const z of [-1.25,1.25]){
+        const face=Math.sign(z);
         const wheel=moving(group([0,1.65,z],g),zone,'rotate','z',1.6);
-        cylinder(.88,.14,[0,0,0],dark,wheel,'z');ring(.74,.07,[0,0,.1],steel,wheel,'z');
-        for(let i=0;i<6;i++){const a=i*Math.PI/3;rod([0,0,.12],[Math.sin(a)*.7,Math.cos(a)*.7,.12],.06,steel,wheel);}
+        cylinder(.88,.14,[0,0,0],dark,wheel,'z');ring(.74,.07,[0,0,face*.1],steel,wheel,'z');
+        for(let i=0;i<6;i++){const a=i*Math.PI/3;rod([0,0,face*.12],[Math.sin(a)*.7,Math.cos(a)*.7,face*.12],.06,steel,wheel);}
       }
       gearmotor([1.8,.45,0],g,1.05);
       inspection(1.5,1.3,0,1.7,1.07,g);
     }
     port(g,'in',vertical?[-1.35,2.9,0]:[0,3.4,0],vertical?[-1,0,0]:[0,1,0],.28,'solid',{nozzle:vertical?.4:0,open:!vertical});
-    port(g,'out',[0,.55,-1.55],[0,0,-1],.25,'solid',{nozzle:.7});
+    port(g,'out',[0,outletY,-1.55],[0,0,-1],.25,'solid',{nozzle:.7});
     if(vertical)port(g,'air',[1.65,3,0],[1,0,0],.35,'air');
   }
   function drum(g,zone,{length=8}={}){
@@ -260,11 +265,12 @@ export function createArchiveEquipment(k,equipment){
     cylinder(1.12,length,[0,0,0],steel,body,'x');
     for(const x of [-length*.3,0,length*.3])ring(1.17,.10,[x,0,0],dark,body,'x');
     for(let a=0;a<Math.PI*2;a+=Math.PI/3)rod([-length/2,Math.sin(a)*1.125,Math.cos(a)*1.125],[length/2,Math.sin(a)*1.125,Math.cos(a)*1.125],.014,dark,body);
-    for(const x of [-length/2,length/2]){flangeX(1.18,x,1.8,0,g);cylinder(.55,.35,[x,1.8,0],dark,g,'x');}
-    pipe([[length/2,2.1,0],[length/2,3.5,0],[length/2+.6,3.7,0]],.3,steel,g);
+    // Stationary seals and radial outlets sit beyond the rotating shell ends.
+    for(const side of [-1,1]){flangeX(1.18,side*(length/2+.16),1.8,0,g);cylinder(.55,.35,[side*(length/2+.25),1.8,0],dark,g,'x');}
+    pipe([[length/2+.45,2.1,0],[length/2+.45,3.5,0],[length/2+.6,3.7,0]],.3,steel,g);
     gearmotor([0,.3,-1.4],g,.9);
-    port(g,'in',[-length/2-.2,1.8,0],[-1,0,0],.4);
-    port(g,'out',[length/2,.65,0],[0,-1,0],.3,'solid',{nozzle:.8});
+    port(g,'in',[-length/2-.425,1.8,0],[-1,0,0],.4);
+    port(g,'out',[length/2+.45,.65,0],[0,-1,0],.3,'solid',{nozzle:.8});
     port(g,'air',[length/2+.6,3.7,0],[1,0,0],.3,'air');
   }
   function belt(g,zone,{length=5,width=1.2,height=1.2}={}){
@@ -272,8 +278,8 @@ export function createArchiveEquipment(k,equipment){
     box(length,.08,width,[0,height,0],rubber,g);
     for(const z of [-width/2-.06,width/2+.06])box(length,.24,.12,[0,height-.10,z],steel,g);
     for(const x of [-length/2+.2,length/2-.2]){
-      const roller=moving(group([x,height-.12,0],g),zone,'rotate','z',-rollerAngularSpeed(.65,.16));
-      cylinder(.16,width,[0,0,0],dark,roller,'z');box(.2,.06,width,[0,.15,0],panel,roller);
+      const roller=moving(group([x,height-.2,0],g),zone,'rotate','z',-rollerAngularSpeed(.65,.16));
+      cylinder(.16,width-.16,[0,0,0],dark,roller,'z');box(.2,.05,.012,[0,0,(width-.16)/2+.007],panel,roller);
     }
     for(let x=-length/2+.4;x<length/2;x+=.7){
       const slat=moving(group([x,height+.05,0],g),zone,'belt','x',.65,length-.7);
@@ -331,7 +337,7 @@ export function createArchiveEquipment(k,equipment){
   function compressor(g,zone){
     box(2.6,2.1,1.6,[0,1.1,0],panel,g);inspection(1.05,1.85,.65,1.1,.83,g);
     for(let y=.4;y<1.7;y+=.12)box(1,.04,.04,[-.65,y,.83],dark,g);
-    const vent=moving(group([-.7,1.65,.85],g),zone,'rotate','z',4);
+    const vent=moving(group([-.7,1.65,.9],g),zone,'rotate','z',4);
     for(let a=0;a<Math.PI*2;a+=Math.PI/2){const b=box(.12,.55,.035,[Math.sin(a)*.13,Math.cos(a)*.13,0],steel,vent);b.rotation.z=-a;}
     port(g,'out',[1.2,.65,0],[1,0,0],.1,'air',{nozzle:.35});
   }
@@ -415,12 +421,12 @@ export function createArchiveEquipment(k,equipment){
     rod([0,0,0],[.5,.4,0],.06,dark,selector);gearmotor([.8,.9,.6],g,.5);
   }
   function butterfly(g,zone){
-    cylinder(.6,.65,[0,.8,0],steel,g,'x');for(const x of [-.35,.35])flangeX(.71,x,.8,0,g);
+    cylinder(.6,1.3,[0,.8,0],steel,g,'x');for(const x of [-.68,.68])flangeX(.71,x,.8,0,g);
     const disc=moving(group([0,.8,0],g),zone,'damper','y',.4,Math.PI/2);
     cylinder(.56,.04,[0,0,0],dark,disc,'x');rod([0,.1,0],[0,1.7,0],.06,steel,g);
     box(.65,.3,.4,[0,1.75,0],panel,g);box(.12,.12,.12,[.28,2,0],m.red,g);
-    port(g,'in',[.35,.8,0],[1,0,0],.6,'air');
-    port(g,'out',[-.35,.8,0],[-1,0,0],.6,'air');
+    port(g,'in',[.68,.8,0],[1,0,0],.6,'air');
+    port(g,'out',[-.68,.8,0],[-1,0,0],.6,'air');
   }
   const builders={screw,valve,fan,hopper,elevator,cyclone,filter,screen,mixer,vessel,mill,drum,belt,bagStation,table,tunnel,compressor,damper,palletizer,pump,burner,bagDump,telescopic,magneticTrap,diverter,butterfly};
   return {builders,materials:{steel,panel,dark},moving,update(dt,isRunning){

@@ -1,4 +1,4 @@
-import {createParkedCarBuilder} from './parkedCars.js';
+import {createParkedCarBuilder,CAR_SCALE} from './parkedCars.js';
 import {createWorkerBuilder} from './workers.js';
 import {roundedRoute,routeProfile} from './motionPath.js';
 import {VISITOR_PARK as PARK} from './siteLayout.js';
@@ -8,7 +8,7 @@ export function serviceMotion(wheels=[]){
   const route=roundedRoute(...SERVICE_ROUTE_BOUNDS),profile=routeProfile(route,{speed:3,acceleration:.9,lateral:1.1,wheels}),period=profile.duration+5;
   return {route,profile,period,sample(time){
     const elapsed=time%period,m=profile.at(Math.min(elapsed,profile.duration)),p=route.getPointAt(m.u),t=route.getTangentAt(m.u),yaw=-Math.atan2(t.z,t.x);
-    return {...m,elapsed,yaw,x:p.x+1.42*Math.cos(yaw),z:p.z-1.42*Math.sin(yaw)};
+    return {...m,elapsed,yaw,x:p.x+1.42*CAR_SCALE*Math.cos(yaw),z:p.z-1.42*CAR_SCALE*Math.sin(yaw)};
   }};
 }
 
@@ -17,8 +17,8 @@ export function buildServiceTraffic(k){
   // cars, lamp bases, pedestrian routes and the factory's freight movements.
   const car=createParkedCarBuilder(k)(PARK.west+16,PARK.north+15,0,5,true),rig=car.carRig;
   const motion=serviceMotion(rig.wheels),{profile,period}=motion;
-  const driver=createWorkerBuilder(k)({parent:car,position:[0,-.28,.35],yaw:Math.PI/2,seated:true,hardHat:false,seed:1});driver.g.scale.setScalar(.85);
-  const wheelbase=2.78;
+  const driver=createWorkerBuilder(k)({parent:car,position:[0,-.28,.35],yaw:Math.PI/2,seated:true,hardHat:false,seed:1});driver.g.scale.multiplyScalar(.85);
+  const wheelbase=2.78*CAR_SCALE;
   function update(time){
     const m=motion.sample(time),{elapsed,yaw}=m;
     car.position.set(m.x,.01,m.z);car.rotation.y=yaw;

@@ -4,7 +4,7 @@ import {createRenderClock,createResolutionBudget,antialiasMode} from './renderBu
 
 test('all resolutions filter thin edges and subpixel rendering releases MSAA',()=>{
   assert.deepEqual(antialiasMode(.7),{samples:0,useFXAA:true});
-  assert.deepEqual(antialiasMode(1),{samples:4,useFXAA:true});
+  assert.deepEqual(antialiasMode(1),{samples:2,useFXAA:true});
 });
 
 test('30 and 60 Hz rendering preserve journey time on 60 Hz and 120 Hz displays',()=>{
@@ -42,4 +42,10 @@ test('returning from a hidden tab does not fast-forward the tour',()=>{
 test('Eko maintains full resolution at its intended 30 FPS',()=>{
   const budget=createResolutionBudget(30);
   for(let i=0;i<900;i++)assert.equal(budget.sample(1/30),null);
+});
+
+test('Eko wide view stops reducing resolution at its configured floor',()=>{
+  const budget=createResolutionBudget(30,.6);let scale=1;
+  for(let i=0;i<600;i++)scale=budget.sample(1/15)??scale;
+  assert.equal(scale,.6);
 });

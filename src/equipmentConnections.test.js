@@ -4,6 +4,8 @@ import * as T from 'three';
 import {createKit} from './industrial/kit.js';
 import {createEquipmentModels} from './industrial/equipmentModels.js';
 import {createEquipmentConnections,machinePort} from './industrial/equipmentConnections.js';
+import {buildProduction} from './industrial/production.js';
+import {CALCITE_FEED_END,CALCITE_INTAKE,PROCESS_LINES} from './industrial/processPlan.js';
 
 test('screw drive couplings clear the pipe and its elbow for a complete revolution',()=>{
   const previous=globalThis.document;
@@ -33,5 +35,33 @@ test('screw drive couplings clear the pipe and its elbow for a complete revoluti
         });
       }
     }
+  }finally{k.dispose();globalThis.document=previous;}
+});
+
+test('calcite rock follows connected equipment from the receiving belt through TY-001 to the dry-mix bin',()=>{
+  const previous=globalThis.document;
+  globalThis.document={createElement:()=>({getContext:()=>new Proxy({createImageData:(w,h)=>({data:new Uint8ClampedArray(w*h*4)})},{get:(o,key)=>o[key]??(()=>{})})})};
+  const scene=new T.Scene(),k=createKit(scene,{tablet:true});
+  try{
+    const production=buildProduction(k),connections=new Set();
+    production.root.traverse(object=>{
+      const connection=object.userData.connection;
+      if(connection)connections.add(`${connection.fromMachine} → ${connection.toMachine}`);
+    });
+    for(const pair of [
+      'interior-twin-roll-feed → interior-transfer-weigher',
+      'interior-transfer-weigher → interior-hammer-mill',
+      'interior-hammer-mill → machine-TY',
+      'machine-TY → interior-calcite-hopper',
+      'interior-calcite-hopper → interior-calcite-elevator',
+      'interior-calcite-elevator → interior-calcite-screen',
+      'interior-calcite-screen → interior-drymix-day-bin',
+    ])assert.ok(connections.has(pair),`missing ${pair}`);
+    assert.ok(production.root.getObjectByName('machine-TY').userData.ports.in.connected);
+    assert.ok(production.root.getObjectByName('machine-TY').userData.ports.out.connected);
+    const route=PROCESS_LINES.find(line=>line.id==='calcite').points;
+    assert.deepEqual(route[0],CALCITE_INTAKE);
+    assert.deepEqual(route[1],CALCITE_FEED_END);
+    assert.deepEqual(route.at(-1),[-50.2,6.8,-18]);
   }finally{k.dispose();globalThis.document=previous;}
 });

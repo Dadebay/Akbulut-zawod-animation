@@ -52,25 +52,36 @@ Dry construction mixtures remain on their separate dry dosing, mixing and baggin
 
 ## Motion
 
+The railway-side third roof bay (z=-39.5..-29.83, on the left in the user's
+front view) is clear of production equipment, conveyors and stock. Building
+lighting, wall ventilation and fire points remain part of the architecture.
+The attached process buildings feed the compact board forming/cutting line
+at z=-22.8, from x=-23 through GK-001 at x=0 to the two-arm receiver at x=12.5.
+Two independent straight ceiling-panel lines occupy the other bays: line 01
+at z=-14.2 and line 02 at z=-24. Each has its own feed, lamination, cutting,
+perforation, inspection and packing stations. Dry-mix bagging, controls and
+finished stock also stay within the occupied bays. Extraction ducts hang
+from the roof, clear of the conveyor routes.
+
 - A supported continuous web precedes the board cutter; discrete boards begin with their trailing edge at the cut plane.
 - Discrete conveyors use bounded acceleration and braking, stop at transfer centres and wait for cutting/perforation.
 - Tool strokes use the same arrival/dwell schedule as products. Perforations appear only after the press stroke, and the punch positions match the visible hole pattern.
-- Ceiling finishing and its return packing conveyor share one product route, with no independent duplicate stream at the packing end.
+- Each ceiling line uses one continuous feed-to-packing product route and has no return conveyor through the empty bay.
 - A blocked packing receiver stops the upstream board conveyors. Stopped products remain visible and resume from the same pose.
 - Material is hidden inside sealed raw-material ducts and crusher housings. Direction arrows are explanatory overlays shown only in line view.
 - Exposed falling stones follow `y = y0 − ½gt²`, with impact height bounding the visible fall.
 
 Motion timings are compressed for presentation. This is not a validated mass/energy balance, collision solver or factory control system.
 
-### GP-001 board palletizing
+### GP-001 / GP-002 board palletizing
 
-- The receiver portal is open to the robot; the independent oscillating vacuum head and the prefilled dummy stacks were removed.
+- The open roller receiver is shared by two articulated arms. Each arm places arriving sheets on its own empty pallet. The redundant four-post portal has been removed.
 - A terminal photoeye stops the sheet on a complete roller bed. The same sheet remains visible through approach, vacuum dwell, lift, transport and contact with the pallet.
 - Shoulder, elbow, base yaw and a compensated wrist use fixed link lengths. The six vacuum cups remain horizontal and aligned with the sheet surface.
-- Vertical pickup precedes horizontal travel. The route exits the portal's open side before turning, keeping the board clear of the front post. Quintic moves ease velocity and acceleration to zero at each stop.
+- Vertical pickup precedes horizontal travel across the open receiver. Quintic moves ease velocity and acceleration to zero at each stop.
 - Conveyor admission, visible drives and receiver occupancy share one clock. Further sheets queue until the robot clears the receiver; a paused or stopped GP cell freezes its current pose and load.
-- Each supported placement adds exactly one 30 mm visual layer. The pallet holds 24 sheets and then waits for collection, without silently deleting stock or inventing an empty replacement pallet.
-- Equipment preview starts with sheets already on the line. In normal sequence playback the robot waits for the first actual arrival.
+- Each supported placement adds exactly one 30 mm visual layer. Each pallet holds 24 sheets and has a visible count and fill marker. Full pallets wait for collection without silently deleting stock.
+- Equipment preview and the compressed tour start with sheets already on the line, so both pallets visibly fill during the packing chapter.
 
 These are geometric/kinematic constraints for the visualization, not a calculation of vacuum capacity, motor torque or machine safety.
 

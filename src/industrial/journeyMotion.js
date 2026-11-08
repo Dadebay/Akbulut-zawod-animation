@@ -2,13 +2,21 @@ import * as T from 'three';
 import {JOURNEY_STAGE as S,JOURNEY_STEPS} from '../journey.js';
 import {FORKLIFT_JOBS,loadingCounts,sampleForklift} from './forkliftMotion.js';
 import {dispatchMotion} from './trafficLayout.js';
-import {RAW_STOP} from './siteLayout.js';
+import {RAW_STOP,loadingDeckHeight} from './siteLayout.js';
 import {QUARRY} from './quarryLayout.js';
 import {steeringAngle} from './motionPath.js';
 import {HAUL_PROFILE,haulPose} from './haulMotion.js';
+import {TRUCK_SCALE} from './trucks.js';
+import {RAIL_LAYOUT} from './railLayout.js';
 
+// Ride the truck over the loading deck and its ramps, pitched along the slope.
+function placeOnDeck(g,x,z,yaw){
+  const ahead=3*TRUCK_SCALE,behind=8*TRUCK_SCALE,c=Math.cos(yaw),s=Math.sin(yaw);
+  const front=loadingDeckHeight(x+ahead*c,z-ahead*s),rear=loadingDeckHeight(x-behind*c,z+behind*s);
+  g.position.y=loadingDeckHeight(x,z);g.rotation.z=Math.atan2(front-rear,ahead+behind);
+}
 export function createJourneyMotion(logistics,vehicleSurface){
-  const {hauler,dispatchTruck,train,trainCargo,railWheels,truckFork,railForkA,railForkB,stock,loadingStock}=logistics;
+  const {hauler,dispatchTruck,train,trainCargo,railWheels,truckFork,railForkA,railForkB,stock,greenStock=[]}=logistics;
   const forks=[truckFork,railForkA,railForkB];
   // Use the three actual axles and both wheel tracks, including the middle
   // rear axle. Sampling only the centreline missed the bank under one side.
@@ -53,14 +61,16 @@ export function createJourneyMotion(logistics,vehicleSurface){
       const job=FORKLIFT_JOBS[i],elapsed=j.index===S.load?j.elapsed:j.index>S.load?job.duration:-1;
       const pose=sampleForklift(job,elapsed);fork.update(pose,j.time);
       const supply=stock[i];
-      supply.g.visible=(j.index===S.pack&&j.progress>.95)||(j.index===S.load&&pose.stockVisible);
-      supply.panel.visible=pose.kind==='panel';supply.bags.visible=pose.kind==='bags';
+      supply.g.visible=i!==1&&((j.index===S.pack&&j.progress>.95)||(j.index===S.load&&pose.stockVisible));
+      supply.panel.visible=pose.kind!=='bags';supply.bags.visible=pose.kind==='bags';
+    });
+    greenStock.forEach((p,i)=>{
+      const removed=FORKLIFT_JOBS[1].trips[i],restored=FORKLIFT_JOBS[2].trips[i];
+      p.visible=j.index!==S.load||j.elapsed<removed.start+removed.pickupAt||j.elapsed>=restored.start+restored.depositAt;
     });
   }
   return function update(j){
     const {index,progress}=j;
-    // The display stock occupies the same belt used by moving packing pallets.
-    loadingStock?.forEach(pallet=>{pallet.visible=index!==S.pack;});
     const hauling=index===S.haul?haulPose(false,j.elapsed):index>=S.scoop?haulPose(true,j.time-JOURNEY_STEPS[S.scoop].start):null;
     if(hauling){hauler.g.position.copy(hauling.position);hauler.g.rotation.y=hauling.yaw;}
     else if(index===S.receive){hauler.g.position.set(...RAW_STOP);hauler.g.rotation.y=Math.PI;}
@@ -74,15 +84,16 @@ export function createJourneyMotion(logistics,vehicleSurface){
     const haulTravel=hauling?.travel??(index===S.receive?HAUL_PROFILE.length:0);
     hauler.ws.forEach(w=>{w.rotation.z=-haulTravel/(w.userData.radius||.562);});
     dispatchTruck.cargo.forEach((p,i)=>p.visible=i<j.truckLoads);
-    const railLoads=index===S.load?loadingCounts(j.elapsed).rail:index>S.load?[4,4]:[0,0];
-    trainCargo.forEach((p,i)=>p.visible=i%4<railLoads[Math.floor(i/4)]);
+    const railLoads=index===S.load?loadingCounts(j.elapsed).train:index>S.load?8:0;
+    trainCargo.forEach((p,i)=>p.visible=i<railLoads);
     updateForks(j);
     logistics.updateArrival?.(j.time);
-    train.position.x=index===S.dispatch?-470*Math.pow(j.depart,1.5):0;
+    const trainRun=index===S.dispatch?-470*Math.pow(j.depart,1.5):0;
+    train.position.x=RAIL_LAYOUT.offsetX+trainRun;
     train.visible=true;
-    railWheels.forEach(w=>w.rotation.z=-train.position.x/.4);
-    if(index===S.dispatch){const pose=dispatchMotion(j.depart);dispatchTruck.updateLights?.(pose,j.time);dispatchTruck.g.position.set(pose.x,0,pose.z);dispatchTruck.g.rotation.y=pose.yaw;dispatchTruck.hinge.rotation.y=pose.trailerYaw-pose.yaw;dispatchTruck.ws.forEach(w=>{w.rotation.z=-pose.distance/(w.userData.radius||.51);});dispatchTruck.steering?.forEach(p=>{p.rotation.y=steeringAngle(3.4,pose.curvature);});}
-    else{dispatchTruck.updateLights?.(null,j.time);dispatchTruck.g.position.set(64,0,-43);dispatchTruck.g.rotation.y=Math.PI;dispatchTruck.hinge.rotation.y=0;dispatchTruck.steering?.forEach(p=>{p.rotation.y=0;});}
+    railWheels.forEach(w=>w.rotation.z=-trainRun/.4);
+    if(index===S.dispatch){const pose=dispatchMotion(j.depart);dispatchTruck.updateLights?.(pose,j.time);dispatchTruck.g.position.set(pose.x,0,pose.z);dispatchTruck.g.rotation.y=pose.yaw;placeOnDeck(dispatchTruck.g,pose.x,pose.z,pose.yaw);dispatchTruck.hinge.rotation.y=pose.trailerYaw-pose.yaw;dispatchTruck.ws.forEach(w=>{w.rotation.z=-pose.distance/((w.userData.radius||.51)*TRUCK_SCALE);});dispatchTruck.steering?.forEach(p=>{p.rotation.y=steeringAngle(3.4*TRUCK_SCALE,pose.curvature);});}
+    else{dispatchTruck.updateLights?.(null,j.time);dispatchTruck.g.position.set(64,0,-43);dispatchTruck.g.rotation.y=Math.PI;placeOnDeck(dispatchTruck.g,64,-43,Math.PI);dispatchTruck.hinge.rotation.y=0;dispatchTruck.steering?.forEach(p=>{p.rotation.y=0;});}
     dispatchTruck.g.visible=true;
   };
 }

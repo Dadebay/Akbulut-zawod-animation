@@ -2,15 +2,18 @@ import {quarryCycle,QUARRY_LOADING_SECONDS} from './quarryCycle.js';
 import {LOADING_DURATION,loadingCounts} from './industrial/forkliftMotion.js';
 import {quarryPoint} from './industrial/quarryLayout.js';
 import {HAUL_PROFILE} from './industrial/haulMotion.js';
+import {RAW_STOCK} from './industrial/siteLayout.js';
 import {DISPATCH_PROFILE} from './industrial/trafficLayout.js';
 import {JOURNEY_STAGE} from './journeyStages.js';
+import {BOARD_END,BEUMER_LINE} from './industrial/processPlan.js';
+import {CEILING_PACK} from './industrial/ceilingPalletizer.js';
 export {JOURNEY_STAGE} from './journeyStages.js';
 
 // One deterministic, compressed presentation cycle. Durations are not plant timings.
 const definitions=[
   ['quarry','Kän','Kände ýüklemek','Ekskawator kamyony 4 susguçda ýükleýär — her aýlaw 18 sekunt.',QUARRY_LOADING_SECONDS,'CR',false,quarryPoint(-15,11,16),quarryPoint(-1,2,0)],
   ['haul','Daşama','Çig mal ýolda','Ýükli kamyon köne zawodyň yzky kabul ediş meýdançasyna gelýär.',HAUL_PROFILE.duration,'CR',false,quarryPoint(13,9,15),quarryPoint(-2,2,0)],
-  ['receive','Üýşmek','Çig maly meýdança boşatmak','Kamyon çig maly daşky konweýeriň ýanynda boşadýar.',12,'CR',false,[172.5,18,-105],[152,2,-129]],
+  ['receive','Üýşmek','Çig maly meýdança boşatmak','Kamyon çig maly daşky konweýeriň ýanynda boşadýar.',12,'CR',false,[RAW_STOCK[0]+20.5,18,RAW_STOCK[2]+24],[RAW_STOCK[0],2,RAW_STOCK[2]]],
   ['scoop','Susguç','Çig maly susup almak','Ýükleýji sagdaky çig mal üýşmeginden iri daşlary alýar.',18,'CR',false,[88,12,31.5],[70,2,14.5]],
   ['carry','Bunkere','Ýükleýji bunkere barýar','Ýükleýji sagdaky üýşmekden alan daşlaryny döwüji binanyň sag derwezesine getirýär.',28,'CR',false,[104,24,48],[80,2,25]],
   ['tip','Bunker','Susgujy bunkere boşatmak','Ýükleýji susgujyny galdyryp iri daşlary bunkere dökýär.',13,'CR',true,[88,11,47],[71,2,34.8]],
@@ -19,7 +22,7 @@ const definitions=[
   ['calcine','Bişirme','Bişirmek we sowatmak','Taýýarlanan gips bişirme bölüminden geçýär.',14,'BS',true,[-55,30,44],[-29,3,8]],
   ['mix','Gury garyndy','Gury gurluşyk garyndylary','Aýratyn dozirleme, garyşdyrma we haltalama liniýasy.',16,'GR',true,[-78,31,-57],[-44,3,-25]],
   ['form','Gipsokarton','Gipsokarton önümçiligi','Suw bilen garyşdyrmak → şekil bermek → gatamak → kesmek → guratmak → gaplamak.',24,'GK',true,[49,65,-76],[8,2,-19]],
-  ['pack','Gaplama','Palet taýýarlamak','Robot taýýar önümleri palete ýerleşdirýär.',14,'GP',true,[17,24,-61],[-7,2,-30]],
+  ['pack','Gaplama','Palet taýýarlamak','Gury garyndy haltalary BEUMER-e gelýär; gipsokarton aýratyn gaplanýar; potolok panelleri bolsa öz palet gaplaýjy öýjüginde istiflenip daňylýar.',55,'GP',true,[7,28,-53],[(BEUMER_LINE.west+BOARD_END[0]+CEILING_PACK.dispatchX)/3,1.5,-30]],
   ['load','Ýükleme','TIR we wagon ýüklemek','Forkliftler paletleri ammardan ulaglara geçirýär.',LOADING_DURATION,'GP',true,[101,54,-112],[31,1,-46]],
   ['dispatch','Ugratmak','Ýükli ulaglar ugraýar','TIR derwezeden çykýar; otly demir ýol bilen gidýär.',DISPATCH_PROFILE.duration,'GP',false,[-244,133,146],[-93,0,-37]],
 ];
@@ -36,7 +39,8 @@ export function journeyOpacity(time,{following=false,playing=false,loopStep=null
 export const clamp01=n=>n<1e-12?0:n>1-1e-12?1:n;
 export function completedLoads(elapsed,period,count){return Math.min(count,Math.max(0,Math.floor(elapsed/period)+(elapsed%period>=period*.78?1:0)));}
 export function journeyAt(seconds){
-  const time=((seconds%JOURNEY_DURATION)+JOURNEY_DURATION)%JOURNEY_DURATION;
+  // Avoid rounding an exact stage boundary backwards by adding a full cycle.
+  const wrapped=seconds%JOURNEY_DURATION,time=wrapped<0?wrapped+JOURNEY_DURATION:wrapped;
   const step=JOURNEY_STEPS.find(s=>time<s.start+s.duration)||JOURNEY_STEPS.at(-1);
   const elapsed=time-step.start,progress=clamp01(elapsed/step.duration),index=step.index;
   const loads=step.id==='load'?loadingCounts(elapsed):null;

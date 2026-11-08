@@ -48,7 +48,7 @@
 .factory-controls .icon-button.active { color:#1465ab;background:#dceaf6; }
 .visual-factory .industrial-label { font-size:9px;padding:5px 8px;background:#ffffffed;border-color:#aebfce;box-shadow:0 2px 6px #132d4a12; }
 .scene-site-label { position:absolute;left:0;top:0;font:600 10px -apple-system,sans-serif;color:#315572;letter-spacing:1.5px;white-space:nowrap;padding:5px 8px;background:#ffffffd9;border:1px solid #b7c7d6;border-radius:3px; }
-.scene-site-link { pointer-events:auto;cursor:zoom-in;min-height:30px;touch-action:manipulation;transition:background-color 150ms ease,border-color 150ms ease,color 150ms ease; }
+.scene-site-link { pointer-events:auto;cursor:zoom-in;min-height:22px;padding:3px 6px;font-size:8px;letter-spacing:1px;touch-action:manipulation;transition:background-color 150ms ease,border-color 150ms ease,color 150ms ease; }
 .scene-site-link:focus-visible { outline:2px solid #2577bd;outline-offset:3px;background:#fff; }
 .scene-site-link:active { background:#dcecf9;border-color:#4e8cbf; }
 @media (hover:hover) and (pointer:fine) { .scene-site-link:hover { background:#fff;border-color:#4e8cbf;color:#175f9e; } }
@@ -124,11 +124,6 @@
 .equipment-picker button>span {font-size:9px;letter-spacing:.5px;color:#8498aa;}
 .equipment-picker button.active {background:#e1edf8;color:#185e9e;}
 .equipment-picker button.active>span {color:#377ab5;}
-.process-physics-readout {position:absolute;left:18px;top:112px;z-index:7;max-width:260px;padding:10px 13px;border:1px solid #d4dfe7;border-radius:8px;background:#fffffff2;color:#47647b;font-size:11px;box-shadow:0 3px 15px #17365612;}
-.process-physics-readout summary {cursor:pointer;font-weight:600;}
-.process-physics-readout p {line-height:1.65;margin:9px 0;}
-.process-physics-readout small {display:block;line-height:1.5;color:#718494;}
-@media(max-width:800px){.process-physics-readout{top:151px;left:12px;max-width:220px;font-size:10px;}}
 @media(max-width:800px){.equipment-picker{bottom:131px}.equipment-picker button{padding:8px;font-size:10px;}}
 
 /* Compact scene toolbar; the removed title card no longer reserves canvas space. */
@@ -140,6 +135,11 @@
 /* Match the four production paths in the user's annotated plan. */
 .process-line-picker button>i {width:9px;height:9px;border-radius:50%;background:var(--line-color);flex-shrink:0;}
 .process-line-picker button.active {box-shadow:inset 0 -2px var(--line-color);}
+.equipment-flow-card {position:absolute;z-index:7;top:88px;left:24px;width:min(390px,calc(100% - 48px));padding:13px 15px;background:#fffffff2;border:1px solid #d7dfe4;border-left:4px solid #e8c532;border-radius:8px;box-shadow:0 4px 18px #17365618;color:#244257;pointer-events:none;}
+.equipment-flow-card strong {display:block;font-size:12px;letter-spacing:.02em;margin-bottom:9px;}
+.equipment-flow-card p {display:grid;grid-template-columns:48px 1fr;gap:7px;margin:6px 0 0;font-size:11px;line-height:1.45;}
+.equipment-flow-card p span {color:#8a711c;font-size:9px;font-weight:800;letter-spacing:.06em;padding-top:2px;}
+@media(max-width:700px){.equipment-flow-card{top:151px;left:12px;width:min(335px,calc(100% - 24px));padding:10px 12px}.equipment-flow-card p{font-size:10px}}
 .scene-line-label {border-left:3px solid var(--line-color);font-size:10px;letter-spacing:0;max-width:230px;white-space:normal;text-align:center;line-height:1.35;pointer-events:none;}
 
 /* The scene's day/night choice stays accessible beside the camera controls. */

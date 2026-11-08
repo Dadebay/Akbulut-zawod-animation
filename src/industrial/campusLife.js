@@ -6,7 +6,8 @@ export const OLD_HALL_WALKS=[
   [-2,5,-113,-111],[14,22,-113,-111],[33,42,-113,-111],
   [4,12,-93.5,-91.5],[25,33,-93.5,-91.5]
 ].map((bounds,i)=>({bounds:[...bounds,.8,.03],speed:.75,pause:5+i,offset:i*3}));
-export const OLD_FORK_BOUNDS=[12,49,-102,-98,2];
+// Circulate beside the south loading opening, clear of both production lines.
+export const OLD_FORK_BOUNDS=[40.5,49,-96.8,-91,2];
 export function oldForkMotion(){
   const route=roundedRoute(...OLD_FORK_BOUNDS),profile=routeProfile(route,{speed:1.4,acceleration:.5,lateral:.45}),period=profile.duration+8;
   return time=>{

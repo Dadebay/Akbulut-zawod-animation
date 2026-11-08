@@ -17,7 +17,9 @@ export function buildOldSideLoading(k){
   box(L.width-.48,.10,L.depth,[0,-.04,L.depth/2],concrete,g);
 
   // The opening continues into the hall: floor, recessed back wall and roof frames.
-  box(L.interiorWidth-.04,L.clearHeight-.15,.035,[0,(L.clearHeight-.15)/2,-L.interiorDepth+.035],inside,g);
+  const interiorScreen=group([0,0,0],g,true);
+  interiorScreen.name='old-loading-recess-screen';
+  box(L.interiorWidth-.04,L.clearHeight-.15,.035,[0,(L.clearHeight-.15)/2,-L.interiorDepth+.035],inside,interiorScreen);
   for(const z of [-2.1,-6.7,-11.3]){
     box(L.interiorWidth-.12,.17,.17,[0,L.clearHeight-.13,z],steel,g);
     for(const side of [-1,1])rod([side*(L.interiorWidth/2-.25),L.clearHeight-.65,z],[side*(L.interiorWidth/2-1.5),L.clearHeight-.13,z],.035,steel,g);
@@ -43,11 +45,12 @@ export function buildOldSideLoading(k){
     cyl(.10,1.15,[x-side*.48,.575,L.depth+.6],m.yellow,g,undefined,12);
   }
   // The front face is closed with a solid wall and a roller-door panel.
-  box(L.width-.2,frontHeight-.1,.22,[0,(frontHeight-.1)/2,L.depth-.11],white,g);
+  const frontScreen=group([0,0,0],g,true);frontScreen.name='old-loading-front-screen';
+  box(L.width-.2,frontHeight-.1,.22,[0,(frontHeight-.1)/2,L.depth-.11],white,frontScreen);
   box(L.width-.2,.30,.30,[0,.15,L.depth-.11],base,g);
-  box(L.width*.62,frontHeight-1.0,.06,[0,(frontHeight-1.0)/2+.15,L.depth+.02],steel,g);
-  for(let y=.6;y<frontHeight-1.0;y+=.38)box(L.width*.62,.02,.07,[0,y+.15,L.depth+.045],inside,g);
-  const roof=group([0,(backHeight+frontHeight)/2,L.depth/2],g);
+  box(L.width*.62,frontHeight-1.0,.06,[0,(frontHeight-1.0)/2+.15,L.depth+.02],steel,frontScreen);
+  for(let y=.6;y<frontHeight-1.0;y+=.38)box(L.width*.62,.02,.07,[0,y+.15,L.depth+.045],inside,frontScreen);
+  const roof=group([0,(backHeight+frontHeight)/2,L.depth/2],g,true);roof.name='old-loading-canopy-roof';
   roof.rotation.x=Math.atan2(backHeight-frontHeight,L.depth);
   const slopeLength=Math.hypot(L.depth,backHeight-frontHeight)+.60;
   box(L.width+.6,.14,slopeLength,[0,0,0],roofMat,roof);
@@ -60,4 +63,5 @@ export function buildOldSideLoading(k){
 
   // Sparse guides stay under the canopy, leaving the through lane unobstructed.
   for(const dz of [-1.5,1.5])box(L.width+10,.008,.07,[L.x,.019,L.wallZ+L.depth/2+dz],m.yellow).castShadow=false;
+  return {interiorScreen,roof,frontScreen};
 }

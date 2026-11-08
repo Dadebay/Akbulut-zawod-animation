@@ -99,7 +99,7 @@ export function buildOldHallDetails(k,{parent,equipment,lineZ}){
     box(.27,.14,.01,[-.07,.025,.09],m.blueLight,head);cyl(.035,.045,[.22,-.1,.1],m.red,head);
   }
   // Small numbered station plates keep the richer equipment readable.
-  for(const [x,label] of [[2,'01 · BESLEME'],[19,'02 · KESME'],[28,'03 · NAGYŞ'],[51,'04 · GÖZEGÇILIK']]){
+  for(const [x,label] of [[9,'02 · ARASSALAMA'],[19,'03 · KESME'],[28,'04 · NAGYŞ'],[51,'07 · GÖZEGÇILIK']]){
     textPlate(label,2.7,.35,[x,2.7,lineZ+1.55],root,'#273b47','#e9c842');
     for(const dx of [-1.15,1.15])rod([x+dx,1.1,lineZ+1.55],[x+dx,2.52,lineZ+1.55],.025,dark,root);
   }

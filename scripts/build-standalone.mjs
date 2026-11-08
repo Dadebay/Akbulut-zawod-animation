@@ -10,7 +10,7 @@ const publicDir=join(root,'public');
 const assetModule=join(root,'src/assets.js');
 const tablet=process.argv.includes('--tablet');
 const outputDir=join(root,tablet?'standalone-tablet':'standalone');
-const mimeTypes={'.webp':'image/webp','.png':'image/png','.jpg':'image/jpeg','.glb':'model/gltf-binary','.txt':'text/plain;charset=utf-8'};
+const mimeTypes={'.webp':'image/webp','.png':'image/png','.jpg':'image/jpeg','.glb':'model/gltf-binary','.txt':'text/plain;charset=utf-8','.md':'text/markdown;charset=utf-8','.hdr':'application/octet-stream'};
 
 async function filesIn(directory,prefix=''){
   const entries=await readdir(directory,{withFileTypes:true});
@@ -60,7 +60,8 @@ if(extra.length)throw new Error('Unembedded build assets: '+extra.map(item=>item
 const js=chunks[0].code.replace(/<\/script/gi,'<\\/script');
 if(/<\/style/i.test(styles))throw new Error('Unexpected closing style tag in generated CSS.');
 
-const files=(await filesIn(publicDir)).filter(file=>file!==(tablet?'models/man-tractor-cab.glb':'models/man-tractor-cab-tablet.glb'));
+// Desktop uses the tablet mesh for distant vehicle LODs as well as the full cab.
+const files=(await filesIn(publicDir)).filter(file=>!tablet||file!=='models/man-tractor-cab.glb');
 const embedded=[];
 for(const file of files){
   let mime=mimeTypes[extname(file).toLowerCase()];

@@ -1,13 +1,13 @@
 import * as T from 'three';
 import {GYPSUM_RECEIVING_HALL as H} from './siteLayout.js';
-import {GYPSUM_CRUSHER} from './processPlan.js';
+import {GYPSUM_CRUSHER,GYPSUM_LIFT} from './processPlan.js';
 
 // The blue process line occupies a covered, L-shaped building beside the heaps.
 // Shell and roof use the existing cutaway groups; equipment remains underneath.
 export function buildGypsumReceivingHall(k,roofs,structures){
   const {box,cyl,rod,mesh,group,m}=k;
   const wall=k.material('#e1e5e5',.08,.78),trim=k.material('#b4bfc4',.35,.55);
-  const roof=k.material('#cbd4d8',.25,.65),roofShade=k.material('#b9c5cb',.25,.66);
+  const roof=k.material('#cbd4d8',.25,.65,{surface:'roofSheet'}),roofShade=k.material('#b9c5cb',.25,.66,{surface:'roofSheet'});
   const glazing=k.material('#2f4955',.45,.28),door=k.material('#7b8c96',.32,.66);
   const W=H.wing,length=H.east-H.west,depth=H.south-H.north,cx=(H.west+H.east)/2,cz=(H.north+H.south)/2;
   const shell=group([0,0,0],structures),cover=group([0,0,0],roofs);
@@ -23,13 +23,13 @@ export function buildGypsumReceivingHall(k,roofs,structures){
   box(length,.28,.34,[cx,.14,H.south],trim,shell);
   box(W.west-H.west,.28,.34,[(H.west+W.west)/2,.14,H.north],trim,shell);
 
-  function endWall(x,openingWidth,openingHeight){
-    const north=H.entryZ-openingWidth/2,south=H.entryZ+openingWidth/2;
+  function endWall(x,openingWidth,openingHeight,openingZ=H.entryZ){
+    const north=openingZ-openingWidth/2,south=openingZ+openingWidth/2;
     for(const [a,b] of [[H.north,north],[south,H.south]])box(.24,H.height,b-a,[x,H.height/2,(a+b)/2],wall,shell);
-    box(.24,H.height-openingHeight,openingWidth,[x,(H.height+openingHeight)/2,H.entryZ],wall,shell);
+    box(.24,H.height-openingHeight,openingWidth,[x,(H.height+openingHeight)/2,openingZ],wall,shell);
   }
   endWall(H.east,H.entryWidth,H.entryHeight);
-  endWall(H.west,2.3,2.65);
+  endWall(H.west,2.3,2.65,GYPSUM_LIFT[0][2]);
   // Large open loading door; no wall or plinth spans the vehicle opening.
   for(const side of [-1,1]){
     const z=H.entryZ+side*(H.entryWidth/2+.04);

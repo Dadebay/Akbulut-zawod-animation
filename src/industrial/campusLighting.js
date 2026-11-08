@@ -20,7 +20,10 @@ export function buildCampusLighting(k,{logistics,loader,production,excavator}){
   for(const {o,p} of sources){
     const anchor=group(o.position.toArray(),o.parent,true);let interior=false;
     for(let n=o;n;n=n.parent)if(n===production.root)interior=true;
-    fixtures.push({anchor,position:p,interior,radius:interior?9:Math.max(4.5,p.y*1.8),color:interior?cool:warm});
+    const lighting=o.userData.lighting;
+    fixtures.push({anchor,position:p,interior,radius:lighting?.radius??(interior?9:Math.max(4.5,p.y*1.8)),color:interior?cool:warm,
+      intensity:lighting?.intensity,cone:lighting?.cone,
+      direction:lighting?.direction?new T.Vector3(...lighting.direction).transformDirection(o.matrixWorld):undefined});
   }
   const lantern=material('#ffedc7',0,.35,{emissive:'#ffcf88',emissiveIntensity:0});
   // Low shielded lanterns sit between trees, along the pond and garden paths.
@@ -86,7 +89,7 @@ export function buildCampusLighting(k,{logistics,loader,production,excavator}){
   const glows=k.instances(new T.PlaneGeometry(1,1),glowMat,halos.length);
   glows.userData.preserveInstances=true;
   k.trackObject(glows);glows.castShadow=false;glows.receiveShadow=false;glows.frustumCulled=false;glows.visible=false;
-  const lights=[...fixtures.map(f=>({position:f.position,color:f.color,range:f.radius*2.2,intensity:f.radius*f.radius*(f.interior?1.8:1.4)})),
+  const lights=[...fixtures.map(f=>({position:f.position,color:f.color,range:f.radius*2.2,intensity:f.intensity??f.radius*f.radius*(f.interior?1.8:1.4),direction:f.direction,cone:f.cone})),
     ...vehicles.map(v=>({position:v.position,color:cool,range:v.length*1.3,intensity:v.length*v.length*1.4,direction:new T.Vector3(),cone:Math.cos(.44)}))];
   const field=createLocalLighting(k,lights),pose=new T.Object3D();let night=false;
   function setNight(value){

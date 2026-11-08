@@ -7,8 +7,9 @@ const up=new T.Vector3(0,1,0);
 // a pipe from its flange. They are resolved before the static mesh batching pass.
 export function machinePort(k,machine,name,position,direction,radius,medium,{nozzle=0,open=false}={}){
   const p=new T.Vector3(...position),n=new T.Vector3(...direction).normalize();
-  if(nozzle)k.rod(p.clone().addScaledVector(n,-nozzle).toArray(),position,radius,k.m.steel,machine);
+  if(nozzle)k.rod(p.clone().addScaledVector(n,-nozzle).toArray(),position,radius,k.m.steel,machine).userData.cadRetain=true;
   const collar=k.ring(radius+.045,.035,position,k.m.steel,machine);
+  collar.userData.cadRetain=true;
   collar.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),n);
   const port={machine,name,position:p,direction:n,radius,medium,open,connected:false};
   (machine.userData.ports??={})[name]=port;
@@ -41,7 +42,7 @@ export function createEquipmentConnections(k,root,equipment,rotors){
     const q=k.ring(r+.045,.035,point.toArray(),k.m.steel,root);
     q.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),direction);
   }
-  function connect(from,to,{via=[],kind='duct',zone='BS',stages=[],material='powder',speed=1.2,shellMaterial=k.m.steel}={}){
+  function connect(from,to,{via=[],kind='duct',zone='BS',stages=[],material='powder',speed=1.2,shellMaterial=k.m.steel,hangerY=null}={}){
     if(!from||!to)throw new Error('Missing equipment connection port');
     if(from.medium!==to.medium)throw new Error(`Incompatible equipment ports: ${from.name} → ${to.name}`);
     if(from.connected||to.connected)throw new Error(`Duplicate equipment connection: ${from.name} → ${to.name}`);
@@ -51,7 +52,7 @@ export function createEquipmentConnections(k,root,equipment,rotors){
     if(kind==='gravity'&&points.some((p,i)=>i&&p.y>points[i-1].y+.001))throw new Error(`Uphill gravity chute: ${from.name} → ${to.name}`);
     const path=roundedConnection(points,kind==='mechanical'?.18:Math.max(.5,radius*2));
     const shell=k.mesh(new T.TubeGeometry(path,Math.max(24,Math.ceil(path.getLength()*3)),radius,k.tablet?8:12,false),shellMaterial,[0,0,0],root);
-    shell.userData.connection={from:from.name,to:to.name,kind,material};
+    shell.userData.connection={from:from.name,to:to.name,fromMachine:from.machine.name,toMachine:to.machine.name,kind,material};
     // Reducers seal differing nozzle diameters instead of a small pipe ending
     // in a larger open mouth. Both end planes coincide with their machine port.
     for(const e of [a,b])if(e.r>radius+.005){
@@ -87,11 +88,12 @@ export function createEquipmentConnections(k,root,equipment,rotors){
       if(!vertical&&Math.abs(d.y)<.05&&start.y>2){
         for(let t=.5/Math.ceil(length/6);t<1;t+=1/Math.ceil(length/6)){
           const p=start.clone().lerp(end,t);collar(p,d.clone().normalize(),radius);
-          // Paired posts carry overhead services outside the pipe envelope.
+          // Cross-line services hang from the roof; floor posts would block
+          // the conveyors below them. Other services keep their floor seats.
           const side=new T.Vector3(-d.z,0,d.x).normalize().multiplyScalar(radius+.25);
           const worldX=p.x+8,worldZ=p.z-25,inTower=worldX>-37.5&&worldX<-20.5&&worldZ>-9.5&&worldZ<19.5;
-          const supportY=inTower?([24.5,18,12,6,0].find(y=>y<p.y-radius-.2)??0):0;
-          for(const s of [-1,1]){const q=p.clone().addScaledVector(side,s);k.rod([q.x,supportY+.1,q.z],[q.x,q.y-radius-.05,q.z],.045,k.m.steel,root);}
+          const supportY=hangerY??(inTower?([24.5,18,12,6,0].find(y=>y<p.y-radius-.2)??0):0)+.1;
+          for(const s of [-1,1]){const q=p.clone().addScaledVector(side,s);k.rod([q.x,supportY,q.z],[q.x,q.y-radius-.05,q.z],.045,k.m.steel,root);}
           k.rod(p.clone().sub(side).add(new T.Vector3(0,-radius-.05,0)).toArray(),p.clone().add(side).add(new T.Vector3(0,-radius-.05,0)).toArray(),.045,k.m.steel,root);
         }
       }
@@ -110,6 +112,7 @@ export function createEquipmentConnections(k,root,equipment,rotors){
     root.traverse(g=>Object.values(g.userData.ports||{}).forEach(port=>{
       if(port.connected||port.open)return;
       const cap=k.cyl(port.radius,.035,port.position.toArray(),k.m.steel,g);
+      cap.userData.cadRetain=true;
       cap.quaternion.setFromUnitVectors(up,port.direction);
     }));
   }

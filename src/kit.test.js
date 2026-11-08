@@ -20,8 +20,9 @@ test('batching retains indices, incompatible layouts, shadow flags and moving as
     assert.equal(meshes.length,3);
     assert.equal(incompatible.parent,moving);assert.equal(noShadow.castShadow,false);
     const batch=meshes.find(o=>o!==incompatible&&o!==noShadow);
-    assert.equal(batch.geometry.index.count,72);
-    assert.equal(batch.geometry.attributes.position.count,48);
+    // Rounded material edges retain their indexed geometry through batching.
+    assert.equal(batch.geometry.index.count,a.geometry.index.count*2);
+    assert.equal(batch.geometry.attributes.position.count,a.geometry.attributes.position.count*2);
     assert.equal(a.parent,null);
     batch.geometry.computeBoundingBox();
     assert.equal(batch.geometry.boundingBox.min.x,.5);

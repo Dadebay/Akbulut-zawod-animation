@@ -5,11 +5,19 @@ import {buildOldWarehouseCourt} from './oldWarehouseCourt.js';
 import {buildOldFrontCourt} from './oldFrontCourt.js';
 import {buildOldSideLoading} from './oldSideLoading.js';
 import {buildOldRearBoundary} from './oldRearBoundary.js';
-import {OLD_LEFT_CAMPUS as LEFT,OLD_SIDE_LOADING as LOADING,OLD_PAVILION,OLD_REAR_BOUNDARY,RAIL_ACCESS_CROSSING} from './siteLayout.js';
+import {OLD_LEFT_CAMPUS as LEFT,OLD_WAREHOUSE_DOORS,OLD_SIDE_LOADING as LOADING,OLD_PAVILION,OLD_RAIL_DORMITORY,OLD_WORK_OFFICE as OFFICE,OLD_REAR_BOUNDARY,RAIL_ACCESS_CROSSING} from './siteLayout.js';
 
 // Proportions and facade details follow the user's close aerial photograph.
 // These are visual estimates; the site has not been surveyed.
 export const OLD_SOUTH_GARDENS=[[36,-64.25,9,8.5],[53.3,-61.6,25.4,3.2]];
+function flatPatch(mesh,mat,west,east,north,south,y){
+  const geo=new T.BufferGeometry(),corners=[[west,north],[east,north],[east,south],[west,south]];
+  geo.setAttribute('position',new T.Float32BufferAttribute(corners.flatMap(([x,z])=>[x,y,z]),3));
+  geo.setAttribute('uv',new T.Float32BufferAttribute(corners.flatMap(([x,z])=>[x/3,z/3]),2));
+  geo.setIndex([0,2,1,0,3,2]);geo.computeVertexNormals();
+  const surface=mesh(geo,mat);surface.castShadow=false;return surface;
+}
+
 export function buildOldCampus(k,plants){
   const {m,box,cyl,rod,ring,group,mesh,material,textPlate}=k,shells=[];
   const wall=material('#dfe2db',.04,.86),base=material('#a7aaa2',0,.94),roof=material('#699780',.27,.58),roofShade=material('#4f8069',.23,.67),seamMat=material('#87a994',.27,.64),trim=material('#c1d0c7',.44,.53),glass=material('#36545d',.38,.27),dark=material('#3c4c50',.46,.6),paving=material('#8b908d',0,.96),door=material('#718e82',.22,.65);
@@ -18,16 +26,22 @@ export function buildOldCampus(k,plants){
   // Run the court paving beneath the rear boundary wall so no soil strip shows.
   const courtWest=-28,courtEast=OLD_REAR_BOUNDARY.x+.2;
   box(courtEast-courtWest,.14,79,[(courtWest+courtEast)/2,-.20,-110.5],paving,k.scene,2.5);
-  function ridgeHall(x,z,w,d,h,bays=1,frontLoading=true,sideLoading=null){
+  function ridgeHall(x,z,w,d,h,bays=1,frontLoading=true,sideLoading=null,southDoors=[]){
     const g=group([x,0,z],k.scene,true);shells.push(g);
-    const openingX=sideLoading?sideLoading.x-x:0,openingWidth=sideLoading?.interiorWidth||0;
+    const openings=sideLoading?[{x:sideLoading.x,width:sideLoading.interiorWidth,height:sideLoading.clearHeight,bottom:0}]:southDoors;
+    const inOpening=(localX,margin=0)=>openings.some(o=>Math.abs(localX+x-o.x)<o.width/2+margin);
     box(w,.12,d,[x,-.03,z],m.floor);
     for(const side of [-1,1])box(.24,h,d,[side*w/2,h/2,0],wall,g);
     box(w,h,.24,[0,h/2,-d/2],wall,g);
-    if(sideLoading){
-      for(const [a,b] of [[-w/2,openingX-openingWidth/2],[openingX+openingWidth/2,w/2]])box(b-a,h,.24,[(a+b)/2,h/2,d/2],wall,g);
-      box(openingWidth,h-sideLoading.clearHeight,.24,[openingX,(h+sideLoading.clearHeight)/2,d/2],wall,g);
-    }else box(w,h,.24,[0,h/2,d/2],wall,g);
+    let edge=-w/2;
+    for(const opening of openings){
+      const cx=opening.x-x,left=cx-opening.width/2,top=opening.bottom+opening.height;
+      if(left>edge)box(left-edge,h,.24,[(edge+left)/2,h/2,d/2],wall,g);
+      box(opening.width,h-top,.24,[cx,(h+top)/2,d/2],wall,g);
+      if(opening.bottom>0)box(opening.width,opening.bottom,.24,[cx,opening.bottom/2,d/2],wall,g);
+      edge=cx+opening.width/2;
+    }
+    if(edge<w/2)box(w/2-edge,h,.24,[(edge+w/2)/2,h/2,d/2],wall,g);
     const bay=d/bays,rise=1.05;
     for(let b=0;b<bays;b++){
       const zz=-d/2+bay*(b+.5),slope=Math.atan2(rise,bay/2),length=Math.hypot(bay/2,rise)+.42;
@@ -43,12 +57,12 @@ export function buildOldCampus(k,plants){
     }
     for(const side of [-1,1]){
       const zz=side*(d/2+.12);box(w+.6,.18,.20,[0,h+.01,zz],trim,g);
-      for(let xx=-w/2+3;xx<w/2;xx+=8){if(sideLoading&&side===1&&Math.abs(xx-openingX)<openingWidth/2+.4)continue;cyl(.07,h,[xx,h/2,zz+.15*side],trim,g,undefined,16);box(.25,.15,.32,[xx,.2,zz+.22*side],base,g);}
+      for(let xx=-w/2+3;xx<w/2;xx+=8){if(side===1&&inOpening(xx,.4))continue;cyl(.07,h,[xx,h/2,zz+.15*side],trim,g,undefined,16);box(.25,.15,.32,[xx,.2,zz+.22*side],base,g);}
       // Continuous clerestory strips with the closely spaced panes in the photo.
       box(w-1.1,.76,.045,[0,h-.68,zz],glass,g);
       for(let xx=-w/2+.55;xx<=w/2-.5;xx+=.62)box(.055,.83,.085,[xx,h-.68,zz+.035*side],wall,g);
       for(const y of [h-1.1,h-.26])box(w-1,.07,.13,[0,y,zz+.045*side],trim,g);
-      for(let xx=-w/2+1;xx<w/2;xx+=1.1){if(sideLoading&&side===1&&Math.abs(xx-openingX)<openingWidth/2+.1)continue;box(.015,h-.6,.012,[xx,h/2+.25,side*(d/2+.015)],base,g);}
+      for(let xx=-w/2+1;xx<w/2;xx+=1.1){if(side===1&&inOpening(xx,.1))continue;box(.015,h-.6,.012,[xx,h/2+.25,side*(d/2+.015)],base,g);}
     }
     box(.04,.65,d-1.2,[-w/2-.075,h-.63,0],glass,g);
     for(let zz=-d/2+.6;zz<d/2-.4;zz+=.62)box(.07,.73,.055,[-w/2-.11,h-.63,zz],wall,g);
@@ -61,7 +75,8 @@ export function buildOldCampus(k,plants){
     return g;
   }
   ridgeHall(31,-102,76,30,6.2,3,false,LOADING);
-  buildOldSideLoading(k);
+  const loading=buildOldSideLoading(k);
+  shells.push(loading.interiorScreen,loading.roof,loading.frontScreen);
   // The front gable has small personnel doors facing the landscaped court.
   for(const z of [-112,-107.4]){
     box(.055,2.45,1.05,[-7.06,1.3,z],door);
@@ -71,19 +86,18 @@ export function buildOldCampus(k,plants){
     box(3.7,.08,1.65,[-8.85,.01,z],m.concrete);
   }
   const warehouse=LEFT.warehouse;
-  ridgeHall(warehouse.x,warehouse.z,warehouse.width,warehouse.depth,warehouse.height,1,false);
-  const warehouseSign=textPlate('AMMAR BINASY',5.6,.36,[-7.14,6.10,warehouse.z],k.scene,'#917627','#dfe2db');warehouseSign.rotation.y=-Math.PI/2;
+  ridgeHall(warehouse.x,warehouse.z,warehouse.width,warehouse.depth,warehouse.height,1,false,null,OLD_WAREHOUSE_DOORS);
+  const warehouseSign=textPlate('AMMAR · ÖNÜMÇILIK',5.6,.36,[-7.14,6.10,warehouse.z],k.scene,'#917627','#dfe2db');warehouseSign.rotation.y=-Math.PI/2;
   // Loading openings along the separate long shed's yard-facing wall.
-  for(const x of [4,24,49]){
-    box(4.8,3.8,.065,[x,1.98,-131.93],dark);
+  for(const {x} of OLD_WAREHOUSE_DOORS){
     box(5.1,.3,.18,[x,4.04,-131.84],wall);
     box(5.6,.12,3.8,[x,.02,-130.1],m.concrete);
     for(const dx of [-2.55,2.55])cyl(.06,.85,[x+dx,.43,-131.4],m.yellow);
     // A partially raised roller shutter leaves a dark, readable loading bay.
     for(let y=3.05;y<3.9;y+=.17)box(4.7,.12,.08,[x,y,-131.84],door);
   }
-  function curtainWall(x,y,z,width,height,yaw=0){
-    const g=group([x,y,z]);g.rotation.y=yaw;
+  function curtainWall(x,y,z,width,height,yaw=0,parent=k.scene){
+    const g=group([x,y,z],parent);g.rotation.y=yaw;
     const columns=Math.ceil(width/1.15),rows=Math.ceil(height/1.15),cw=width/columns,ch=height/rows;
     for(let col=0;col<columns;col++)for(let row=0;row<rows;row++)box(cw-.035,ch-.035,.045,[-width/2+cw*(col+.5),ch*(row+.5),0],glassPanes[(col+row*2)%3],g);
     for(let col=0;col<=columns;col++)box(.055,height+.09,.11,[-width/2+cw*col,height/2,.04],trim,g);
@@ -92,29 +106,32 @@ export function buildOldCampus(k,plants){
     return g;
   }
   // Two-storey glazed corner: the glazing wraps from the front onto the long wall.
-  const office=group([-10,0,-96.2]);
-  box(7.4,5.35,18.4,[0,2.675,0],wall,office);
+  const officeShell=group([0,0,0],k.scene,true);officeShell.name='old-work-office-shell';shells.push(officeShell);
+  const office=group([OFFICE.x,0,OFFICE.z],officeShell);
+  box(OFFICE.width,OFFICE.height,OFFICE.depth,[0,OFFICE.height/2,0],wall,office);
   box(7.7,.28,18.7,[0,5.49,0],wall,office);
   box(7.2,.07,18.2,[0,5.67,0],roof,office);
-  box(7.6,.30,18.6,[0,.15,0],base,office);
-  curtainWall(-13.76,.34,-96.2,18.4,4.76,-Math.PI/2);
+  // Standing seams run the length of the flat roof, like the neighbouring halls.
+  for(let x=-3.25;x<=3.26;x+=.65)box(.025,.035,18.2,[x,5.72,0],seamMat,office).castShadow=false;
+  box(7.6,.30,18.6,[OFFICE.x,.15,OFFICE.z],base);
+  curtainWall(-13.76,.34,-96.2,18.4,4.76,-Math.PI/2,officeShell);
   // End the glazing at the main hall: its white wall must stay ungridded.
   const glazedCornerWest=-13.7,glazedCornerEast=-7.15;
-  curtainWall((glazedCornerWest+glazedCornerEast)/2,.34,-86.94,glazedCornerEast-glazedCornerWest,4.76);
-  box(27.8,.26,.42,[0,5.44,-86.87],wall);
-  box(27.8,.10,1.05,[0,5.62,-86.65],roof);
-  const entry=group([-13.87,0,-98.5]);
-  box(.075,2.4,2.2,[0,1.38,0],glass,entry);
-  for(const zz of [-1.1,0,1.1])box(.13,2.46,.055,[-.03,1.38,zz],trim,entry);
-  for(const zz of [-.15,.15])rod([-.13,1.1,zz],[-.13,1.55,zz],.025,m.steel,entry);
-  box(2.8,.15,4.2,[-1.05,2.95,0],trim,entry);
-  box(2.66,.055,4.04,[-1.05,3.06,0],roof,entry);
-  for(const zz of [-1.9,1.9])rod([-2.25,.1,zz],[-2.25,2.94,zz],.045,trim,entry);
+  curtainWall((glazedCornerWest+glazedCornerEast)/2,.34,-86.94,glazedCornerEast-glazedCornerWest,4.76,0,officeShell);
+  const entry=group([-13.87,0,OFFICE.entryZ]);
+  const officeCanopy=group([0,0,0],entry,true);officeCanopy.name='old-work-office-entrance';shells.push(officeCanopy);
+  box(.075,2.4,2.2,[0,1.38,0],glass,officeCanopy);
+  for(const zz of [-1.1,0,1.1])box(.13,2.46,.055,[-.03,1.38,zz],trim,officeCanopy);
+  for(const zz of [-.15,.15])rod([-.13,1.1,zz],[-.13,1.55,zz],.025,m.steel,officeCanopy);
+  box(2.8,.15,4.2,[-1.05,2.95,0],trim,officeCanopy);
+  box(2.66,.055,4.04,[-1.05,3.06,0],roof,officeCanopy);
+  for(const zz of [-1.9,1.9])rod([-2.25,.1,zz],[-2.25,2.94,zz],.045,trim,officeCanopy);
   for(let i=0;i<3;i++)box(.55,.12*(3-i),3.1,[-.55-i*.5,.06*(3-i),0],m.concrete,entry);
-  box(2.5,.1,3.1,[-15.35,-.01,-98.5],m.concrete);
-  const sign=textPlate('AK BULUT',4.5,.65,[-13.91,5.26,-96.2],k.scene,'#234c67','#dfe2db');sign.rotation.y=-Math.PI/2;
+  box(2.5,.1,3.1,[-15.35,-.01,OFFICE.entryZ],m.concrete);
+  const sign=textPlate('AK BULUT',4.5,.65,[-13.91,5.26,-96.2],officeShell,'#234c67','#dfe2db');sign.rotation.y=-Math.PI/2;
   // The raised process block is broad, with a shallow green roof and a high window band.
-  const annex=group([54,0,-106]);shells.push(annex);box(16,10.8,12,[0,5.4,0],wall,annex);
+  // Preserve the shell as a visibility owner through static batching.
+  const annex=group([54,0,-106],k.scene,true);shells.push(annex);box(16,10.8,12,[0,5.4,0],wall,annex);
   const capRise=1.15,capSlope=Math.atan2(capRise,6),capLength=Math.hypot(6,capRise)+.28;
   for(const side of [-1,1]){
     const cap=box(16.6,.12,capLength,[0,10.8+capRise/2,side*3],side>0?roof:roofShade,annex);cap.rotation.x=side*capSlope;
@@ -132,29 +149,38 @@ export function buildOldCampus(k,plants){
   for(const x of [-3.4,3.4]){box(1.4,.55,1.2,[x,12.25,0],wall,annex);box(1.7,.13,1.5,[x,12.6,0],trim,annex);}
   k.ladder(10.8,7.3,6.35,annex,true);
   function glazedPavilion(x,z,w){
-    ridgeHall(x,z,w,6,3.3);
+    // Both gable ends are plain walls: no truck doors or bollards at a dormitory.
+    const hall=ridgeHall(x,z,w,OLD_RAIL_DORMITORY.depth,OLD_RAIL_DORMITORY.height,1,false);
+    hall.userData.buildingType='dormitory';hall.userData.label='ÝATAKHANA';
     // The rear eave meets the rail-side wall; doors and canopy face the court.
     curtainWall(x,.34,z-3.06,w-1,2.43,Math.PI);
-    curtainWall(x-w/2-.07,.34,z,5.4,2.43,-Math.PI/2);
-    box(w+.8,.20,1.85,[x,3.12,z-3.5],wall);
-    box(w+.6,.065,1.65,[x,3.26,z-3.5],roofShade);
-    for(let xx=x-w/2+.4;xx<=x+w/2;xx+=1.1)rod([xx,3.95,z-2.35],[xx,3.35,z-4.3],.04,trim);
+    const canopy=group([0,0,0],k.scene,true);canopy.name='old-dormitory-entrance-canopy';shells.push(canopy);
+    box(w+.8,.20,1.85,[x,3.12,z-3.5],wall,canopy);
+    box(w+.6,.065,1.65,[x,3.26,z-3.5],roofShade,canopy);
+    for(let xx=x-w/2+.4;xx<=x+w/2;xx+=1.1)rod([xx,3.95,z-2.35],[xx,3.35,z-4.3],.04,trim,canopy);
     for(const xx of [x-w/2+.5,x+w/2-.5])rod([xx,.1,z-4.25],[xx,3.12,z-4.25],.05,trim);
     box(2.1,.10,.08,[x,2.75,z-3.16],trim);
     box(.055,2.4,.085,[x,1.54,z-3.17],trim);
+    const sign=textPlate('ÝATAKHANA · 2 ADAMLY OTAGLAR',6.5,.22,[x,3.12,z-4.44],canopy,'#385666','#dfe2db');
+    sign.rotation.y=Math.PI;
   }
-  buildOldGardenPavilion(k,plants,solarPanel);
-  glazedPavilion(78,OLD_PAVILION.wallZ-3.35,17);
+  buildOldGardenPavilion(k,plants,solarPanel,shells);
+  glazedPavilion(OLD_RAIL_DORMITORY.x,OLD_RAIL_DORMITORY.z,OLD_RAIL_DORMITORY.width);
   buildOldFrontCourt(k,plants);
   // Plant only the lawn west of the covered truck entrance. Its east side
   // is an open asphalt apron, without the former two rows of conifers.
   const hallVergeNorth=-86.5,hallVergeSouth=-83.15;
+  const kerb=material('#b9baae',0,.96);
   {
     const west=-4,east=32;
     const verge=box(east-west,.17,hallVergeSouth-hallVergeNorth,
       [(west+east)/2,-.055,(hallVergeNorth+hallVergeSouth)/2],m.grass);
     verge.castShadow=false;
-    box(east-west,.16,.18,[(west+east)/2,.025,hallVergeSouth],wall).castShadow=false;
+    // Same kerb profile as the planted beds beside it: 14 cm wide, 20 cm tall.
+    box(east-west,.20,.14,[(west+east)/2,.03,hallVergeSouth-.07],kerb).castShadow=false;
+    box(.14,.20,hallVergeSouth-hallVergeNorth,
+      [east-.07,.03,(hallVergeNorth+hallVergeSouth)/2],kerb).castShadow=false;
+    box(east-west,.20,.14,[(west+east)/2,.03,hallVergeNorth+.07],kerb).castShadow=false;
     for(let x=west+1.5,i=0;x<east-1;x+=3,i++){
       plants.plant(x,-84.95,.38+(i%3)*.025,{plantedBed:true});
       if(x+1.4<east-1)plants.plant(x+1.4,-84.05,.25+(i%2)*.025,{plantedBed:true});
@@ -172,19 +198,23 @@ export function buildOldCampus(k,plants){
   const cornerLawnGeometry=new T.ShapeGeometry(cornerLawnShape);
   cornerLawnGeometry.rotateX(-Math.PI/2);
   mesh(cornerLawnGeometry,m.grass,[0,.035,0]).castShadow=false;
-  box(12.18,.16,.18,[-10.09,.025,hallVergeSouth],wall).castShadow=false;
-  // Frame the exposed left edge; the joined edge beside the older bed stays green.
-  box(.18,.16,hallVergeSouth+87.12,[-16.18,.025,(-87.12+hallVergeSouth)/2],wall).castShadow=false;
+  box(12.3,.20,.14,[-10.15,.03,hallVergeSouth-.07],kerb).castShadow=false;
+  // The facade side gets the same kerb along the notch and the strip in front of the office.
+  box(.14,.20,.76,[-13.85,.03,(-87.12+hallVergeNorth+.14)/2],kerb).castShadow=false;
+  box(9.92,.20,.14,[-8.96,.03,hallVergeNorth+.07],kerb).castShadow=false;
+  // Meet the curved border of the older bed without leaving a break at the join.
+  const cornerRimStart=-87.26;
+  box(.14,.20,hallVergeSouth-cornerRimStart,
+    [-16.23,.03,(cornerRimStart+hallVergeSouth)/2],kerb).castShadow=false;
   for(const [x,z,size] of [
     [-14.7,-84.45,.31],[-13.2,-85.45,.25],[-11,-84.8,.30],
     [-9.7,-85.55,.25],[-8,-84.8,.30],[-6.5,-85.5,.25],[-5.1,-84.8,.29]
   ])plants.plant(x,z,size,{plantedBed:true});
-  buildOldFrontParking(k,solarPanel);
+  buildOldFrontParking(k);
   buildOldWarehouseCourt(k,plants);
   buildOldRearBoundary(k);
   // Yard equipment, transformer bay and planted entrances give the older site depth.
   box(12,.23,7,[82,.10,-139],m.concrete);for(const x of [79,85]){box(2.7,2.0,2.1,[x,1.18,-139],base);for(let z=-139.9;z<-138;z+=.17)box(2.84,1.55,.045,[x,1.18,z],dark);for(const dx of [-.7,0,.7])cyl(.09,.5,[x+dx,2.4,-139],trim);}
-  for(const x of [12,35,60]){box(4,.18,2.4,[x,-.03,-129],m.concrete);for(let i=0;i<5;i++)box(2.8,.11,1.8,[x,.18+i*.14,-129],wall);}
   // Asphalt and a straight white wall east of the pavilion, continuing the wall on its west side.
   {
     const wallZ=()=>OLD_PAVILION.wallZ,x0=43.5,x1=OLD_REAR_BOUNDARY.x,step=3.5,pts=[];
@@ -197,11 +227,9 @@ export function buildOldCampus(k,plants){
     shape.closePath();
     const geo=new T.ShapeGeometry(shape);geo.rotateX(-Math.PI/2);
     k.mesh(geo,courtAsphalt,[0,.12,0]).castShadow=false;
-    // The pale paving beside the shed reaches the wall without a dark seam.
-    const palePaving=k.material('#8c8e8d',0,.95);
-    const paleEast=OLD_REAR_BOUNDARY.x;
-    const pale=k.box(paleEast-69,.01,-77.5+88.2,
-      [(paleEast+69)/2,.13,(-77.5-88.2)/2],palePaving);pale.castShadow=false;
+    // Continue the courtyard asphalt across the strip beside the shed.
+    const apronEast=OLD_REAR_BOUNDARY.x;
+    flatPatch(mesh,courtAsphalt,69,apronEast,-88.2,-77.5,.135).name='old-shed-asphalt-apron';
     const crossingWest=RAIL_ACCESS_CROSSING.x-RAIL_ACCESS_CROSSING.width/2;
     const crossingEast=RAIL_ACCESS_CROSSING.x+RAIL_ACCESS_CROSSING.width/2;
     for(const [start,end] of [[x0,crossingWest],[crossingEast,x1]]){
@@ -318,6 +346,7 @@ export function buildOldCampus(k,plants){
     ];
     for(const [x,z,size] of bedYolka)plants.plant(x,z,size,{plantedBed:true});
   }
-  for(const [x,z] of [[93,-87],[93,-122],[95,-135]]){cyl(.055,6,[x,3,z],trim);rod([x,5.9,z],[x+1,6.15,z],.045,trim);box(.8,.10,.30,[x+1,6.15,z],m.light);}
+  const gateSideLampZ=OLD_REAR_BOUNDARY.gateZ+OLD_REAR_BOUNDARY.gateWidth/2+2;
+  for(const [x,z] of [[93,-87],[93,gateSideLampZ],[95,-135]]){cyl(.055,6,[x,3,z],trim);rod([x,5.9,z],[x+1,6.15,z],.045,trim);box(.8,.10,.30,[x+1,6.15,z],m.light);}
   return {shells};
 }

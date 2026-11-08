@@ -1,23 +1,30 @@
-import {PROCESS_BUILDINGS as L} from './siteLayout.js';
+import {PROCESS_BUILDINGS as L,PROCESS_SERVICE_DOOR_WIDTHS} from './siteLayout.js';
+import {buildCourtyardWing} from './courtyardWing.js';
+import {buildRearServiceYard,REAR_SERVICE_YARD} from './rearServiceYard.js';
 
 // Architectural envelope only: the production equipment keeps its existing layout.
 export function buildProcessingBuildings(k,roofs,structures){
-  const {box,group,material,textPlate,m}=k;
-  const wall=material('#e1e3df',.04,.82),seam=material('#cdd2cf',.10,.78);
-  const roof=material('#abb3b5',.08,.85),coping=material('#d8dcda',.24,.61);
+  const {box,group,material,textPlate}=k;
+  const wall=material('#f4f5f3',.04,.82),seam=material('#cdd2cf',.10,.78);
+  const roof=material('#abb3b5',.08,.85,{surface:'roofSheet'}),coping=material('#d8dcda',.24,.61);
   const glass=material('#304a52',.45,.28),frame=material('#c4cdcb',.32,.57);
   const bodies={};
+  const high=REAR_SERVICE_YARD.buildings.find(b=>b.name==='process-high-roof-block');
+  const frontX=high.x-high.width/2;
 
   function volume(name,b){
     const g=group([b.x,0,b.z],structures),r=group([b.x,0,b.z],roofs);
     g.name=`processing-${name}`;bodies[name]=g;
-    box(b.width,b.height,b.depth,[0,b.height/2,0],wall,g);
-    box(b.width+.06,.24,b.depth+.06,[0,.12,0],coping,g);
+    if(name==='leftCore')g.userData.referencePart=13;
+    const bottom=name==='leftCore'||name==='leftLink'?L.leftBase.height:0;
+    box(b.width,b.height-bottom,b.depth,[0,(b.height+bottom)/2,0],wall,g);
+    if(!bottom)box(b.width+.06,.24,b.depth+.06,[0,.12,0],coping,g);
     // Quiet cladding joints leave the slender window strips legible from a distance.
     for(let z=-b.depth/2+1.6;z<b.depth/2-.6;z+=2.1)
-      box(.018,b.height-.35,.013,[-b.width/2-.014,b.height/2,z],seam,g);
+      box(.018,b.height-bottom-.35,.013,[-b.width/2-.014,(b.height+bottom)/2,z],seam,g);
     for(let x=-b.width/2+1.4;x<b.width/2-.6;x+=2.1)
-      box(.013,b.height-.35,.018,[x,b.height/2,b.depth/2+.014],seam,g);
+      box(.013,b.height-bottom-.35,.018,[x,(b.height+bottom)/2,b.depth/2+.014],seam,g);
+    if(name==='leftBase')return;
     box(b.width+.10,.12,b.depth+.10,[0,b.height+.06,0],wall,r);
     box(b.width-.44,.055,b.depth-.44,[0,b.height+.15,0],roof,r);
     for(const z of [-b.depth/2+.08,b.depth/2-.08]){
@@ -25,61 +32,62 @@ export function buildProcessingBuildings(k,roofs,structures){
       box(b.width+.08,.045,.22,[0,b.height+.575,z],coping,r);
     }
     for(const x of [-b.width/2+.08,b.width/2-.08]){
-      // The two low wings share one L-shaped roof, without a parapet through the join.
-      if(name==='outerWing'&&x>0)continue;
-      const depth=name==='rightWing'&&x<0?b.depth-L.outerWing.depth:b.depth;
-      const z=(depth-b.depth)/2;
-      box(.16,.48,depth,[x,b.height+.31,z],wall,r);
-      box(.22,.045,depth+.08,[x,b.height+.575,z],coping,r);
+      box(.16,.48,b.depth,[x,b.height+.31,0],wall,r);
+      box(.22,.045,b.depth+.08,[x,b.height+.575,0],coping,r);
     }
   }
-  Object.entries(L).forEach(([name,b])=>volume(name,b));
-  box(.44,.055,L.outerWing.depth-.44,[L.rightWing.x-L.rightWing.width/2,L.rightWing.height+.15,L.outerWing.z],roof,roofs);
+  const customVolumes=new Set(['main','rightCore','rightLink','rightWing','outerWing','outerService','rear','buffer']);
+  Object.entries(L).filter(([name])=>!customVolumes.has(name)).forEach(([name,b])=>volume(name,b));
+  // Keep the facade's local coordinates, but build its mass from reference
+  // parts 3 and 5. The old 17 x 29 solid concealed all the stepped roof levels.
+  bodies.main=group([L.main.x,0,L.main.z],structures);bodies.main.name='processing-main-facade';
+  buildCourtyardWing(k,roofs,structures);
+  buildRearServiceYard(k,roofs,structures);
 
-  function slit(name,z,bottom,top,width=.32){
-    const b=L[name],g=bodies[name],front=-b.width/2,y=(bottom+top)/2,zz=z-b.z;
+  // Only the exposed part of the lower floor has a roof. The front
+  // wall continues straight into the tower, without a terrace or parapet ledge.
+  const base=L.leftBase,core=L.leftCore,baseRoof=group([0,0,0],roofs);
+  baseRoof.name='processing-left-base-roof';
+  const east=base.x+base.width/2,south=base.z+base.depth/2;
+  const towerEast=core.x+core.width/2,towerSouth=core.z+core.depth/2;
+  for(const [x,z,w,d] of [
+    [base.x,(towerSouth+south)/2,base.width,south-towerSouth],
+    [(towerEast+east)/2,core.z,east-towerEast,core.depth],
+  ]){
+    if(w<=.04||d<=.04)continue;
+    box(w,.10,d,[x,base.height+.05,z],wall,baseRoof);
+    box(w-.04,.035,d-.04,[x,base.height+.112,z],roof,baseRoof);
+  }
+  const doorPanel=material('#f7f8f5',.08,.72),doorJoint=material('#d0d7d4',.12,.69);
+  for(const [index,fraction] of [.16,.44,.84].entries()){
+    const x=base.x-base.width/2+base.width*fraction;
+    const door=group([x-base.x,0,base.depth/2+.025],bodies.leftBase);
+    door.name=`processing-service-door-${index+1}`;
+    const width=PROCESS_SERVICE_DOOR_WIDTHS[index],height=2.65;
+    box(width+.14,height+.12,.055,[0,.14+height/2,0],frame,door);
+    box(width,height,.035,[0,.14+height/2,.045],doorPanel,door);
+    for(let y=.64;y<2.7;y+=.5)
+      box(width-.04,.014,.012,[0,y,.069],doorJoint,door).castShadow=false;
+    if(index===2)for(const xx of [-.55,0,.55]){
+      const scale=width/1.9;
+      box(.43*scale,.23,.018,[xx*scale,2.18,.075],frame,door);
+      box(.35*scale,.15,.018,[xx*scale,2.18,.09],glass,door);
+    }
+    box(.035,.25,.04,[width/2-.16,1.15,.087],coping,door);
+    box(width+.18,.08,.18,[0,.10,.055],coping,door);
+  }
+
+  function slit(name,z,bottom,top,width=.32,divided=true){
+    const b=L[name],g=bodies[name],front=name==='main'?frontX-b.x:-b.width/2,y=(bottom+top)/2,zz=z-b.z;
     box(.035,top-bottom+.12,width+.13,[front-.025,y,zz],frame,g);
     box(.032,top-bottom,width,[front-.062,y,zz],glass,g);
-    for(let yy=bottom+2.8;yy<top-.4;yy+=3.1)
+    if(divided)for(let yy=bottom+2.8;yy<top-.4;yy+=3.1)
       box(.042,.065,width+.02,[front-.083,yy,zz],coping,g);
     box(.11,.065,width+.18,[front-.06,bottom-.05,zz],coping,g);
   }
-  // Five fine vertical strips on the main face, two on each projecting core.
-  for(const z of [-6.2,-.6,5,10.6,16.2])slit('main',z,2.9,25.3,.32);
-  for(const z of [-8.2,-3.8])slit('leftCore',z,3.65,12.35,.31);
-  for(const z of [22.6,27.3])slit('rightCore',z,2.15,19.25,.31);
-  for(const z of [29.8,32.4,35.0])slit('rightWing',z,1.05,5.9,.34);
-  for(const z of [-9,-5,-1])slit('leftBase',z,.65,2.65,.64);
-
-  // Low plinth and short link attach the smaller left tower to the main volume.
-  for(const z of [-8.9,-1.3]){
-    box(.035,2.05,.86,[L.leftBase.x-L.leftBase.width/2-.04,1.16,z],glass,structures);
-    box(.30,.08,1.02,[L.leftBase.x-L.leftBase.width/2-.10,2.23,z],coping,structures);
-  }
-  const label=textPlate('TÜRKMEN GIPS',6.4,.46,[L.main.x-L.main.width/2-.065,26.12,4.8],structures,'#5593a6','#e1e3df');
+  // Two uninterrupted panes on the smaller front tower.
+  for(const z of [-8.3,-3.7])slit('leftCore',z,1.05,11.8,.62,false);
+  for(const z of [-7.6,-3,1.6,6.2,10.8])slit('main',z,2.9,z<1.5?26.9:25.3,.32);
+  const label=textPlate('TÜRKMEN GIPS',6.4,.46,[frontX-.065,high.height-.7,high.z],structures,'#5593a6','#f4f5f3');
   label.rotation.y=-Math.PI/2;
-
-  // A low set-back roof house replaces the extra full-height front slab.
-  const top=L.main.height,roofHouse=group([-27.0,top+.18,-5.1],roofs);
-  box(8,2.65,6.2,[0,1.325,0],wall,roofHouse);
-  box(8.25,.16,6.45,[0,2.73,0],coping,roofHouse);
-  box(7.7,.055,5.9,[0,2.84,0],roof,roofHouse);
-  for(const z of [-2.4,2.4])box(.45,.32,.50,[3,3.01,z],coping,roofHouse);
-
-  // The broad blank rear building carries the service deck seen in the render.
-  const roofY=L.rear.height+.19,deck=group([-6,roofY,11],roofs);
-  box(14,.10,12,[0,.05,0],coping,deck);
-  for(let x=-5.4;x<6;x+=3.6)for(let z=-4.4;z<5;z+=4.4){
-    box(.48,.12,.48,[x,.16,z],m.steel,deck);
-    k.cyl(.085,.42,[x,.43,z],coping,deck,undefined,12);
-  }
-  for(const [x,z] of [[-2.1,-1.7],[2.0,1.3]]){
-    box(1.30,.70,.82,[x,.45,z],material('#69977d',.08,.76),deck);
-    box(1.44,.10,.94,[x,.85,z],coping,deck);
-  }
-  const roofCabin=group([.8,roofY,4],roofs);
-  box(3.4,2.4,3.8,[0,1.2,0],wall,roofCabin);
-  box(3.65,.18,4.05,[0,2.49,0],coping,roofCabin);
-  box(3.1,.045,3.5,[0,2.61,0],roof,roofCabin);
-  box(.045,1.9,.82,[-1.73,1.02,0],frame,roofCabin);
 }

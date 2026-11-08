@@ -1,13 +1,11 @@
 import * as T from 'three';
 import {NEW_FACTORY_ENTRANCE as ENTRANCE} from './siteLayout.js';
 import {routeProfile} from './motionPath.js';
+import {TRUCK_SCALE} from './trucks.js';
 
 // Fixed site roads and vehicle manoeuvres. Metres in scene space.
-// Opposing diagonal rows leave the office-side passenger bays and their aisle clear.
-export const PARKED_TRUCKS=[
-  ...[-29,-20.5,-12].map(z=>({position:[-127.4,0,z],angle:-1.1,scale:1})),
-  ...[[-114.4,-31],[-115.2,-25.5]].map(([x,z])=>({position:[x,0,z],angle:2.04,scale:1}))
-];
+// The new entrance forecourt is landscaped; no trucks wait here.
+export const PARKED_TRUCKS=[];
 export const MAIN_ROAD_X=-143;
 export const MAIN_ROAD_WIDTH=7.2;
 // The avenue runs along the plant fence from the railway southwards; the long outer road further west carries the northern traffic.
@@ -23,10 +21,10 @@ const path=new T.CurvePath();
 const line=(a,b)=>path.add(new T.LineCurve3(v(...a),v(...b)));
 const bend=(a,b,c,d)=>path.add(new T.CubicBezierCurve3(v(...a),v(...b),v(...c),v(...d)));
 // Leave the loading berth before passing the dock columns and pallet stock.
-bend([64,-43],[57,-43],[57,-47.7],[48,-47.7]);
+bend([64,-43],[60,-43],[60,-47.7],[56,-47.7]);
 // Run west along the top of the court, down the fence side and out through the gate
 // onto the gate road that leads to the outer road.
-line([48,-47.7],[-106.6,-47.7]);
+line([56,-47.7],[-106.6,-47.7]);
 bend([-106.6,-47.7],[-113.23,-47.7],[-120.2,-42.33],[-120.2,-35.7]);
 line([-120.2,-35.7],[-120.2,-16]);
 bend([-120.2,-16],[-120.2,-8.27],[-124.87,-2],[-132.6,-2]);
@@ -45,13 +43,13 @@ const length=path.getLength(),count=Math.ceil(length/.20),samples=[];
 let trailerYaw=Math.PI,previousHitch;
 for(let i=0;i<=count;i++){
   const p=path.getPointAt(i/count),d=path.getTangentAt(i/count),yaw=-Math.atan2(d.z,d.x);
-  const hitch=v(p.x-2.6*Math.cos(yaw),p.z+2.6*Math.sin(yaw));
+  const hitch=v(p.x-2.6*TRUCK_SCALE*Math.cos(yaw),p.z+2.6*TRUCK_SCALE*Math.sin(yaw));
   if(previousHitch){
     // No lateral slip at the trailer axle: integrate the hitch displacement.
     // Axle group centre is 9.05 m behind the kingpin. Precompute once so seeking
     // and different frame rates always produce the same articulation.
     const dx=hitch.x-previousHitch.x,dz=hitch.z-previousHitch.z;
-    trailerYaw+=(-Math.sin(trailerYaw)*dx-Math.cos(trailerYaw)*dz)/9.05;
+    trailerYaw+=(-Math.sin(trailerYaw)*dx-Math.cos(trailerYaw)*dz)/(9.05*TRUCK_SCALE);
   }
   samples.push({x:p.x,z:p.z,yaw,trailerYaw,hitch});previousHitch=hitch;
 }
@@ -62,13 +60,13 @@ export function dispatchPose(progress){
 }
 
 export function truckFootprint(pose,padding=0){
-  const {x,z,yaw,trailerYaw}=pose,hx=x-2.6*Math.cos(yaw),hz=z+2.6*Math.sin(yaw);
+  const {x,z,yaw,trailerYaw}=pose,hx=x-2.6*TRUCK_SCALE*Math.cos(yaw),hz=z+2.6*TRUCK_SCALE*Math.sin(yaw);
   const rectangle=(cx,cz,angle,front,back,halfWidth)=>{
     const out=[];
     for(const [along,side] of [[front,halfWidth],[back,halfWidth],[back,-halfWidth],[front,-halfWidth]])out.push([cx+along*Math.cos(angle)+side*Math.sin(angle),cz-along*Math.sin(angle)+side*Math.cos(angle)]);
     return out;
   };
-  return [rectangle(x,z,yaw,2.6+padding,-3.6-padding,1.35+padding),rectangle(hx,hz,trailerYaw,1.3+padding,-12.4-padding,1.33+padding)];
+  return [rectangle(x,z,yaw,2.6*TRUCK_SCALE+padding,-3.6*TRUCK_SCALE-padding,1.35*TRUCK_SCALE+padding),rectangle(hx,hz,trailerYaw,1.3*TRUCK_SCALE+padding,-12.4*TRUCK_SCALE-padding,1.33*TRUCK_SCALE+padding)];
 }
 
 // Straight industrial roads with square junction aprons. The vehicle turns

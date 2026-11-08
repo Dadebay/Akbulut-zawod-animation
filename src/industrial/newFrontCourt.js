@@ -1,18 +1,13 @@
 import * as T from 'three';
-import {PARKED_TRUCKS} from './trafficLayout.js';
-import {NEW_FACTORY_ENTRANCE as ENTRANCE} from './siteLayout.js';
+import {NEW_FACTORY_ENTRANCE as ENTRANCE,DINING_STREET} from './siteLayout.js';
 
-// Office frontage, passenger parking and truck court follow the same axis.
+// The entrance is an open paved forecourt with low planted strips, as in the exterior references.
 export function buildNewFrontCourt(k,plants){
-  const {box,mesh,cyl,rod,group,material,m}=k;
+  const {box,mesh,cyl,rod,material,m}=k;
   const asphalt=m.road,curb=material('#d3d7d3',.02,.90);
   const paint=material('#dddeda',0,.88),pavers=material('#b9bfc0',0,.94);
   const lawn=m.grass,shrubPaint=material('#526b3c',0,.96);
   const shrubGeometry=new T.IcosahedronGeometry(1,1);
-  const palmBark=material('#75684f',0,.95),palmLeaf=material('#416d3c',0,.78,{side:T.DoubleSide});
-  const blossom=material('#a59bb4',0,.9),flowerBorder=material('#813d4f',0,.9);
-  const officeFlowers=material('#92557b',0,.9);
-  const blossomGeometry=new T.IcosahedronGeometry(.10,0);
   const groundY=.04,paintY=.059;
   function flatBox(w,d,x,z,mat=paint,y=paintY){
     const item=box(w,.012,d,[x,y,z],mat);item.castShadow=false;return item;
@@ -27,26 +22,6 @@ export function buildNewFrontCourt(k,plants){
     const geo=new T.ExtrudeGeometry(outline(w,d,r),{depth:height,bevelEnabled:false,curveSegments:7});geo.rotateX(-Math.PI/2);
     return mesh(geo,mat,[x,bottom,z]);
   }
-  function hatchedApron(points){
-    const angle=Math.PI/4,dx=Math.cos(angle),dz=Math.sin(angle),nx=-dz,nz=dx;
-    const offsets=points.map(([x,z])=>x*nx+z*nz);
-    for(let offset=Math.min(...offsets)+.25;offset<Math.max(...offsets)-.15;offset+=.36){
-      const hits=[];
-      for(let i=0;i<points.length;i++){
-        const a=points[i],b=points[(i+1)%points.length];
-        const start=a[0]*nx+a[1]*nz-offset,end=b[0]*nx+b[1]*nz-offset;
-        if(start*end>0||Math.abs(start-end)<1e-8)continue;
-        const t=start/(start-end),hit=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
-        if(!hits.some(p=>Math.hypot(p[0]-hit[0],p[1]-hit[1])<.04))hits.push(hit);
-      }
-      if(hits.length<2)continue;
-      hits.sort((a,b)=>(a[0]-b[0])*dx+(a[1]-b[1])*dz);
-      const a=hits[0],b=hits[hits.length-1],length=Math.hypot(b[0]-a[0],b[1]-a[1])-.24;
-      if(length<.2)continue;
-      const stripe=flatBox(length,.075,(a[0]+b[0])/2,(a[1]+b[1])/2,paint,.080);
-      stripe.rotation.y=-angle;
-    }
-  }
   function bed(west,east,north,south,r=.75){
     const w=east-west,d=south-north,x=(west+east)/2,z=(north+south)/2;
     const edge=outline(w,d,Math.min(r,w/2,d/2));
@@ -55,52 +30,11 @@ export function buildNewFrontCourt(k,plants){
     mesh(curbGeometry,curb,[x,.025,z]);
     roundedSurface(w-.28,d-.28,Math.min(r-.14,(w-.28)/2,(d-.28)/2),x,z,.04,.13,lawn);
   }
-  function raisedBed(west,east,north,south){
-    const w=east-west,d=south-north,x=(west+east)/2,z=(north+south)/2;
-    box(w,.50,d,[x,.26,z],curb);
-    box(w-.28,.09,d-.28,[x,.55,z],lawn);
-    for(const zz of [north+.08,south-.08])box(w,.065,.16,[x,.55,zz],curb);
-    for(const xx of [west+.08,east-.08])box(.16,.065,d,[xx,.55,z],curb);
-  }
-  function shrub(x,z,size,index=0,base=0){
-    const plant=mesh(shrubGeometry,shrubPaint,[x,.17+base+size*.55,z]);
+  function shrub(x,z,size,index=0,base=0,finish=shrubPaint){
+    const plant=mesh(shrubGeometry,finish,[x,.17+base+size*.55,z]);
     plant.scale.set(size,size*.72,size*.82);plant.rotation.y=index*1.7;
   }
-  function palm(x,z,height,spread){
-    const tree=group([x,0,z]);
-    rod([0,.15,0],[.14,height,0],.115,palmBark,tree);
-    const vertices=[],crown=[.14,height,0];
-    const point=(angle,r,t)=>[
-      crown[0]+Math.cos(angle)*r,
-      crown[1]+.34*Math.sin(Math.PI*t)-.73*t*t,
-      crown[2]+Math.sin(angle)*r
-    ];
-    const triangle=(a,b,c)=>vertices.push(...a,...b,...c);
-    for(let i=0;i<10;i++){
-      const angle=i*Math.PI/5+.16,reach=spread*(.89+(i%3)*.055);
-      const tangent=[-Math.sin(angle),Math.cos(angle)];
-      for(let j=0;j<8;j++){
-        const t=j/8,next=(j+1)/8,a=point(angle,reach*t,t),b=point(angle,reach*next,next);
-        const width=.23*Math.sin(Math.PI*(t+next)/2)+.025;
-        const left=[a[0]+tangent[0]*width,a[1]-.07,a[2]+tangent[1]*width];
-        const right=[a[0]-tangent[0]*width,a[1]-.07,a[2]-tangent[1]*width];
-        triangle(a,left,b);triangle(a,b,right);
-      }
-      for(let j=1;j<9;j++){
-        const t=j/10,a=point(angle,reach*(t-.025),t),b=point(angle,reach*(t+.07),t+.07);
-        const width=.36*Math.sin(Math.PI*t);
-        for(const side of [-1,1]){
-          const tip=[b[0]+tangent[0]*width*side,b[1]-.22,b[2]+tangent[1]*width*side];
-          triangle(a,b,tip);
-        }
-      }
-    }
-    const fronds=new T.BufferGeometry();
-    fronds.setAttribute('position',new T.Float32BufferAttribute(vertices,3));fronds.computeVertexNormals();
-    mesh(fronds,palmLeaf,[0,0,0],tree);
-  }
-  // Cover the whole parking apron, including the former bare rectangular gap
-  // beside the planted strips. Keep one surface at a consistent height.
+  // Keep the forecourt and its perimeter roads on one continuous level.
   const paving=new T.Shape();
   [[ENTRANCE.southFenceX,-44.5],[-73.5,-44.5],[-73.5,3.5],[ENTRANCE.southFenceX,3.5]].forEach(([x,z],i)=>i?paving.lineTo(x,-z):paving.moveTo(x,-z));
   paving.closePath();const pavingGeo=new T.ShapeGeometry(paving);pavingGeo.rotateX(-Math.PI/2);
@@ -110,102 +44,162 @@ export function buildNewFrontCourt(k,plants){
   flatBox(54,.10,-109.5,-7.2,paint,.063);
   for(let x=-134;x<-82;x+=6.5)flatBox(2.5,.10,x,-2,paint,.063);
 
-  // Planted strips frame two facing passenger rows and their central drive aisle.
-  // Their centre break lines up with the main office entrance at z = -25.
-  const strips=[[-85.8,-82.2],[-102.5,-100.5]];
-  for(const [west,east] of strips)for(const [north,south] of [[-43.2,-27.15],[-22.85,-12.8]]){
-    bed(west,east,north,south,Math.min(.9,(east-west)/2));
-    let index=0;
-    for(let z=north+1.35;z<south-1;z+=2.35){
-      plants.plant((west+east)/2,z,.34+(index%3)*.025);
-      shrub(east-.55,z+.6,.30,index++);
-    }
-    for(let z=north+.5,i=0;z<south-.4;z+=.56,i++)
-      shrub((west+east)/2+(i%2)*.16,z,.25,i);
-  }
-  // Two rows of passenger bays face a clear 5.7 m aisle, as in the plan.
-  const passengerRows=[
-    {west:-100.5,east:-96.0,stop:-100.0},
-    {west:-90.3,east:-85.8,stop:-86.3},
-  ];
-  for(const [start,count] of [[-42.4,6],[-22.15,4]]){
-    const pitch=2.25;
-    for(const {west,east,stop} of passengerRows){
-      for(let i=0;i<=count;i++)flatBox(east-west,.085,(west+east)/2,start+i*pitch);
-      flatBox(.085,count*pitch,stop< -95?east:west,start+count*pitch/2);
-      for(let i=0;i<count;i++)box(.16,.10,1.55,[stop,.10,start+(i+.5)*pitch],curb);
-    }
-  }
-  // A flush pedestrian spine connects both landscaped strips to the office doors.
-  flatBox(20.4,3.6,-92.3,-25,pavers,.074);
-  flatBox(11.55,3.6,-70.425,-25,pavers,.065);
-  for(let x=-102.3;x<-82.2;x+=.75)flatBox(.025,3.6,x,-25,curb,.084);
-  for(let x=-76.1;x<-64.7;x+=.75)flatBox(.025,3.6,x,-25,curb,.075);
-  for(let x=-81.5;x<-76.5;x+=.68)flatBox(.36,3.1,x,-25,paint,.080);
+  // Use the factory-wide asphalt grid, aligned across the surrounding lanes.
+  const courtWest=ENTRANCE.southFenceX+1.35,courtEast=-82.2;
+  const courtNorth=-43.2,courtSouth=-8.2,pavedEast=-58.1;
+  flatBox(pavedEast-courtWest,courtSouth-courtNorth,(courtWest+pavedEast)/2,(courtNorth+courtSouth)/2,asphalt,.065).name='office-court-paving';
 
-  // Truck bays face a clear central manoeuvring lane, away from the passenger aisle.
-  for(const {position,angle,scale} of PARKED_TRUCKS){
-    const bay=group(position);bay.rotation.y=angle;
-    for(const side of [-1,1])box(18*scale,.012,.09,[-6.3*scale,paintY,side*1.8],paint,bay).castShadow=false;
-    box(.09,.012,3.6,[-15.3*scale,paintY,0],paint,bay).castShadow=false;
+  // The inner strip is straight. The street-side strip rounds only the
+  // outside corner at each end of the rectangular pedestrian court.
+  const groundcover=material('#354f28',0,.97),stripLeaves=material('#657d3c',0,.96);
+  for(const [north,south] of [[courtNorth,-26.6],[-23.4,courtSouth]]){
+    bed(-102.5,-100.5,north,south,.18);
+    box(1.35,.23,south-north-.65,[-101.5,.25,(north+south)/2],groundcover,k.scene,.12);
+    for(let z=north+.5,i=0;z<south-.4;z+=.58,i++)shrub(-101.5,z,.37,i,.06,stripLeaves);
   }
-  // Triangular exclusion zones finish the two ends of the angled truck rows.
-  hatchedApron([[-135.8,-43.6],[-123.2,-43.6],[-135.8,-40.0]]);
-  hatchedApron([[-111.2,-12.9],[-102.7,-12.9],[-102.7,-16.7]]);
+  function outerStrip(upper,inset=0){
+    const west=-85.8+inset,east=courtEast-inset,north=(upper?courtNorth:-23.4)+inset,south=(upper?-26.6:courtSouth)-inset,r=3.6-inset;
+    const shape=new T.Shape();shape.moveTo(west,-north);
+    if(upper){shape.quadraticCurveTo(east,-north,east,-(north+r));shape.lineTo(east,-south);}
+    else{shape.lineTo(east,-north);shape.lineTo(east,-(south-r));shape.quadraticCurveTo(east,-south,west,-south);}
+    shape.lineTo(west,-south);shape.closePath();return shape;
+  }
+  const insidePolygon=(polygon,x,z)=>{
+    let inside=false;
+    for(let i=0,j=polygon.length-1;i<polygon.length;j=i++){
+      const a=polygon[i],b=polygon[j];
+      if((a.y>-z)!==(b.y>-z)&&x<(b.x-a.x)*(-z-a.y)/(b.y-a.y)+a.x)inside=!inside;
+    }
+    return inside;
+  };
+  for(const upper of [true,false]){
+    for(const [inset,bottom,height,finish] of [[0,.025,.20,curb],[.26,.225,.035,groundcover]]){
+      const geo=new T.ExtrudeGeometry(outerStrip(upper,inset),{depth:height,bevelEnabled:false,curveSegments:16});geo.rotateX(-Math.PI/2);
+      mesh(geo,finish,[0,bottom,0]).castShadow=false;
+    }
+    const polygon=outerStrip(upper,.5).getPoints(20);
+    for(let z=upper?courtNorth+.6:-22.8,i=0;z<(upper?-27.1:courtSouth-.5);z+=.6,i++)
+      for(const x of [-85,-84.3,-83.6,-82.9])if(insidePolygon(polygon,x,z))shrub(x,z,.30,i,.12,stripLeaves);
+  }
+  // A planted margin runs inside the entrance fence, clear of the gate opening.
+  bed(ENTRANCE.southFenceX+.35,ENTRANCE.southFenceX+1.65,-44.1,-15.0,.5);
+  for(let z=-43.5,i=0;z<-15.5;z+=.6,i++)
+    shrub(ENTRANCE.southFenceX+1,z,.30,i);
 
-  // Planting beds frame both office entrances without covering their doors.
-  for(const [north,south] of [[-36.9,-27.3],[-22.7,-11.1],[3.7,10.1],[15.5,21.9]]){
-    const diningGarden=north>0;
-    if(diningGarden)raisedBed(-78,-66.1,north,south);
-    else bed(-76.2,-66.1,north,south,1.2);
+  // The central crossing points straight at the office entrance. Matching
+  // crossings break the pale kerb along the top and bottom of the court.
+  const crossing=(west,east,z,depth=1.8)=>{
+    for(let x=west+.14;x<east-.1;x+=.36)flatBox(.18,depth,x,z,paint,.105);
+  };
+  flatBox(2.0,3.2,-101.5,-25,pavers,.091);
+  flatBox(3.6,3.2,-84,-25,pavers,.091);
+  flatBox(11.55,5.75,-70.425,-25,pavers,.091);
+  crossing(-100.5,-85.8,-25);
+  crossing(-82.2,-76.2,-25);
+  for(const z of [courtNorth,courtSouth]){
+    for(const [west,east] of [[courtWest,-128],[-111,-95.8],[-89,-85.8]])
+      box(east-west,.16,.38,[(west+east)/2,.11,z],curb).castShadow=false;
+    crossing(-128,-111,z,.9);crossing(-95.8,-89,z,.9);crossing(-82.2,-76.2,z,.9);
+  }
+  for(let x=-76.1;x<-64.7;x+=.75)flatBox(.025,5.75,x,-25,curb,.103);
+
+  // The office gardens wrap around the ends of both projecting wings. Their
+  // rounded street corners align with the court, leaving the entrance open.
+  const officeLawn=material('#304b25',0,.98),officeLeaves=material('#3d592b',0,.96);
+  const officeBorder=material('#899c50',0,.95),officeHedge=material('#334e28',0,.96);
+  function officeOutline(upper,inset=0){
+    const west=-76.2+inset,front=-65.85-inset,east=-58.1-inset,r=3.5-inset;
+    const north=(upper?courtNorth:-22.125)+inset,south=(upper?-27.875:courtSouth)-inset;
+    const notch=(upper?-38.15:-11.85)+(upper?-inset:inset),s=new T.Shape();
+    if(upper){
+      s.moveTo(west,-south);s.lineTo(front,-south);s.lineTo(front,-notch);s.lineTo(east,-notch);
+      s.lineTo(east,-north);s.lineTo(west+r,-north);s.quadraticCurveTo(west,-north,west,-(north+r));
+    }else{
+      s.moveTo(west,-north);s.lineTo(front,-north);s.lineTo(front,-notch);s.lineTo(east,-notch);
+      s.lineTo(east,-south);s.lineTo(west+r,-south);s.quadraticCurveTo(west,-south,west,-(south-r));
+    }
+    s.closePath();return s;
+  }
+  for(const upper of [true,false]){
+    for(const [inset,bottom,height,finish,label] of [[0,.025,.24,curb,'curb'],[.38,.265,.035,officeLawn,'lawn']]){
+      const geo=new T.ExtrudeGeometry(officeOutline(upper,inset),{depth:height,bevelEnabled:false,curveSegments:16});geo.rotateX(-Math.PI/2);
+      const surface=mesh(geo,finish,[0,bottom,0]);surface.castShadow=false;surface.name=`office-garden-${upper?'upper':'lower'}-${label}`;
+    }
+    const polygon=officeOutline(upper,.48).getPoints(24),contains=(x,z)=>insidePolygon(polygon,x,z);
     let index=0;
-    for(let z=north+1.2;z<south-1;z+=2.15){
-      for(const [x,size] of (north<0?[[-74.5,.48],[-70.9,.38]]:[[-70.9,.34],[-68.1,.27]]))
-        plants.plant(x+(index%2?.15:-.12),z,size+(index%3)*.035);
-      const base=diningGarden?.42:0;
-      shrub(-69.5,z+.6,.62,index,base);shrub(-72.15,z,.36,index+1,base);shrub(-66.8,z,.40,index+2,base);index++;
-      if(!diningGarden){
-        shrub(-74.4,z+.55,.45,index);shrub(-75.3,z,.32,index+1);
-        for(const dx of [-.28,0,.28])
-          mesh(blossomGeometry,officeFlowers,[-73.4+dx,.55,z+.25+dx]);
+    for(let z=upper?courtNorth+.7:-22;z<(upper?-27.8:courtSouth-.5);z+=.7)for(let x=-75.55;x<-58.6;x+=.7){
+      const xx=x+Math.sin(index*2.4)*.15,zz=z+Math.cos(index*1.7)*.15,size=.24+(index%4)*.04;index++;
+      if(![[xx-size,zz],[xx+size,zz],[xx,zz-size],[xx,zz+size]].every(([px,pz])=>contains(px,pz)))continue;
+      shrub(xx,zz,size,index,.15,index%3?officeLeaves:officeHedge);
+    }
+    for(let z=upper?-41:-20.5;z<(upper?-28.5:-9.8);z+=2.15)for(let x=-73.8;x<-59.5;x+=2.2){
+      if(contains(x-1,z)&&contains(x+1,z)&&contains(x,z-1)&&contains(x,z+1))
+        plants.plant(x+.12*Math.sin(x+z),z,.23+.035*(Math.abs(Math.round(x+z))%3),{plantedBed:true});
+    }
+    const rim=officeOutline(upper,.82);
+    rim.getSpacedPoints(Math.ceil(rim.getLength()/.68)).forEach((p,i)=>shrub(p.x,-p.y,.20,i,.27,officeBorder));
+    const hedgeZ=upper?-28.4:-21.6;
+    for(let x=-75.7,i=0;x<-69;x+=.32,i++)shrub(x,hedgeZ,.23,i,.27,officeHedge);
+  }
+  // Dining garden: the upper bed wraps behind the hall, with one broad
+  // rounded street corner. The central walk stays open between two low hedges.
+  const diningLawn=material('#304b25',0,.98),diningLeaves=material('#3d592b',0,.96);
+  const borderLeaves=material('#899c50',0,.95),hedgeLeaves=material('#334e28',0,.96);
+  function diningOutline(upper,inset=0){
+    const west=-78+inset,front=-66.1-inset,north=(upper?2.1:15.5)+inset,south=(upper?10.1:21.9)-inset;
+    const s=new T.Shape();s.moveTo(west,-south);s.lineTo(front,-south);
+    if(upper){
+      const east=-55.65-inset,back=4.5-inset,r=5-inset,corner=1.8-inset;
+      s.lineTo(front,-back);s.lineTo(east,-back);s.lineTo(east,-(north+corner));
+      s.quadraticCurveTo(east,-north,east-corner,-north);s.lineTo(west+r,-north);
+      s.quadraticCurveTo(west,-north,west,-(north+r));
+    }else{s.lineTo(front,-north);s.lineTo(west,-north);}
+    s.closePath();return s;
+  }
+  for(const upper of [true,false]){
+    const edge=diningOutline(upper),inside=diningOutline(upper,.43);
+    for(const [shape,bottom,height,finish,label] of [[edge,.025,.24,curb,'curb'],[inside,.265,.035,diningLawn,'lawn']]){
+      const geo=new T.ExtrudeGeometry(shape,{depth:height,bevelEnabled:false,curveSegments:16});geo.rotateX(-Math.PI/2);
+      const surface=mesh(geo,finish,[0,bottom,0]);surface.name=`dining-garden-${upper?'upper':'lower'}-${label}`;
+      surface.castShadow=false;
+    }
+    const polygon=inside.getPoints(24);
+    const contains=(x,z)=>{
+      let found=false;
+      for(let i=0,j=polygon.length-1;i<polygon.length;j=i++){
+        const a=polygon[i],b=polygon[j];
+        if((a.y>-z)!==(b.y>-z)&&x<(b.x-a.x)*(-z-a.y)/(b.y-a.y)+a.x)found=!found;
       }
-      if(north<0&&index%2===0)for(const x of [-71.9,-67.1])
-        for(const dx of [-.2,.2])mesh(blossomGeometry,blossom,[x+dx,.56,z+.3+dx]);
-      if(diningGarden){
-        shrub(-75.1,z+.3,.48,index,.42);shrub(-77,z+.7,.33,index+1,.42);
-        plants.plant(-75.7,z,.23+(index%2)*.025,{plantedBed:true});
-        for(const x of [-77.2,-73.4])for(const dx of [-.2,.2])
-          mesh(blossomGeometry,blossom,[x+dx,.76,z+.25+dx]);
-      }
+      return found;
+    };
+    let index=0;
+    for(let z=upper?2.8:16.2;z<(upper?9.65:21.45);z+=.65)for(let x=-77.4;x<-56.1;x+=.65){
+      const xx=x+Math.sin(index*2.4)*.13,zz=z+Math.cos(index*1.7)*.12,size=.24+(index%4)*.045;index++;
+      if(![[xx-size,zz],[xx+size,zz],[xx,zz-size],[xx,zz+size]].every(([px,pz])=>contains(px,pz)))continue;
+      shrub(xx,zz,size,index,.15,index%3?diningLeaves:hedgeLeaves);
     }
-    if(diningGarden)for(let z=north+.55,i=0;z<south-.3;z+=.9,i++){
-      for(const [x,size] of [[-77.25,.28],[-74.35,.34],[-71.25,.36],[-67.2,.27]])
-        shrub(x+(i%2)*.13,z,size,i,.42);
-      if(i%2===0)for(const x of [-76.5,-73.2,-68.3])
-        mesh(blossomGeometry,blossom,[x,.76,z+.13]);
-    }
-    if(!diningGarden)for(let z=north+.45,i=0;z<south-.3;z+=.48,i++){
-      shrub(-75.75,z,.28,i);
-      shrub(-73.1+(i%2)*.2,z,.32,i+1);
-      if(i%3===0)for(const x of [-74.9,-71.8,-68.2])
-        mesh(blossomGeometry,i%2?officeFlowers:blossom,[x,.58,z+.15]);
-    }
-    if(diningGarden){
-      const flowerZ=north<12?south-.44:north+.44;
-      for(let x=-77.3;x<-66.7;x+=.32)
-        mesh(blossomGeometry,flowerBorder,[x,.69,flowerZ]);
+    // Taller foliage sits within the lawn, clear of the rounded kerb and door.
+    for(let z=upper?5.5:17.3;z<(upper?9:21);z+=2.0)for(let x=-75.5;x<-67.5;x+=2.25){
+      if(contains(x-1,z)&&contains(x+1,z)&&contains(x,z-1)&&contains(x,z+1))
+        plants.plant(x+.15*Math.sin(x+z),z,.24+.04*(Math.abs(Math.round(x+z))%3),{plantedBed:true});
     }
   }
-  // The office palms mark the outer corners and leave its tall windows visible.
-  for(const [x,z,h,s] of [[-75.1,-38.1,4.1,1.7],[-75.1,-10.7,4.0,1.7]])
-    palm(x,z,h,s);
-  for(const [x,z,h,s] of [[-74,4.3,3.6,1.35],[-73.6,21.3,3.6,1.35]])
-    palm(x,z,h,s);
-  flatBox(13.5,3.1,-71.8,12.8,pavers,.065);
-  for(let x=-78.3;x<-64.7;x+=.75)flatBox(.025,3.1,x,12.8,curb,.075);
+  const border=new T.CurvePath();
+  const v=(x,z)=>new T.Vector3(x,0,z);
+  border.add(new T.LineCurve3(v(-77.1,9.1),v(-77.1,7.1)));
+  border.add(new T.QuadraticBezierCurve3(v(-77.1,7.1),v(-77.1,3),v(-73,3)));
+  border.add(new T.LineCurve3(v(-73,3),v(-57.45,3)));
+  border.add(new T.QuadraticBezierCurve3(v(-57.45,3),v(-56.55,3),v(-56.55,3.6)));
+  border.getSpacedPoints(Math.ceil(border.getLength()/.65)).forEach((p,i)=>shrub(p.x,p.z,.28,i,.27,borderLeaves));
+  for(let z=16.4,i=0;z<21;z+=.65,i++)shrub(-77.1,z,.28,i,.27,borderLeaves);
+  for(let x=-77.1,i=0;x<-66.9;x+=.65,i++)shrub(x,21,.28,i,.27,borderLeaves);
+  for(const z of [9.55,16.05])for(let x=-77.4,i=0;x<-69.4;x+=.34,i++)shrub(x,z,.25,i,.28,hedgeLeaves);
+  flatBox(13.5,5.4,-71.8,12.8,pavers,.065);
+  for(let x=-78.3;x<-64.7;x+=.75)flatBox(.025,5.4,x,12.8,curb,.075);
   // The dining frontage meets an asphalt street with a broken centre line.
-  flatBox(13,32,-84.5,12.8,asphalt,.047);
-  for(let z=-1.8;z<28;z+=5.2)flatBox(.085,2.2,-86.4,z,paint,.065);
+  const street=DINING_STREET,streetX=(street.west+street.east)/2;
+  flatBox(street.east-street.west,street.south-street.north,streetX,(street.north+street.south)/2,asphalt,.047);
+  for(let z=street.north+2;z<street.south-1;z+=5.2)flatBox(.085,2.2,streetX,z,paint,.065);
   for(const [x,z] of [[-77,6.2],[-77,19.4]]){
     cyl(.048,3.85,[x,1.925,z],m.white);
     for(const side of [-1,1]){

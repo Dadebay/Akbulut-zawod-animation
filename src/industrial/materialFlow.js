@@ -1,7 +1,6 @@
 import {createDust} from './dust.js';
 import * as T from 'three';
-import {clamp01,JOURNEY_STAGE as S} from '../journey.js';
-import {PROCESS_LINES,CALCITE_INTAKE,BOARD_PALLET_OUT,BAG_PALLET_OUT,routeCurve} from './processPlan.js';
+import {PROCESS_LINES,CALCITE_INTAKE,CALCITE_FEED_END,routeCurve} from './processPlan.js';
 import {buildRawInfeed} from './rawInfeed.js';
 import {rubbleAssets} from './rubble.js';
 
@@ -9,7 +8,7 @@ export function buildMaterialFlow(k,logistics){
   const {m,box,cyl,group,mesh,rod}=k;
   const infeed=buildRawInfeed(k),rubble=rubbleAssets(k);
   const makeCurve=routeCurve;
-  function belt(points,width=1.4,supports=true){
+  function belt(points,width=1.4,supports=true,railMaterial=m.blue){
     const path=points.map(p=>new T.Vector3(...p)).filter((p,i,all)=>!i||p.distanceToSquared(all[i-1])>1e-8);
     if(path.length<2)return;
     const normals=path.slice(1).map((p,i)=>{
@@ -44,7 +43,7 @@ export function buildMaterialFlow(k,logistics){
       geometry.setIndex(indices);geometry.computeVertexNormals();mesh(geometry,mat);
     }
     strip(-width/2,width/2,-.13,0,m.rubber);
-    for(const side of [-1,1])strip(side*width/2-.05,side*width/2+.05,-.15,.01,m.blue);
+    for(const side of [-1,1])strip(side*width/2-.05,side*width/2+.05,-.15,.01,railMaterial);
     for(let i=0;i<path.length-1;i++){
       const a=path[i],b=path[i+1],d=b.clone().sub(a),length=d.length(),g=group(a.clone().add(b).multiplyScalar(.5).toArray());
       // Keep the carrying face upright on westbound inclines as well.
@@ -55,38 +54,38 @@ export function buildMaterialFlow(k,logistics){
       if(supports)for(let t=.05;t<1;t+=Math.min(.5,5/length)){const p=a.clone().lerp(b,t);for(const side of [-1,1]){const n=new T.Vector3(-d.z,0,d.x).normalize().multiplyScalar(side*width*.6);rod([p.x+n.x,0,p.z+n.z],[p.x+n.x,p.y-.2,p.z+n.z],.065,m.steel);}}
     }
   }
-  function duct(points){
+  function duct(points,parent=k.scene){
     const up=new T.Vector3(0,1,0);
     for(let i=1;i<points.length;i++){
       const a=new T.Vector3(...points[i-1]),b=new T.Vector3(...points[i]),direction=b.clone().sub(a).normalize();
-      rod(a.toArray(),b.toArray(),.28,m.white);
+      rod(a.toArray(),b.toArray(),.28,m.white,parent);
       if(b.y>a.y+.5&&Math.hypot(b.x-a.x,b.z-a.z)<.1){
-        box(.8,b.y-a.y,.8,[(a.x+b.x)/2,(a.y+b.y)/2,(a.z+b.z)/2],m.white);
-        k.motor([b.x+.55,b.y-.4,b.z],k.scene,.55);
+        box(.8,b.y-a.y,.8,[(a.x+b.x)/2,(a.y+b.y)/2,(a.z+b.z)/2],m.white,parent);
+        k.motor([b.x+.55,b.y-.4,b.z],parent,.55);
       }else if(a.distanceTo(b)>2){
-        const drive=group(a.clone().lerp(b,.85).toArray());drive.rotation.y=-Math.atan2(b.z-a.z,b.x-a.x);
+        const drive=group(a.clone().lerp(b,.85).toArray(),parent);drive.rotation.y=-Math.atan2(b.z-a.z,b.x-a.x);
         k.motor([0,-.15,.5],drive,.45);
       }
-      for(const point of [a,b]){const flange=cyl(.36,.09,point.toArray(),m.blue);flange.quaternion.setFromUnitVectors(up,direction);}
-      if(i<points.length-1)k.sphere(.285,b.toArray(),m.white);
-      if(Math.abs(a.y-b.y)<.1&&a.distanceTo(b)>3){const p=a.clone().lerp(b,.5);rod([p.x,0,p.z],[p.x,p.y-.25,p.z],.07,m.steel);}
+      for(const point of [a,b]){const flange=cyl(.36,.09,point.toArray(),m.blue,parent);flange.quaternion.setFromUnitVectors(up,direction);}
+      if(i<points.length-1)k.sphere(.285,b.toArray(),m.white,parent);
+      if(Math.abs(a.y-b.y)<.1&&a.distanceTo(b)>3){const p=a.clone().lerp(b,.5);rod([p.x,0,p.z],[p.x,p.y-.25,p.z],.07,m.steel,parent);}
     }
   }
-  // Gypsum arrives in the loader bucket; calcite keeps its separate intake.
-  for(const position of [CALCITE_INTAKE]){
-    const intake=group([position[0],0,position[2]]);box(3.3,.2,3.3,[0,.1,0],m.concrete,intake);
-    for(const side of [-1,1]){box(2.9,1,.14,[0,.65,side*1.45],m.blue,intake);box(.14,1,2.9,[side*1.45,.65,0],m.blue,intake);}
-    box(2.7,.3,2.7,[0,.53,0],m.raw,intake);for(let z=-1.3;z<=1.3;z+=.3)box(2.7,.05,.035,[0,.74,z],m.steel,intake);
-  }
-  const rawLines=PROCESS_LINES.slice(0,2).flatMap(line=>[line.points,...(line.branches||[])].map(points=>{
+  // Exposed rock travels on the stockyard belt. From the twin-roll receiver
+  // onward, equipmentConnections owns the sealed machine-to-machine route.
+  const rawRoutes=[...PROCESS_LINES[0].branches.map(points=>({line:PROCESS_LINES[0],points})),
+    {line:PROCESS_LINES[0],points:PROCESS_LINES[0].points},
+    {line:PROCESS_LINES[1],points:[CALCITE_INTAKE,CALCITE_FEED_END]}];
+  const rawLines=rawRoutes.map(({line,points})=>{
     const coarse=line.id==='gypsum'&&points===line.points;
+    const calciteFeed=line.id==='calcite';
     // buildCornerSilo owns the hollow receiving chute at the lift head.
-    if(coarse){belt(points.slice(1,3),1.35);belt(points.slice(3,6),1.35);belt(points.slice(5,7),1.35,false);}
-    else if(line.id==='gypsum')duct(points);
-    else {belt(points.slice(0,4),1.35);duct(points.slice(3));}
+    if(coarse){belt(points.slice(1,3),1.35);belt(points.slice(3,6),1.35);belt(points.slice(5,7),1.35,false,m.steel);}
+    else if(calciteFeed)belt(points,1.1,true,m.steel);
+    else duct(points);
     const path=makeCurve(points),length=path.getLength(),objects=[];
     const coarseUntil=coarse?path.curves[0].getLength()+path.curves[1].getLength():0;
-    for(let i=0;i<18;i++){
+    for(let i=0;i<(coarse?18:calciteFeed?10:0);i++){
       const g=group([0,0,0],k.scene,true);
       for(let n=0;n<3;n++){
         const rock=mesh(rubble.geometries[(i+n)%4],rubble.material,[(n-1)*.28,.28,(n%2-.5)*.30],g);
@@ -97,84 +96,23 @@ export function buildMaterialFlow(k,logistics){
     const exposed=[];let offset=0;
     path.curves.forEach((segment,index)=>{
       const end=offset+segment.getLength();
-      if(coarse?[0,1,3,4,5,6,7].includes(index):line.id==='calcite'&&index<3)exposed.push([offset,end]);
+      if((coarse&&[0,1,3,4,5,6,7].includes(index))||calciteFeed)exposed.push([offset,end]);
       offset=end;
     });
     return {line,path,length,objects,coarseUntil,exposed};
-  }));
-  // The calcite belt terminates inside an enclosed receiving/elevator unit.
-  // Its hopper, lift and buffer silo give the material a visible destination.
-  const calcite=PROCESS_LINES.find(line=>line.id==='calcite'),last=calcite.points.at(-1),previous=calcite.points.at(-2),receiver=group([last[0],0,last[2]]);
-  receiver.rotation.y=-Math.atan2(last[2]-previous[2],last[0]-previous[0]);
-  box(4.8,.22,3.1,[0,.11,0],m.concrete,receiver);
-  for(const z of [-1.4,1.4]){box(4.4,1.85,.12,[0,1.72,z],m.white,receiver);box(4.4,.18,.18,[0,.78,z],m.blue,receiver);}
-  box(4.6,.15,3,[0,2.72,0],m.white,receiver);box(.12,1.9,2.9,[2.2,1.72,0],m.white,receiver);
-  box(2.4,.8,2.5,[.55,.75,0],m.dark,receiver);box(.7,6.8,.8,[1.25,3.4,0],m.white,receiver);
-  for(let y=.7;y<6.5;y+=.8)box(.82,.05,.92,[1.25,y,0],m.steel,receiver);
-  const silo=group([1.25,0,3.2],receiver);k.frame(2.3,2.3,1.6,silo);cyl(.2,1.1,[0,1.65,0],m.steel,silo,1.05);cyl(1.05,3.1,[0,3.75,0],m.white,silo);cyl(1.1,.15,[0,5.36,0],m.steel,silo);
-  k.pipe([[1.25,6.7,0],[1.25,7.1,0],[1.25,7.1,3.2],[1.25,5.3,3.2]],.18,m.steel,receiver);k.motor([1.7,6.2,0],receiver,.7);k.ladder(5.4,1.25,4.5,receiver);
-  k.textPlate('KALSIT',1.6,.35,[1.25,4.2,4.26],receiver);
-  const boardDelivery=[BOARD_PALLET_OUT,[BOARD_PALLET_OUT[0],.8,-36],[25,.8,-36],[25,.8,-41]];
-  const bagDelivery=[BAG_PALLET_OUT,[-26,.8,-36],[10,.8,-36],[10,.8,-41]];
-  // The pallet feeds share two straight runs. Trim each belt at a junction
-  // plate so its blue guide rails cannot cross the neighbouring carrying face.
-  const deckHalf=1.1,deckOverlap=.08,feedZ=-36,transferZ=-41,boardX=BOARD_PALLET_OUT[0];
-  function transferDeck(x,z,open){
-    const g=group([x,0,z]);
-    box(2*deckHalf+.04,.055,2*deckHalf+.04,[0,.752,0],m.steel,g);
-    box(2*deckHalf,.06,2*deckHalf,[0,.79,0],m.rubber,g);
-    for(const [side,px,pz,w,d] of [
-      ['west',-deckHalf,0,.09,2*deckHalf],['east',deckHalf,0,.09,2*deckHalf],
-      ['north',0,deckHalf,2*deckHalf,.09],['south',0,-deckHalf,2*deckHalf,.09]
-    ])if(!open.includes(side))box(w,.16,d,[px,.88,pz],m.blue,g);
-    for(const sx of [-.87,.87])for(const sz of [-.87,.87])box(.10,.67,.10,[sx,.39,sz],m.steel,g);
-  }
-  const upperJunctions=[
-    [boardX,feedZ,['west','east','north']],
-    [10,feedZ,['west','east','south']],
-    [25,feedZ,['west','south']]
-  ];
-  const lowerJunctions=[
-    [-8,transferZ,['east','south']],
-    [10,transferZ,['west','east','north']],
-    [25,transferZ,['west','east','north','south']],
-    [51,transferZ,['west','south']]
-  ];
-  for(const [x,z,open] of [...upperJunctions,...lowerJunctions])transferDeck(x,z,open);
-  const edge=deckHalf-deckOverlap;
-  belt([BAG_PALLET_OUT,[-26,.8,feedZ],[boardX-edge,.8,feedZ]],1.4);
-  belt([BOARD_PALLET_OUT,[boardX,.8,feedZ+edge]],1.7);
-  for(const [from,to] of [[boardX,10],[10,25]])
-    belt([[from+edge,.8,feedZ],[to-edge,.8,feedZ]],1.7);
-  for(const [x,width] of [[10,1.4],[25,1.7]])
-    belt([[x,.8,feedZ-edge],[x,.8,transferZ+edge]],width);
-  for(const [from,to] of [[-8,10],[10,25],[25,51]])
-    belt([[from+edge,.8,transferZ],[to-edge,.8,transferZ]],1.7);
-  for(const x of [51,-8,25]){
-    const lastZ=x===51?-45:-43;
-    belt([[x,.8,transferZ-edge],[x,.27,lastZ]],1.7);
-  }
-  // Pallets use the level transfer decks. The sloped exit belts are kept for
-  // the loading area, but a moving pallet must not overrun their open ends.
-  // One board stream continues east; a later board takes the central branch.
-  const palletTravelPerStep=90;
-  const goods=[
-    {bags:false,points:[...boardDelivery,[51,.8,transferZ]],starts:[0,.14]},
-    {bags:true,points:[...bagDelivery,[-8,.8,transferZ]],starts:[0,.14,.28]},
-    {bags:false,points:boardDelivery,starts:[.5]},
-  ].map(({bags,points,starts})=>{
-    const path=makeCurve(points);
-    return {bags,path,length:path.getLength(),starts,objects:starts.map(()=>logistics.pallet(k.scene,[0,0,0],bags?'bags':'panel',true))};
   });
+  // Packing now ends at the two robot pallets and the bag receiver owned by
+  // production.js. No separate pallet belts cross the empty third roof bay.
   // A dedicated plan view carries the image's four colours; equipment stays
   // white and blue. Instanced arrows show direction without extra UI text.
   const traces=group([0,0,0],k.scene,true),arrowGeo=new T.ConeGeometry(.23,.8,6),arrowPose=new T.Object3D(),up=new T.Vector3(0,1,0);
-  const traceLines=PROCESS_LINES.slice(0,2).flatMap(line=>[line.points,...(line.branches||[])].map(points=>{
+  const traceRoutes=[...rawRoutes.filter(({line})=>line.id==='gypsum'),{line:PROCESS_LINES[1],points:PROCESS_LINES[1].points}];
+  const traceLines=traceRoutes.map(({line,points})=>{
     const path=makeCurve(points.map(([x,y,z])=>[x,y+.65,z])),mat=k.material(line.color,.1,.5,{emissive:line.color,emissiveIntensity:.3,depthTest:false,depthWrite:false});
     const trace=mesh(new T.TubeGeometry(path,Math.max(36,Math.ceil(path.getLength())),.085,5,false),mat,[0,0,0],traces);trace.castShadow=false;trace.renderOrder=30;
     const arrows=k.instances(arrowGeo,mat,14,traces);arrows.castShadow=false;arrows.renderOrder=31;
     return {line,path,arrows};
-  }));
+  });
   const falling=[];for(let i=0;i<26;i++){const rock=group([0,0,0],k.scene,true),chunk=mesh(rubble.geometries[i%4],rubble.material,[0,0,0],rock);chunk.scale.setScalar(.24+(i%3)*.045);falling.push(rock);}
   const drop=new T.Vector3(),loadSurface=new T.Vector3(),dustOrigin=new T.Vector3(),dust=createDust(k);
   return {loader:infeed.loader,update(j,landscape,{showLines=false,showInterior=false,active}={}){
@@ -187,17 +125,9 @@ export function buildMaterialFlow(k,logistics){
       if(o.visible){
         const d=path.getTangentAt(t);o.position.copy(path.getPointAt(t));o.rotation.y=-Math.atan2(d.z,d.x);
         o.scale.setScalar(t*length<coarseUntil?1:.43);
-        if(line.id==='calcite')o.position.y-=clamp01(1-(1-t)*length/.8)*.6;
       }
     }));
     infeed.update(j,{showLines});
-    // The interior cell owns its real board stack. Journey illustrations must
-    // not spawn a second loaded pallet through the robot's receiving area.
-    goods.forEach(({bags,path,length,starts,objects})=>objects.forEach((o,i)=>{
-      const distance=(j.progress-starts[i])*palletTravelPerStep,t=distance/length;
-      o.visible=(bags||!showInterior)&&j.index===S.pack&&t>=0&&t<=1;
-      if(o.visible){o.position.copy(path.getPointAt(t));const d=path.getTangentAt(t);o.rotation.y=-Math.atan2(d.z,d.x);}
-    }));
     const quarryPose=landscape.update(j);
     if(j.index===2)logistics.hauler.dischargePoint.getWorldPosition(drop);else landscape.bucketTip.getWorldPosition(drop);
     logistics.hauler.bed.updateWorldMatrix(true,false);loadSurface.set(2.5,.3+j.rawLoad*.65,0).applyMatrix4(logistics.hauler.bed.matrixWorld);

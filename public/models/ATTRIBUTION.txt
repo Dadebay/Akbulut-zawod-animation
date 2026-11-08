@@ -13,7 +13,8 @@ Changes for the Ak Bulut presentation:
 - Kept the MAN cab, glazing, mirrors and grille from the scan.
 - Cropped the original trailer and chassis; reduced the cab to 260,000 triangles, then removed the uneven scanned wheel surfaces.
 - Converted millimetres to metres and oriented the cab for the scene.
-- Retained original texture UVs; resized the texture atlas to 6144 x 6144.
+- Retained original texture UVs; initial 6144 px atlas capped at 2048 px WebP for desktop and 1024 px JPEG for tablet in realism phase 1.
+- Reused simplified CabNear/CabFar meshes at distance on desktop; retained the full scan for close inspection.
 - Preserved smooth scan normals; applied three gentle Taubin smoothing passes.
 - Recoloured bodywork white and cleaned glazing in the application shader.
 - Replaced scanned front wheels with separately modelled, rotating wheel assemblies.

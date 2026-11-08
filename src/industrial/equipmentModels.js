@@ -1,6 +1,8 @@
 import * as T from 'three';
 import {machinePort} from './equipmentConnections.js';
 import {PROCESS_PHYSICS as P,rpmToRadians} from './processPhysics.js';
+import {BOARD_DRYER} from './processPlan.js';
+import {buildDryerTransfers} from './dryerTransfer.js';
 
 // Original geometry based on the user's equipment renders. All dimensions are metres.
 export function createEquipmentModels(k,rotors){
@@ -66,6 +68,7 @@ export function createEquipmentModels(k,rotors){
     const wheel=group([.3,1.95,1.75],g,true);cylinder(.85,.15,[0,0,0],cast,wheel,'z');ring(.75,.08,[0,0,.1],zinc,wheel,'z');for(let n=0;n<8;n++){const a=n/8*Math.PI*2;rod([Math.sin(a)*.25,Math.cos(a)*.25,.12],[Math.sin(a)*.69,Math.cos(a)*.69,.12],.045,zinc,wheel);}cylinder(.2,.24,[0,0,.1],zinc,wheel,'z');rotors.push({object:wheel,axis:'z',zone:'TY',speed:1.1});
     gearmotor([2.3,.48,1.6],g,1.2,Math.PI);fence(4.8,2.5,[.3,.3,2.15],g);textPlate('TY-01',.8,.24,[-.8,2.25,1.51],g);
     panel(1.1,.75,[.25,1.5,-1.51],g);const cyclone=group([0,0,-3.1],g);frame(1.7,1.7,2.4,cyclone);cyl(.17,1.6,[0,2.8,0],zinc,cyclone,.8);cyl(.8,1.6,[0,4.4,0],zinc,cyclone);for(const y of [3.6,5.2])flange(.84,[0,y,0],cyclone);pipe([[0,5.2,-3.1],[0,6,-3.1],[0,6,-.4],[0,4,-.4]],.24,zinc,g);
+    port(g,'in',[0,4,0],[0,1,0],.28,'solid',{open:true});
     port(g,'out',[0,.65,-1.9],[0,0,-1],.25,'solid',{nozzle:.5});
   }
   function BS(g){
@@ -73,13 +76,13 @@ export function createEquipmentModels(k,rotors){
     for(let x=-4.8;x<5.1;x+=1.2)ring(1.503,.009,[x,0,0],seam,drum,'x');for(let n=0;n<4;n++){const a=n/4*Math.PI*2;rod([-5.1,Math.sin(a)*1.502,Math.cos(a)*1.502],[5.1,Math.sin(a)*1.502,Math.cos(a)*1.502],.009,seam,drum);}
     for(const x of [-3.45,3.45]){cylinder(1.6,.28,[x,0,0],cast,drum,'x',1.6,80);cylinder(1.64,.18,[x,0,0],m.polished,drum,'x',1.64,80);circleBolts(1.55,[x+.17,0,0],drum,'x',28);
       const contactZ=Math.sqrt((1.64+.43)**2-(2.65-1.12)**2);
-      for(const z of [-contactZ,contactZ]){box(1.4,.4,.75,[x,.73,z],cast,g,.045);
-        const roller=group([x,1.12,z],g,true);cylinder(.43,.62,[0,0,0],zinc,roller,'x');box(.64,.04,.06,[0,.43,0],cast,roller);
+      for(const z of [-contactZ,contactZ]){box(1.4,.4,.75,[x,.43,z],cast,g,.045);
+        const roller=group([x,1.12,z],g,true);cylinder(.43,.62,[0,0,0],zinc,roller,'x');box(.012,.05,.68,[.316,0,0],cast,roller);
         rotors.push({object:roller,axis:'x',zone:'BS',speed:-rpmToRadians(P.drumRpm)*1.64/.43});
         for(const dx of [-.47,.47]){box(.18,.52,.6,[x+dx,.91,z],cast,g,.09);bolt([x+dx,.68,z+.22],g);}cylinder(.12,1.25,[x,1.12,z],m.polished,g,'x');}}
     cylinder(1.68,.26,[.7,0,0],cast,drum,'x',1.68,80);for(let n=0;n<80;n++){const a=n/80*Math.PI*2;const tooth=box(.28,.12,.10,[.7,Math.sin(a)*1.72,Math.cos(a)*1.72],zinc,drum);tooth.rotation.x=-a;}circleBolts(1.61,[.88,0,0],drum,'x',32);rotors.push({object:drum,axis:'x',zone:'BS',speed:rpmToRadians(P.drumRpm)});
     gearmotor([1.3,.6,-2.05],g,1.4);const pinion=group([.7,1.18,-1.45],g,true);cylinder(.35,.3,[0,0,0],cast,pinion,'x');for(let n=0;n<18;n++){const a=n/18*Math.PI*2;const t=box(.3,.06,.08,[0,Math.sin(a)*.36,Math.cos(a)*.36],zinc,pinion);t.rotation.x=-a;}rotors.push({object:pinion,axis:'x',zone:'BS',speed:-rpmToRadians(P.drumRpm)*P.drumTeeth/P.pinionTeeth});
-    for(const x of [-5.5,5.5]){cylinder(1.52,.55,[x,2.65,0],blue,g,'x');cylinder(1.57,.06,[x+(x>0?-.3:.3),2.65,0],zinc,g,'x');circleBolts(1.43,[x+(x>0?.31:-.31),2.65,0],g,'x',24);box(.7,1.4,1.1,[x,1,0],cast,g);}
+    for(const x of [-5.5,5.5]){cylinder(1.52,.55,[x,2.65,0],blue,g,'x');cylinder(1.57,.06,[x+(x>0?-.255:.255),2.65,0],zinc,g,'x');circleBolts(1.43,[x+(x>0?.31:-.31),2.65,0],g,'x',24);box(.7,1.4,1.1,[x,1,0],cast,g);}
     hollowHopper(1.4,1.1,.6,.6,1.2,[-5.65,3.7,0],g);pipe([[5.5,3.4,0],[5.5,4.7,0],[5.5,5.4,-.7],[5.5,5.4,-2]],.4,zinc,g);flange(.47,[5.5,4.55,0],g);
     hatch([-2,0,1.48],.28,drum);gauge([5.45,3.6,.9],g);pipe([[5.5,2.8,1.2],[5.5,1.7,1.5],[4.3,1.7,1.5]],.05,zinc,g);valve([4.7,1.7,1.5],g,'x');
     const walk=group([0,0,2.75],g);frame(10.7,.9,1.15,walk);deck(10.7,1,1.15,walk);ladder(1.2,-5.4,3.3,g);textPlate('BS-01',1.2,.25,[0,1.35,3.28],g);
@@ -100,29 +103,144 @@ export function createEquipmentModels(k,rotors){
     port(g,'additives',[2.5,6.95,-.45],[0,1,0],.25);
     port(g,'out',[4.5,1.7,2.5],[1,0,0],.18);
   }
+  // October 27 photos and markup: a 31 m grey insulated dryer in the middle
+  // bay. Boards arrive westbound from the wet transfer, so the cream
+  // multi-deck infeed and black deck distributors face east. Heater houses
+  // stand on the roof.
   function GK(g){
-    for(let i=0;i<5;i++){const x=-8+i*3.5,sg=group([x,0,0],g);for(const z of [-1.8,1.8]){box(3.45,1.9,.10,[0,2.25,z],enamel,sg,.025);box(3.5,.18,.2,[0,1.22,z],blue,sg);box(3.5,.12,.18,[0,3.25,z],blue,sg);for(const xx of [-1.57,1.57])box(.13,2,.16,[xx,2.23,z],cast,sg);
-        const side=group([0,0,z],sg);if(z<0)side.rotation.y=Math.PI;for(const xx of [-.8,.8]){panel(1.42,1.55,[xx,2.25,.07],side,enamel);handle([xx+.46,2.2,.15],side);box(.55,.28,.035,[xx,2.56,.115],gasket,side,.035);box(.47,.20,.04,[xx,2.56,.12],m.glass,side);for(const yy of [1.75,2.7])box(.05,.15,.075,[xx-.67,yy,.12],zinc,side);}}
-      box(3.48,.14,3.65,[0,3.32,0],enamel,sg,.035);for(const zz of [-1,0,1])box(3.4,.025,.025,[0,3.402,zz],seam,sg);
-      for(const xx of [-1.65,1.65]){box(.06,.18,3.7,[xx,3.38,0],blue,sg);for(const z of [-1.8,1.8])bolt([xx,3.5,z],sg);}
-      cyl(.31,.35,[0,3.57,0],zinc,sg);flange(.39,[0,3.76,0],sg);pipe([[0,3.8,0],[0,4.2,0],[0,4.6,-.5],[0,4.6,-2.5]],.24,zinc,sg);gearmotor([.3,.38,-2],sg,.65);textPlate(`GK-${i+1}`, .7,.18,[0,3.05,1.88],sg);
+    const cream=material('#e6e2d6',.18,.6),insulated=material('#b4b9ba',.45,.5),roller=material('#4a5156',.55,.5);
+    // Local +x runs westbound along the board flow.
+    const line=group([0,0,0],g);line.rotation.y=Math.PI;
+    // IMG_6752/6753: five roller decks, one per dryer deck opening.
+    // The bottom rollers meet the 1.175 m top of the board conveyor.
+    const decks=Array.from({length:BOARD_DRYER.decks},(_,i)=>1.04+i*BOARD_DRYER.deckPitch),W=2.3,F=2.15,len=BOARD_DRYER.length,boxWest=-len/2,boxEast=len/2,top=4.4,frameTop=4.15;
+    // IMG_6752/6753: a cream portal frame with square posts on foot plates,
+    // a roller deck at every dryer level, a gearmotor per deck on the aisle
+    // side and top rails that run on past the last portal.
+    function deckFrame(x0,x1,inlet){
+      const f=group([(x0+x1)/2,0,0],line),L=x1-x0;
+      f.name=inlet?'GK-infeed-roller-decks':'GK-outfeed-roller-decks';
+      for(const x of [-L/2+.08,L/2-.08]){
+        for(const z of [-F,F]){
+          box(.18,frameTop,.18,[x,frameTop/2,z],cream,f);
+          box(.4,.04,.34,[x,.02,z],zinc,f);
+        }
+        box(.16,.18,2*F,[x,frameTop,0],cream,f);
+      }
+      for(const y of decks){
+        for(const z of [-F+.1,F-.1])box(L,.14,.09,[0,y,z],cream,f);
+        for(let x=-L/2+.12;x<L/2;x+=.28){
+          cylinder(.035,2*F-.3,[x,y+.1,0],roller,f,'z',undefined,10);
+          for(const z of [-1.35,-.45,.45,1.35])cylinder(.065,.05,[x,y+.1,z],gasket,f,'z',undefined,10);
+        }
+      }
     }
-    pipe([[-8,4.6,-2.5],[0,4.6,-2.5],[6,4.6,-2.5],[8,4.6,-2.5],[8,6.5,-2.5]],.34,zinc,g);for(let x=-8;x<=6;x+=3.5){const gg=group([x,4.6,-2.5],g);flange(.39,[.6,0,0],gg,'x');}
-    cyl(.48,.09,[8,6.62,-2.5],zinc,g);for(const x of [7.8,8.2])rod([x,6.4,-2.5],[x,6.59,-2.5],.025,zinc,g);flange(.39,[8,5.7,-2.5],g);
-    // Open mouths: a real tunnel around the moving boards, not a solid end cap.
-    for(const x of [-9.8,7.8]){for(const z of [-1.7,1.7])box(.2,2.3,.22,[x,2.24,z],blue,g);box(.2,.30,3.6,[x,3.25,0],blue,g);for(let z=-1.45;z<1.5;z+=.3)box(.035,.52,.24,[x,2.97,z],gasket,g);}
+    // The five short deck extensions feed visible converging branches, which
+    // share the same floor conveyor at their outer ends.
+    deckFrame(boxWest-.9,boxWest,true);
+    deckFrame(boxEast,boxEast+.9,false);
+    buildDryerTransfers(k,{parent:line,cylinder,gearmotor,blue,zinc,cast,cream});
+    // Dark deck guides either side of both mouths, a fin at every deck, with
+    // the dark interior and deck rollers visible through the opening.
+    for(const x of [boxWest-.22,boxEast+.22]){
+      const out=Math.sign(x);
+      for(const z of [-1.92,1.92]){
+        box(.32,3.4,.34,[x,2.15,z],gasket,line,.03);
+        for(const y of decks)box(.42,.08,.44,[x+out*.04,y+.02,z],cast,line);
+      }
+      for(const y of decks)box(.08,.06,3.4,[x-out*.24,y+.1,0],roller,line);
+    }
+    const dry=group([0,0,0],line);dry.name='GK-dryer-box';
+    // Continue the roller planes through the open mouths; the insulated walls
+    // hide most of this run while the entry and exit stay visibly connected.
+    for(const y of decks){
+      for(const z of [-F+.1,F-.1])box(len,.14,.09,[0,y,z],cream,dry);
+      for(let x=boxWest+.3;x<boxEast-.1;x+=.55)
+        cylinder(.035,2*F-.3,[x,y+.1,0],roller,dry,'z',undefined,10);
+    }
+    for(const z of [-W,W]){
+      box(len,top-.3,.12,[0,(top+.3)/2,z],insulated,dry);
+      for(let x=-len/2+1.1;x<len/2;x+=1.1)box(.03,top-.45,.02,[x,(top+.3)/2,z+Math.sign(z)*.07],seam,dry);
+      box(len,.03,.02,[0,2.35,z+Math.sign(z)*.07],seam,dry);
+      ribBeam(len,[0,.28,z],dry);
+      for(let x=boxWest+.7;x<boxEast;x+=2.6){
+        box(.42,.17,.46,[x,.085,z],cast,dry);
+        for(const dx of [-.13,.13])bolt([x+dx,.19,z+.14],dry);
+      }
+    }
+    box(len+.1,.16,2*W+.24,[0,top+.08,0],insulated,dry);
+    for(const x of [-len/2,len/2]){
+      box(.14,top-3.75,2*W,[x,(top+3.75)/2,0],insulated,dry);
+      for(const z of [-1,1])box(.14,3.45,W-1.75,[x,2.025,z*(1.75+(W-1.75)/2)],insulated,dry);
+    }
+    for(const z of [-1,1]){
+      const side=group([0,0,z*W],dry);if(z<0)side.rotation.y=Math.PI;
+      for(let x=-len/2+2.2;x<len/2-1;x+=3.3){panel(1.0,1.9,[x,1.45,.07],side,insulated);handle([x+.36,1.45,.12],side);}
+    }
+    const houses=[-len*.36,-len*.12,len*.12,len*.36];
+    for(const [index,x] of houses.entries()){
+      const module=group([x,0,0],dry);module.name=`GK-thermal-module-${index+1}`;
+      box(2.6,.22,2.9,[0,top+.24,-.65],cast,module);
+      box(2.4,2.5,2.6,[0,top+1.6,-.7],insulated,module);
+      for(const xx of [-1.19,1.19])box(.08,2.5,2.7,[xx,top+1.6,-.7],zinc,module);
+      panel(1.9,1.85,[0,top+1.55,.625],module,blue);
+      const fan=group([0,top+1.55,.96],module);fan.name='GK-circulation-fan';
+      cylinder(.64,.42,[0,0,0],cast,fan,'z');flange(.68,[0,0,.25],fan,'z');
+      cylinder(.56,.025,[0,0,.29],gasket,fan,'z');
+      const impeller=group([0,0,.33],fan,true);impeller.name='GK-fan-impeller';
+      cylinder(.14,.10,[0,0,0],zinc,impeller,'z');
+      for(let n=0;n<8;n++){
+        const blade=group([0,0,0],impeller);blade.rotation.z=n*Math.PI/4;
+        box(.18,.39,.045,[.08,.32,0],zinc,blade,.01).rotation.z=.25;
+      }
+      rotors.push({object:impeller,axis:'z',zone:'GK',speed:2.4});
+      for(const r of [.25,.41,.56])ring(r,.012,[0,0,.4],zinc,fan,'z');
+      for(let n=0;n<8;n++){const a=n*Math.PI/4;rod([0,0,.42],[Math.cos(a)*.59,Math.sin(a)*.59,.42],.01,zinc,fan);}
+      gearmotor([.3,top+2.91,-.8],module,.6);
+      for(const xx of [-.94,.94]){
+        for(let y=top+.55;y<top+2.6;y+=.18)box(.23,.035,.03,[xx,y,.67],gasket,module);
+      }
+      // Each recirculation module joins the common roof manifold.
+      pipe([[0,top+2.85,-.7],[0,top+3.12,-.7]],.24,zinc,module);
+      flange(.30,[0,top+2.94,-.7],module,'y',8);
+      textPlate(`DRY ZONE 0${index+1}`,1.5,.22,[0,top+.52,.69],module);
+      // A service module with inspection window, valve train and instruments.
+      for(const side of [-1,1]){
+        const service=group([0,0,side*(W+.1)],module);if(side<0)service.rotation.y=Math.PI;
+        panel(2.6,1.25,[0,2.95,0],service,blue);
+        box(.63,.35,.025,[-.65,3.02,.07],gasket,service);
+        for(let i=0;i<5;i++)box(.66,.02,.035,[-.65,2.88+i*.07,.095],zinc,service);
+        gauge([.39,3.12,.14],service);
+        for(const y of [2.58,3.45])handle([1.12,y,.1],service);
+        pipe([[-1.0,1.9,.26],[-.2,1.9,.26],[-.2,2.42,.26]],.045,zinc,service);
+        valve([-.6,1.9,.26],service,'x');
+        for(const [i,mat] of [m.green??blue,m.red].entries())cylinder(.045,.025,[.78+i*.16,3.33,.07],mat,service,'z',undefined,10);
+        textPlate(`ZONE 0${index+1}`,1.0,.19,[0,2.68,.07],service);
+      }
+    }
+    cylinder(.32,houses.at(-1)-houses[0]+.7,[0,top+3.12,-.7],zinc,dry,'x');
+    for(const x of houses){
+      flange(.39,[x+.45,top+3.12,-.7],dry,'x',10);
+      for(const z of [-W-.18,W+.18])box(.055,top-.35,.10,[x-1.8,(top+.25)/2,z],zinc,dry);
+    }
+    // Raised grating, handrails and a caged ladder make the roof service route visible.
+    const walkway=group([0,0,1.79],dry);walkway.name='GK-roof-service-walkway';
+    box(len-.5,.09,.68,[0,top+.28,0],cast,walkway);
+    for(let x=boxWest+.3;x<boxEast-.2;x+=.22)box(.045,.025,.65,[x,top+.34,0],zinc,walkway);
+    for(let x=boxWest+.3;x<=boxEast-.3;x+=(len-.6)/16){
+      rod([x,top+.3,.36],[x,top+1.35,.36],.027,m.yellow,walkway);
+      box(.10,.20,.26,[x,top+.15,0],cast,walkway);
+    }
+    for(const y of [top+.8,top+1.35])rod([boxWest+.3,y,.36],[boxEast-.3,y,.36],.027,m.yellow,walkway);
+    box(len-.6,.12,.03,[0,top+.4,.36],m.yellow,walkway);
+    ladder(top+.35,boxEast-.6,W+.34,dry,true);
+    for(const side of [-1,1]){
+      pipe([[boxWest+.3,.75,side*(W+.24)],[boxEast-.3,.75,side*(W+.24)]],.055,zinc,dry);
+      box(len-.8,.12,.22,[0,3.9,side*(W+.18)],cast,dry);
+    }
+    cylinder(.38,3.1,[len/2-.9,top+1.55,-1.5],zinc,dry);
   }
-  function GP(g){
-    for(const x of [-2.45,2.45])for(const z of [-1.7,1.7]){box(.25,4,.25,[x,2.2,z],enamel,g,.025);box(.6,.12,.6,[x,.26,z],cast,g);for(const dx of [-.21,.21])bolt([x+dx,.34,z+.2],g);box(.10,2.9,.06,[x,2.5,z+.16],m.polished,g);}
-    for(const z of [-1.7,1.7]){box(5.2,.4,.33,[0,4.3,z],blue,g,.03);box(5.2,.08,.09,[0,4.55,z],m.polished,g);}for(const x of [-2.45,2.45])box(.28,.35,3.5,[x,4.3,0],enamel,g,.025);
-    // This portal is the receiving/sensing station. The adjacent robot owns
-    // the vacuum pickup; a second oscillating head would occupy its work area.
-    box(.55,.16,.4,[0,4.01,0],enamel,g,.025);
-    box(.18,.06,.18,[0,3.90,0],m.black,g);
-    for(const z of [-1.7,1.7])pipe([[0,4.15,0],[0,4.15,z],[2.45,4.15,z],[2.45,.5,z]],.025,gasket,g);
-    for(const z of [-2,2])fence(.8,2.4,[-3,.25,z],g,Math.PI/2);
-    for(const x of [-2.2,2.2])fence(1.55,2.4,[x,.25,2.4],g);
-    textPlate('GP-01',1,.24,[0,4.32,1.89],g);
-  }
-  return {CR,TY,BS,GR,GK,GP,hollowHopper,gearmotor,fence,panel,handle,bolt,flange,cylinder,gauge,zinc,blue,enamel,cast,wire};
+  // The BEUMER line owns the packaging (GP) geometry.
+  function GP(){}
+  return {CR,TY,BS,GR,GK,GP,hollowHopper,gearmotor,fence,panel,handle,bolt,flange,cylinder,gauge,valve,zinc,blue,enamel,cast,wire};
 }

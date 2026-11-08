@@ -5,7 +5,7 @@ import * as T from 'three';
 // Silver/blue body, swept cab, twin front glazing and six axles per section.
 export const TURKMEN_LOCO={sectionCentres:[-69.9,-49.8,-29.7],length:19.4,width:3.15};
 
-export function buildTurkmenLocomotive(k,train,{z,bogie,coupling}){
+export function buildTurkmenLocomotive(k,train,{z,bogie,coupling,sectionCentres=TURKMEN_LOCO.sectionCentres,frontTowardsPositiveX=false}){
   const {m,box,cyl,rod,ring,group,mesh,material,textPlate}=k;
   const silver=material('#e2e6e7',.38,.4),blue=material('#12579b',.3,.34),dark=material('#28343e',.6,.5),glass=material('#15313e',.45,.16),steel=material('#89969e',.8,.35),red=material('#a53539',.1,.5);
   function quad(points,mat,parent){
@@ -27,8 +27,9 @@ export function buildTurkmenLocomotive(k,train,{z,bogie,coupling}){
     const crescent=ring(.082,.012,[.04,.06,.015],silver,g,'z');crescent.scale.x=.65;
     for(const [x,y] of [[.18,.12],[.23,.05],[.18,-.02],[.13,.05],[.18,.05]])box(.017,.017,.008,[x,y,.015],silver,g);
   }
-  for(const [i,cx] of TURKMEN_LOCO.sectionCentres.entries()){
-    const g=group([cx,0,z],train,true),cab=i!==1;if(i===2)g.rotation.y=Math.PI;
+  for(const [i,cx] of sectionCentres.entries()){
+    const g=group([cx,0,z],train,true),cab=i!==1;
+    if(i===2||(frontTowardsPositiveX&&i===0))g.rotation.y=Math.PI;
     bogie(g,-5.7,true);bogie(g,5.7,true);
     box(19.4,.30,3.12,[0,1.48,0],dark,g,.04);
     box(19.25,.11,3.2,[0,1.69,0],silver,g,.025);
